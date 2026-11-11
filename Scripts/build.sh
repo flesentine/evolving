@@ -112,8 +112,11 @@ cp Assets/Roads/*.png \
 # otherwise fall back to an ad-hoc signature so local builds still load.
 SIGN_IDENTITY="${EVOLVING_SIGN_IDENTITY:-}"
 if [[ -z "$SIGN_IDENTITY" ]]; then
+  # CI macOS runners generally have no Developer ID identity. Under
+  # "set -euo pipefail" an empty grep result otherwise aborts the build
+  # before the intended ad-hoc signing fallback can run.
   SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null \
-    | grep "Developer ID Application" | head -1 | sed -E 's/.*"(.*)"/\1/')
+    | grep "Developer ID Application" | head -1 | sed -E 's/.*"(.*)"/\1/' || true)
 fi
 
 sign_bundle() {
