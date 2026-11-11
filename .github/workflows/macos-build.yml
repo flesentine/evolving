@@ -1,0 +1,20 @@
+name: macos-build
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Build macOS screen saver and tools
+        run: ./Scripts/build.sh
