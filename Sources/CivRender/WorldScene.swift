@@ -622,7 +622,7 @@ final class WorldScene {
                     for (pointIndex, point) in profile.enumerated() {
                         let p = sample.position + side * point.offset
                         // Sink the waterline vertex a few millimetres below
-                        // the sheet (a visual separation, not terrain carving).
+                        // the sheet (a visual seam offset, not terrain carving).
                         // Coplanar bank and water edges z-fight,
                         // and the bank triangles win in alternating pixels,
                         // which reads as a sawtooth of land inside the water.
