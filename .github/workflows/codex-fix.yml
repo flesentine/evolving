@@ -68,9 +68,15 @@ jobs:
     needs: prepare
     # Disabled until a human enables the repository variable after the
     # read-only detection test. Set OPENCODE_AUTOFIX_ENABLED=true to arm it.
+    # Require both an explicit enable switch and a PR allowlist. During pilot,
+    # set OPENCODE_AUTOFIX_ALLOWED_PR to the exact test PR number; only set it
+    # to 'all' after the write-capable end-to-end test is independently verified.
     if: |
       needs.prepare.outputs.pr != '' &&
-      vars.OPENCODE_AUTOFIX_ENABLED == 'true'
+      vars.OPENCODE_AUTOFIX_ENABLED == 'true' &&
+      vars.OPENCODE_AUTOFIX_ALLOWED_PR != '' &&
+      (vars.OPENCODE_AUTOFIX_ALLOWED_PR == needs.prepare.outputs.pr ||
+       vars.OPENCODE_AUTOFIX_ALLOWED_PR == 'all')
     # Serialize fixes for one pull request. The detector can produce several
     # artifacts in quick succession; the validator below re-reads the attempt
     # markers after this lock is acquired before starting another agent.
