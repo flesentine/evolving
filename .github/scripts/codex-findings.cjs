@@ -185,7 +185,11 @@ async function detect({ github, context, core }) {
       return;
     }
     prNumber = context.payload.pull_request.number;
-    reviewedSha = context.payload.comment.commit_id;
+    // GitHub re-anchors an old inline comment's commit_id to the newest head
+    // when the line still exists. original_commit_id is the commit the comment
+    // was actually written against, so it is the only safe currency check.
+    reviewedSha = context.payload.comment.original_commit_id ||
+      context.payload.comment.commit_id;
     eventBody = context.payload.comment.body || '';
   } else if (context.eventName === 'issue_comment') {
     if (!context.payload.issue.pull_request) {
@@ -285,9 +289,12 @@ async function detect({ github, context, core }) {
   const codexReviews = reviews.filter(
     (r) => r.user?.login === CODEX_LOGIN && r.commit_id === headSha,
   );
-  const codexComments = reviewComments.filter(
-    (c) => c.user?.login === CODEX_LOGIN && c.commit_id === headSha,
-  );
+  const codexComments = reviewComments.filter((c) => {
+    // Do not accept a comment merely because GitHub moved its commit_id to the
+    // new head. It must have been created against the current head.
+    const commentSha = c.original_commit_id || c.commit_id;
+    return c.user?.login === CODEX_LOGIN && sameSha(commentSha, headSha);
+  });
 
   // Attempt markers and Codex summary updates both live in issue comments.
   // A summary is trusted only when it names the current head SHA.
