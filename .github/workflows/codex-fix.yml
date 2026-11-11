@@ -506,6 +506,7 @@ jobs:
     permissions:
       contents: read
       issues: write
+      pull-requests: write
     steps:
       - name: Checkout corrected branch
         uses: actions/checkout@v6
@@ -525,9 +526,14 @@ jobs:
           script: |
             const pr = Number(process.env.PR);
             if (!pr) return;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr,
-              body: `Automatic build after OpenCode attempt failed. Human review is required. Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-            });
+            try {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr,
+                body: `Automatic build after OpenCode attempt failed. Human review is required. Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              });
+            } catch (error) {
+              // Reporting must never obscure the primary build failure.
+              core.warning(`Could not post build-failure comment: ${error.message}`);
+            }
