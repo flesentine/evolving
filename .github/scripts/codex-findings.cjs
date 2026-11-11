@@ -61,6 +61,10 @@ const COMBINED_NEGATIVE =
   /\b(p0|p1)\s*\/\s*(p0|p1)\s*[:=]\s*(0|none|no|nothing)\b/i;
 const GLOBAL_NEGATIVE =
   /\b(no|zero|none|without|0)\s+(p0|p1)(?:\s*\/\s*(p0|p1))?\b/i;
+// Severity must come from a badge, header or count prefix. A P2 observation
+// that merely mentions "P0/P1" in its explanation is not actionable.
+const FINDING_RE =
+  /(?:!\[P[01] Badge\]|(?:^|[\s>*_\[(-])P[01]\b(?:\*\*|__)?\s*(?:Badge|[:=—–)\(\]-]|$))/i;
 
 /**
  * A line can contain both a zero and a real finding, for example
@@ -84,6 +88,7 @@ function lineHasFinding(line) {
   if (isStatusLine(line)) return false;
   if (NEGATIVE_PHRASES.test(line) || COMBINED_NEGATIVE.test(line) ||
       GLOBAL_NEGATIVE.test(line)) return false;
+  if (!FINDING_RE.test(line)) return false;
   return ['p0', 'p1'].some((token) =>
     new RegExp(`\\b${token}\\b`, 'i').test(line) && !tokenIsNegative(line, token),
   );
