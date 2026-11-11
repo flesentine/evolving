@@ -1,0 +1,52 @@
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Swift / Xcode build output
+build/
+.build/
+DerivedData/
+*.o
+*.dSYM
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+*.swiftmodule
+*.swiftdoc
+*.swiftsourceinfo
+.index-build/
+*.moved-aside
+
+# Python caches (Scripts/__pycache__)
+__pycache__/
+*.py[cod]
+
+# Generated review captures and root stills. Source and review notes stay.
+/review/*.png
+/*.png
+
+# Credentials and secrets
+.env
+.env.*
+*.pem
+*.p12
+*.key
+*.cer
+*.mobileprovision
+*.provisionprofile
+secrets.*
+credentials.*
+id_rsa*
+id_ed25519*
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*~
+
+# Blender backups
+*.blend1
+*.blend2

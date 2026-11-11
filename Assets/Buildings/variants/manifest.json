@@ -1,0 +1,8342 @@
+[
+  {
+    "era": "classical",
+    "name": "classical-01",
+    "spec": {
+      "width": 9.5,
+      "depth": 8.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "stone",
+      "trim": "marble",
+      "roof_mat": "slate",
+      "roof_h": 3.2,
+      "cols": 3,
+      "shutters": true,
+      "quoins": false,
+      "pediments": true,
+      "balcony": false,
+      "door_x": -0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 796,
+    "min": [
+      -5.349999904632568,
+      -0.41499999165534973,
+      -4.599999904632568
+    ],
+    "max": [
+      5.349999904632568,
+      8.869999885559082,
+      5.800000190734863
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-02",
+    "spec": {
+      "width": 12.5,
+      "depth": 8.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "gable",
+      "frontage": "plain",
+      "wall": "stone",
+      "trim": "marble",
+      "roof_mat": "slate",
+      "roof_h": 3.2,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "balcony": false,
+      "door_x": -0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 596,
+    "min": [
+      -6.849999904632568,
+      -0.41499999165534973,
+      -4.599999904632568
+    ],
+    "max": [
+      6.849999904632568,
+      8.869999885559082,
+      4.599999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-03",
+    "spec": {
+      "width": 12.5,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.0,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "marble",
+      "roof_mat": "slate",
+      "roof_h": 3.4,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "balcony": true,
+      "door_x": -0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1148,
+    "min": [
+      -6.849999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.849999904632568,
+      11.729999542236328,
+      5.599999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-04",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.0,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 3.4,
+      "cols": 2,
+      "shutters": true,
+      "quoins": false,
+      "pediments": false,
+      "balcony": false,
+      "door_x": 0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 896,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      11.729999542236328,
+      5.099999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-05",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "gable",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "marble",
+      "roof_mat": "slate",
+      "roof_h": 3.2,
+      "cols": 3,
+      "shutters": true,
+      "quoins": false,
+      "pediments": false,
+      "balcony": false,
+      "door_x": 0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 736,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -5.599999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      8.869999885559082,
+      6.800000190734863
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-06",
+    "spec": {
+      "width": 12.5,
+      "depth": 9.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "marble",
+      "roof_mat": "tile",
+      "roof_h": 3.2,
+      "cols": 3,
+      "shutters": false,
+      "quoins": false,
+      "pediments": false,
+      "balcony": false,
+      "door_x": -0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 544,
+    "min": [
+      -6.849999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.849999904632568,
+      8.869999885559082,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-07",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "gable",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 3.2,
+      "cols": 3,
+      "shutters": false,
+      "quoins": false,
+      "pediments": true,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 512,
+    "min": [
+      -6.099999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.099999904632568,
+      8.869999885559082,
+      5.099999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-08",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.0,
+      "roof": "gable",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 3.6,
+      "cols": 2,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1340,
+    "min": [
+      -6.099999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.099999904632568,
+      14.890000343322754,
+      5.099999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-09",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 3.2,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "balcony": true,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 904,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      8.869999885559082,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-10",
+    "spec": {
+      "width": 12.5,
+      "depth": 8.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "stone",
+      "trim": "marble",
+      "roof_mat": "tile",
+      "roof_h": 3.2,
+      "cols": 3,
+      "shutters": true,
+      "quoins": true,
+      "pediments": true,
+      "balcony": false,
+      "door_x": 0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 848,
+    "min": [
+      -6.849999904632568,
+      -0.41499999165534973,
+      -4.599999904632568
+    ],
+    "max": [
+      6.849999904632568,
+      8.869999885559082,
+      4.599999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-11",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 3.2,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 596,
+    "min": [
+      -6.099999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.099999904632568,
+      8.869999885559082,
+      5.099999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-12",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "marble",
+      "roof_mat": "tile",
+      "roof_h": 3.2,
+      "cols": 2,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "balcony": false,
+      "door_x": -0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 604,
+    "min": [
+      -6.099999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.099999904632568,
+      8.869999885559082,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-13",
+    "spec": {
+      "width": 11.0,
+      "depth": 10.0,
+      "storeys": 2,
+      "floor_h": 3.0,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 3.4,
+      "cols": 2,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "balcony": false,
+      "door_x": 0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 928,
+    "min": [
+      -6.099999904632568,
+      -0.41499999165534973,
+      -5.599999904632568
+    ],
+    "max": [
+      6.099999904632568,
+      11.729999542236328,
+      5.599999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-14",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.0,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 3.6,
+      "cols": 2,
+      "shutters": false,
+      "quoins": false,
+      "pediments": false,
+      "balcony": false,
+      "door_x": 0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 916,
+    "min": [
+      -6.099999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.099999904632568,
+      14.890000343322754,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-15",
+    "spec": {
+      "width": 14.0,
+      "depth": 8.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "stone",
+      "trim": "marble",
+      "roof_mat": "slate",
+      "roof_h": 3.2,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 596,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -4.599999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      8.869999885559082,
+      4.599999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-16",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 3.2,
+      "cols": 2,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "balcony": false,
+      "door_x": -0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 564,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      8.869999885559082,
+      5.099999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-17",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.0,
+      "roof": "gable",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "marble",
+      "roof_mat": "tile",
+      "roof_h": 3.6,
+      "cols": 2,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "balcony": false,
+      "door_x": 0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1220,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      14.890000343322754,
+      5.099999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-18",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.0,
+      "storeys": 2,
+      "floor_h": 3.0,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 3.4,
+      "cols": 3,
+      "shutters": true,
+      "quoins": true,
+      "pediments": false,
+      "balcony": false,
+      "door_x": 0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1468,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -5.599999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      11.729999542236328,
+      6.800000190734863
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-19",
+    "spec": {
+      "width": 9.5,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.0,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 3.4,
+      "cols": 2,
+      "shutters": false,
+      "quoins": false,
+      "pediments": false,
+      "balcony": false,
+      "door_x": -0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 608,
+    "min": [
+      -5.349999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      5.349999904632568,
+      11.729999542236328,
+      5.099999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-20",
+    "spec": {
+      "width": 9.5,
+      "depth": 10.0,
+      "storeys": 2,
+      "floor_h": 3.0,
+      "roof": "gable",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "marble",
+      "roof_mat": "slate",
+      "roof_h": 3.4,
+      "cols": 2,
+      "shutters": false,
+      "quoins": false,
+      "pediments": false,
+      "balcony": true,
+      "door_x": 0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 844,
+    "min": [
+      -5.349999904632568,
+      -0.41499999165534973,
+      -5.599999904632568
+    ],
+    "max": [
+      5.349999904632568,
+      11.729999542236328,
+      6.800000190734863
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-21",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.0,
+      "roof": "gable",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "marble",
+      "roof_mat": "tile",
+      "roof_h": 3.4,
+      "cols": 2,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "balcony": false,
+      "door_x": 0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 928,
+    "min": [
+      -6.099999904632568,
+      -0.41499999165534973,
+      -4.599999904632568
+    ],
+    "max": [
+      6.099999904632568,
+      11.729999542236328,
+      4.599999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-22",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "stone",
+      "trim": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 3.2,
+      "cols": 2,
+      "shutters": true,
+      "quoins": false,
+      "pediments": false,
+      "balcony": true,
+      "door_x": 0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 760,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -5.599999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      8.869999885559082,
+      6.800000190734863
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-23",
+    "spec": {
+      "width": 9.5,
+      "depth": 8.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "gable",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "marble",
+      "roof_mat": "slate",
+      "roof_h": 3.2,
+      "cols": 3,
+      "shutters": true,
+      "quoins": true,
+      "pediments": false,
+      "balcony": false,
+      "door_x": -0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 788,
+    "min": [
+      -5.349999904632568,
+      -0.41499999165534973,
+      -4.599999904632568
+    ],
+    "max": [
+      5.349999904632568,
+      8.869999885559082,
+      4.599999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-24",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.0,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "stone",
+      "trim": "marble",
+      "roof_mat": "tile",
+      "roof_h": 3.6,
+      "cols": 3,
+      "shutters": false,
+      "quoins": false,
+      "pediments": true,
+      "balcony": false,
+      "door_x": -0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1232,
+    "min": [
+      -6.099999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.099999904632568,
+      14.890000343322754,
+      5.099999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-25",
+    "spec": {
+      "width": 11.0,
+      "depth": 10.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 3.2,
+      "cols": 3,
+      "shutters": false,
+      "quoins": false,
+      "pediments": false,
+      "balcony": false,
+      "door_x": 0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 544,
+    "min": [
+      -6.099999904632568,
+      -0.41499999165534973,
+      -5.599999904632568
+    ],
+    "max": [
+      6.099999904632568,
+      8.869999885559082,
+      6.800000190734863
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-26",
+    "spec": {
+      "width": 9.5,
+      "depth": 10.0,
+      "storeys": 1,
+      "floor_h": 3.3,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "stone",
+      "trim": "marble",
+      "roof_mat": "tile",
+      "roof_h": 3.2,
+      "cols": 2,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "balcony": false,
+      "door_x": 0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 564,
+    "min": [
+      -5.349999904632568,
+      -0.41499999165534973,
+      -5.599999904632568
+    ],
+    "max": [
+      5.349999904632568,
+      8.869999885559082,
+      5.599999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-27",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.0,
+      "roof": "gable",
+      "frontage": "plain",
+      "wall": "stone",
+      "trim": "marble",
+      "roof_mat": "tile",
+      "roof_h": 3.4,
+      "cols": 2,
+      "shutters": false,
+      "quoins": false,
+      "pediments": false,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 608,
+    "min": [
+      -6.099999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.099999904632568,
+      11.729999542236328,
+      5.099999904632568
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-28",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.0,
+      "roof": "gable",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 3.4,
+      "cols": 2,
+      "shutters": false,
+      "quoins": false,
+      "pediments": true,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 768,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      11.729999542236328,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-29",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.0,
+      "roof": "gable",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 3.6,
+      "cols": 3,
+      "shutters": true,
+      "quoins": true,
+      "pediments": true,
+      "balcony": false,
+      "door_x": -0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 2284,
+    "min": [
+      -6.099999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.099999904632568,
+      14.890000343322754,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "classical",
+    "name": "classical-30",
+    "spec": {
+      "width": 9.5,
+      "depth": 10.0,
+      "storeys": 3,
+      "floor_h": 3.0,
+      "roof": "gable",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 3.6,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "balcony": false,
+      "door_x": -0.18,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1616,
+    "min": [
+      -5.349999904632568,
+      -0.41499999165534973,
+      -5.599999904632568
+    ],
+    "max": [
+      5.349999904632568,
+      14.890000343322754,
+      5.599999904632568
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-01",
+    "spec": {
+      "width": 13.0,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": true,
+      "wall": "daub",
+      "roof_mat": "tile",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": true,
+      "sign": false,
+      "braces": false,
+      "dormer": false,
+      "door_x": -0.2
+    },
+    "triangles": 1276,
+    "min": [
+      -7.389999866485596,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      7.389999866485596,
+      16.81399917602539,
+      5.150000095367432
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-02",
+    "spec": {
+      "width": 13.0,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": false,
+      "wall": "daub",
+      "roof_mat": "slate",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": false,
+      "sign": true,
+      "braces": true,
+      "dormer": false,
+      "door_x": 0.0
+    },
+    "triangles": 1340,
+    "min": [
+      -7.389999866485596,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      7.389999866485596,
+      16.81399917602539,
+      5.224999904632568
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-03",
+    "spec": {
+      "width": 8.5,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": true,
+      "wall": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": true,
+      "sign": false,
+      "braces": false,
+      "dormer": true,
+      "door_x": -0.2
+    },
+    "triangles": 1344,
+    "min": [
+      -5.005000114440918,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      5.005000114440918,
+      16.81399917602539,
+      5.650000095367432
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-04",
+    "spec": {
+      "width": 11.5,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": false,
+      "wall": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": true,
+      "sign": false,
+      "braces": false,
+      "dormer": false,
+      "door_x": 0.0
+    },
+    "triangles": 940,
+    "min": [
+      -6.59499979019165,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      6.59499979019165,
+      15.065999984741211,
+      5.150000095367432
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-05",
+    "spec": {
+      "width": 8.5,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": false,
+      "wall": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": true,
+      "sign": true,
+      "braces": true,
+      "dormer": true,
+      "door_x": -0.2
+    },
+    "triangles": 1092,
+    "min": [
+      -5.005000114440918,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      5.005000114440918,
+      15.065999984741211,
+      5.724999904632568
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-06",
+    "spec": {
+      "width": 8.5,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": false,
+      "wall": "daub",
+      "roof_mat": "slate",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": true,
+      "sign": false,
+      "braces": true,
+      "dormer": true,
+      "door_x": -0.2
+    },
+    "triangles": 1356,
+    "min": [
+      -5.005000114440918,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      5.005000114440918,
+      16.81399917602539,
+      5.150000095367432
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-07",
+    "spec": {
+      "width": 8.5,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": true,
+      "wall": "daub",
+      "roof_mat": "tile",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": true,
+      "sign": true,
+      "braces": true,
+      "dormer": false,
+      "door_x": 0.2
+    },
+    "triangles": 1024,
+    "min": [
+      -5.005000114440918,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      5.005000114440918,
+      15.065999984741211,
+      5.724999904632568
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-08",
+    "spec": {
+      "width": 8.5,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": true,
+      "wall": "daub",
+      "roof_mat": "tile",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": false,
+      "sign": false,
+      "braces": false,
+      "dormer": true,
+      "door_x": 0.0
+    },
+    "triangles": 1024,
+    "min": [
+      -5.005000114440918,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      5.005000114440918,
+      15.065999984741211,
+      5.269999980926514
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-09",
+    "spec": {
+      "width": 11.5,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": false,
+      "wall": "daub",
+      "roof_mat": "tile",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": true,
+      "sign": false,
+      "braces": true,
+      "dormer": true,
+      "door_x": 0.2
+    },
+    "triangles": 1056,
+    "min": [
+      -6.59499979019165,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      6.59499979019165,
+      15.065999984741211,
+      5.150000095367432
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-10",
+    "spec": {
+      "width": 13.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": true,
+      "wall": "daub",
+      "roof_mat": "tile",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": false,
+      "sign": true,
+      "braces": true,
+      "dormer": false,
+      "door_x": -0.2
+    },
+    "triangles": 1040,
+    "min": [
+      -7.389999866485596,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      7.389999866485596,
+      15.065999984741211,
+      5.724999904632568
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-11",
+    "spec": {
+      "width": 13.0,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": false,
+      "wall": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": false,
+      "sign": true,
+      "braces": true,
+      "dormer": true,
+      "door_x": 0.0
+    },
+    "triangles": 1072,
+    "min": [
+      -7.389999866485596,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      7.389999866485596,
+      15.065999984741211,
+      5.224999904632568
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-12",
+    "spec": {
+      "width": 13.0,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": true,
+      "wall": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": false,
+      "sign": false,
+      "braces": false,
+      "dormer": true,
+      "door_x": 0.0
+    },
+    "triangles": 1324,
+    "min": [
+      -7.389999866485596,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      7.389999866485596,
+      16.81399917602539,
+      4.739999771118164
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-13",
+    "spec": {
+      "width": 10.0,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": false,
+      "wall": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": false,
+      "sign": false,
+      "braces": true,
+      "dormer": true,
+      "door_x": -0.2
+    },
+    "triangles": 1336,
+    "min": [
+      -5.800000190734863,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      5.800000190734863,
+      16.81399917602539,
+      4.739999771118164
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-14",
+    "spec": {
+      "width": 11.5,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": true,
+      "wall": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": true,
+      "sign": true,
+      "braces": true,
+      "dormer": false,
+      "door_x": 0.0
+    },
+    "triangles": 1060,
+    "min": [
+      -6.59499979019165,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      6.59499979019165,
+      15.065999984741211,
+      5.724999904632568
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-15",
+    "spec": {
+      "width": 13.0,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": true,
+      "wall": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": true,
+      "sign": false,
+      "braces": true,
+      "dormer": true,
+      "door_x": 0.2
+    },
+    "triangles": 1056,
+    "min": [
+      -7.389999866485596,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      7.389999866485596,
+      15.065999984741211,
+      5.150000095367432
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-16",
+    "spec": {
+      "width": 8.5,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": false,
+      "wall": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": false,
+      "sign": false,
+      "braces": false,
+      "dormer": false,
+      "door_x": 0.2
+    },
+    "triangles": 956,
+    "min": [
+      -5.005000114440918,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      5.005000114440918,
+      15.065999984741211,
+      5.269999980926514
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-17",
+    "spec": {
+      "width": 11.5,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": false,
+      "wall": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": true,
+      "sign": true,
+      "braces": false,
+      "dormer": false,
+      "door_x": -0.2
+    },
+    "triangles": 1312,
+    "min": [
+      -6.59499979019165,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      6.59499979019165,
+      16.81399917602539,
+      5.224999904632568
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-18",
+    "spec": {
+      "width": 13.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": true,
+      "wall": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": false,
+      "sign": false,
+      "braces": true,
+      "dormer": true,
+      "door_x": 0.0
+    },
+    "triangles": 1372,
+    "min": [
+      -7.389999866485596,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      7.389999866485596,
+      16.81399917602539,
+      5.269999980926514
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-19",
+    "spec": {
+      "width": 8.5,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": true,
+      "wall": "daub",
+      "roof_mat": "tile",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": false,
+      "sign": false,
+      "braces": false,
+      "dormer": false,
+      "door_x": 0.0
+    },
+    "triangles": 1256,
+    "min": [
+      -5.005000114440918,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      5.005000114440918,
+      16.81399917602539,
+      4.739999771118164
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-20",
+    "spec": {
+      "width": 8.5,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": true,
+      "wall": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": true,
+      "sign": false,
+      "braces": true,
+      "dormer": true,
+      "door_x": -0.2
+    },
+    "triangles": 1356,
+    "min": [
+      -5.005000114440918,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      5.005000114440918,
+      16.81399917602539,
+      5.150000095367432
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-21",
+    "spec": {
+      "width": 11.5,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": true,
+      "wall": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": false,
+      "sign": false,
+      "braces": true,
+      "dormer": false,
+      "door_x": 0.0
+    },
+    "triangles": 1004,
+    "min": [
+      -6.59499979019165,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      6.59499979019165,
+      15.065999984741211,
+      5.269999980926514
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-22",
+    "spec": {
+      "width": 11.5,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": false,
+      "wall": "daub",
+      "roof_mat": "tile",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": false,
+      "sign": true,
+      "braces": true,
+      "dormer": false,
+      "door_x": 0.2
+    },
+    "triangles": 1340,
+    "min": [
+      -6.59499979019165,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      6.59499979019165,
+      16.81399917602539,
+      5.724999904632568
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-23",
+    "spec": {
+      "width": 8.5,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": false,
+      "wall": "daub",
+      "roof_mat": "tile",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": true,
+      "sign": false,
+      "braces": true,
+      "dormer": true,
+      "door_x": 0.2
+    },
+    "triangles": 1356,
+    "min": [
+      -5.005000114440918,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      5.005000114440918,
+      16.81399917602539,
+      5.650000095367432
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-24",
+    "spec": {
+      "width": 8.5,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": false,
+      "wall": "daub",
+      "roof_mat": "slate",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": true,
+      "sign": false,
+      "braces": true,
+      "dormer": false,
+      "door_x": 0.2
+    },
+    "triangles": 1324,
+    "min": [
+      -5.005000114440918,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      5.005000114440918,
+      16.81399917602539,
+      5.650000095367432
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-25",
+    "spec": {
+      "width": 11.5,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": false,
+      "wall": "daub",
+      "roof_mat": "slate",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": false,
+      "sign": true,
+      "braces": true,
+      "dormer": true,
+      "door_x": -0.2
+    },
+    "triangles": 1108,
+    "min": [
+      -6.59499979019165,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      6.59499979019165,
+      15.065999984741211,
+      5.724999904632568
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-26",
+    "spec": {
+      "width": 11.5,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": true,
+      "wall": "daub",
+      "roof_mat": "tile",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": false,
+      "sign": true,
+      "braces": true,
+      "dormer": false,
+      "door_x": -0.2
+    },
+    "triangles": 1004,
+    "min": [
+      -6.59499979019165,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      6.59499979019165,
+      15.065999984741211,
+      5.224999904632568
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-27",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": true,
+      "wall": "daub",
+      "roof_mat": "tile",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": true,
+      "canopy": true,
+      "sign": false,
+      "braces": true,
+      "dormer": true,
+      "door_x": 0.0
+    },
+    "triangles": 1092,
+    "min": [
+      -5.800000190734863,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      5.800000190734863,
+      15.065999984741211,
+      5.650000095367432
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-28",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "jetty": true,
+      "wall": "daub",
+      "roof_mat": "tile",
+      "roof_h": 5.5,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": false,
+      "sign": false,
+      "braces": true,
+      "dormer": true,
+      "door_x": 0.0
+    },
+    "triangles": 1336,
+    "min": [
+      -5.800000190734863,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      5.800000190734863,
+      16.81399917602539,
+      5.269999980926514
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-29",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": false,
+      "wall": "plaster",
+      "roof_mat": "slate",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": false,
+      "sign": true,
+      "braces": false,
+      "dormer": true,
+      "door_x": 0.2
+    },
+    "triangles": 1024,
+    "min": [
+      -5.800000190734863,
+      -0.5649999976158142,
+      -5.269999980926514
+    ],
+    "max": [
+      5.800000190734863,
+      15.065999984741211,
+      5.724999904632568
+    ]
+  },
+  {
+    "era": "medieval",
+    "name": "medieval-30",
+    "spec": {
+      "width": 13.0,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.8,
+      "jetty": true,
+      "wall": "plaster",
+      "roof_mat": "tile",
+      "roof_h": 5.199999999999999,
+      "cols": 2,
+      "shopfront": false,
+      "canopy": true,
+      "sign": false,
+      "braces": true,
+      "dormer": false,
+      "door_x": 0.0
+    },
+    "triangles": 988,
+    "min": [
+      -7.389999866485596,
+      -0.5649999976158142,
+      -4.739999771118164
+    ],
+    "max": [
+      7.389999866485596,
+      15.065999984741211,
+      5.150000095367432
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-01",
+    "spec": {
+      "width": 9.5,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "roof": "mansard",
+      "roof_h": 3.6,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": true,
+      "arcade": true,
+      "vents": 1,
+      "door_x": 0.2
+    },
+    "triangles": 1016,
+    "min": [
+      -5.099999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.099999904632568,
+      14.529999732971191,
+      5.300000190734863
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-02",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "roof": "gable",
+      "roof_h": 3.6,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": true,
+      "arcade": false,
+      "vents": 1,
+      "door_x": 0.2
+    },
+    "triangles": 956,
+    "min": [
+      -5.849999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.849999904632568,
+      14.529999732971191,
+      5.21999979019165
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-03",
+    "spec": {
+      "width": 8.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "roof": "gable",
+      "roof_h": 3.6,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": true,
+      "arcade": true,
+      "vents": 2,
+      "door_x": -0.2
+    },
+    "triangles": 1088,
+    "min": [
+      -4.349999904632568,
+      -0.6399999856948853,
+      -4.849999904632568
+    ],
+    "max": [
+      4.349999904632568,
+      14.529999732971191,
+      5.800000190734863
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-04",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "mansard",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": false,
+      "arcade": false,
+      "vents": 1,
+      "door_x": 0.2
+    },
+    "triangles": 1220,
+    "min": [
+      -5.849999904632568,
+      -0.6399999856948853,
+      -4.849999904632568
+    ],
+    "max": [
+      5.849999904632568,
+      17.56999969482422,
+      4.869999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-05",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.3,
+      "roof": "gable",
+      "roof_h": 3.4,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": false,
+      "arcade": false,
+      "vents": 1,
+      "door_x": -0.2
+    },
+    "triangles": 752,
+    "min": [
+      -5.849999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.849999904632568,
+      12.289999961853027,
+      4.369999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-06",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.3,
+      "roof": "mansard",
+      "roof_h": 3.4,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": false,
+      "arcade": false,
+      "vents": 1,
+      "door_x": -0.2
+    },
+    "triangles": 764,
+    "min": [
+      -5.849999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.849999904632568,
+      12.289999961853027,
+      4.369999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-07",
+    "spec": {
+      "width": 9.5,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "gable",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": true,
+      "arcade": false,
+      "vents": 1,
+      "door_x": 0.2
+    },
+    "triangles": 1256,
+    "min": [
+      -5.099999904632568,
+      -0.6399999856948853,
+      -4.849999904632568
+    ],
+    "max": [
+      5.099999904632568,
+      17.56999969482422,
+      5.71999979019165
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-08",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.3,
+      "roof": "gable",
+      "roof_h": 3.4,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": false,
+      "vents": 1,
+      "door_x": 0.2
+    },
+    "triangles": 680,
+    "min": [
+      -5.849999904632568,
+      -0.6399999856948853,
+      -4.849999904632568
+    ],
+    "max": [
+      5.849999904632568,
+      12.289999961853027,
+      4.869999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-09",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "roof": "mansard",
+      "roof_h": 3.6,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": false,
+      "arcade": false,
+      "vents": 2,
+      "door_x": -0.2
+    },
+    "triangles": 1004,
+    "min": [
+      -5.849999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.849999904632568,
+      14.529999732971191,
+      4.369999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-10",
+    "spec": {
+      "width": 8.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.3,
+      "roof": "mansard",
+      "roof_h": 3.4,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": true,
+      "arcade": true,
+      "vents": 1,
+      "door_x": 0.2
+    },
+    "triangles": 788,
+    "min": [
+      -4.349999904632568,
+      -0.6399999856948853,
+      -4.849999904632568
+    ],
+    "max": [
+      4.349999904632568,
+      12.289999961853027,
+      5.800000190734863
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-11",
+    "spec": {
+      "width": 8.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "gable",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": false,
+      "vents": 2,
+      "door_x": -0.2
+    },
+    "triangles": 1148,
+    "min": [
+      -4.349999904632568,
+      -0.6399999856948853,
+      -4.849999904632568
+    ],
+    "max": [
+      4.349999904632568,
+      17.56999969482422,
+      4.869999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-12",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "gable",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": false,
+      "vents": 1,
+      "door_x": -0.2
+    },
+    "triangles": 1136,
+    "min": [
+      -5.849999904632568,
+      -0.6399999856948853,
+      -4.849999904632568
+    ],
+    "max": [
+      5.849999904632568,
+      17.56999969482422,
+      4.869999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-13",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "mansard",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": false,
+      "vents": 1,
+      "door_x": -0.2
+    },
+    "triangles": 1148,
+    "min": [
+      -5.849999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.849999904632568,
+      17.56999969482422,
+      4.369999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-14",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "gable",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": false,
+      "vents": 2,
+      "door_x": 0.2
+    },
+    "triangles": 1148,
+    "min": [
+      -5.849999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.849999904632568,
+      17.56999969482422,
+      4.369999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-15",
+    "spec": {
+      "width": 8.0,
+      "depth": 8.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "mansard",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": false,
+      "vents": 1,
+      "door_x": -0.2
+    },
+    "triangles": 1148,
+    "min": [
+      -4.349999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      4.349999904632568,
+      17.56999969482422,
+      4.369999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-16",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "gable",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": true,
+      "arcade": true,
+      "vents": 2,
+      "door_x": -0.2
+    },
+    "triangles": 1316,
+    "min": [
+      -5.849999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.849999904632568,
+      17.56999969482422,
+      5.300000190734863
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-17",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.3,
+      "roof": "mansard",
+      "roof_h": 3.4,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": true,
+      "arcade": true,
+      "vents": 1,
+      "door_x": 0.2
+    },
+    "triangles": 788,
+    "min": [
+      -5.849999904632568,
+      -0.6399999856948853,
+      -4.849999904632568
+    ],
+    "max": [
+      5.849999904632568,
+      12.289999961853027,
+      5.800000190734863
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-18",
+    "spec": {
+      "width": 8.0,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "roof": "mansard",
+      "roof_h": 3.6,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": false,
+      "arcade": false,
+      "vents": 2,
+      "door_x": -0.2
+    },
+    "triangles": 1004,
+    "min": [
+      -4.349999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      4.349999904632568,
+      14.529999732971191,
+      4.369999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-19",
+    "spec": {
+      "width": 8.0,
+      "depth": 8.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "gable",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": true,
+      "vents": 1,
+      "door_x": -0.2
+    },
+    "triangles": 1184,
+    "min": [
+      -4.349999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      4.349999904632568,
+      17.56999969482422,
+      5.300000190734863
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-20",
+    "spec": {
+      "width": 8.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "mansard",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": false,
+      "vents": 1,
+      "door_x": 0.2
+    },
+    "triangles": 1148,
+    "min": [
+      -4.349999904632568,
+      -0.6399999856948853,
+      -4.849999904632568
+    ],
+    "max": [
+      4.349999904632568,
+      17.56999969482422,
+      4.869999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-21",
+    "spec": {
+      "width": 8.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "roof": "gable",
+      "roof_h": 3.6,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": true,
+      "vents": 1,
+      "door_x": 0.2
+    },
+    "triangles": 956,
+    "min": [
+      -4.349999904632568,
+      -0.6399999856948853,
+      -4.849999904632568
+    ],
+    "max": [
+      4.349999904632568,
+      14.529999732971191,
+      5.800000190734863
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-22",
+    "spec": {
+      "width": 9.5,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "mansard",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": false,
+      "vents": 1,
+      "door_x": 0.2
+    },
+    "triangles": 1148,
+    "min": [
+      -5.099999904632568,
+      -0.6399999856948853,
+      -4.849999904632568
+    ],
+    "max": [
+      5.099999904632568,
+      17.56999969482422,
+      4.869999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-23",
+    "spec": {
+      "width": 9.5,
+      "depth": 8.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "gable",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": true,
+      "arcade": true,
+      "vents": 1,
+      "door_x": -0.2
+    },
+    "triangles": 1304,
+    "min": [
+      -5.099999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.099999904632568,
+      17.56999969482422,
+      5.300000190734863
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-24",
+    "spec": {
+      "width": 8.0,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.3,
+      "roof": "gable",
+      "roof_h": 3.4,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": true,
+      "vents": 2,
+      "door_x": -0.2
+    },
+    "triangles": 740,
+    "min": [
+      -4.349999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      4.349999904632568,
+      12.289999961853027,
+      5.300000190734863
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-25",
+    "spec": {
+      "width": 9.5,
+      "depth": 8.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "roof": "gable",
+      "roof_h": 3.8,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": false,
+      "vents": 1,
+      "door_x": -0.2
+    },
+    "triangles": 1136,
+    "min": [
+      -5.099999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.099999904632568,
+      17.56999969482422,
+      4.369999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-26",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "roof": "gable",
+      "roof_h": 3.6,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": false,
+      "arcade": false,
+      "vents": 2,
+      "door_x": 0.2
+    },
+    "triangles": 992,
+    "min": [
+      -5.849999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.849999904632568,
+      14.529999732971191,
+      4.369999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-27",
+    "spec": {
+      "width": 8.0,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.3,
+      "roof": "mansard",
+      "roof_h": 3.4,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": false,
+      "arcade": false,
+      "vents": 1,
+      "door_x": -0.2
+    },
+    "triangles": 764,
+    "min": [
+      -4.349999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      4.349999904632568,
+      12.289999961853027,
+      4.369999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-28",
+    "spec": {
+      "width": 9.5,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.3,
+      "roof": "mansard",
+      "roof_h": 3.4,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": false,
+      "arcade": false,
+      "vents": 1,
+      "door_x": -0.2
+    },
+    "triangles": 764,
+    "min": [
+      -5.099999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.099999904632568,
+      12.289999961853027,
+      4.369999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-29",
+    "spec": {
+      "width": 8.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "roof": "mansard",
+      "roof_h": 3.6,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": true,
+      "bay": false,
+      "arcade": false,
+      "vents": 2,
+      "door_x": -0.2
+    },
+    "triangles": 1004,
+    "min": [
+      -4.349999904632568,
+      -0.6399999856948853,
+      -4.849999904632568
+    ],
+    "max": [
+      4.349999904632568,
+      14.529999732971191,
+      4.869999885559082
+    ]
+  },
+  {
+    "era": "industrial",
+    "name": "industrial-30",
+    "spec": {
+      "width": 9.5,
+      "depth": 8.0,
+      "storeys": 2,
+      "floor_h": 3.3,
+      "roof": "mansard",
+      "roof_h": 3.4,
+      "wall": "brick",
+      "cols": 2,
+      "shopfront": false,
+      "bay": false,
+      "arcade": true,
+      "vents": 1,
+      "door_x": -0.2
+    },
+    "triangles": 740,
+    "min": [
+      -5.099999904632568,
+      -0.6399999856948853,
+      -4.349999904632568
+    ],
+    "max": [
+      5.099999904632568,
+      12.289999961853027,
+      5.300000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-01",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 3,
+      "balcony": false,
+      "setback": false,
+      "mullions": true,
+      "plant": false,
+      "penthouse": true,
+      "door_x": 0.25
+    },
+    "triangles": 672,
+    "min": [
+      -7.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      7.389999866485596,
+      11.100000381469727,
+      6.150000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-02",
+    "spec": {
+      "width": 10.0,
+      "depth": 10.5,
+      "storeys": 2,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": true,
+      "setback": true,
+      "mullions": true,
+      "plant": true,
+      "penthouse": true,
+      "door_x": 0.0
+    },
+    "triangles": 588,
+    "min": [
+      -5.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      5.389999866485596,
+      11.0,
+      7.300000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-03",
+    "spec": {
+      "width": 10.0,
+      "depth": 10.5,
+      "storeys": 2,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": false,
+      "setback": false,
+      "mullions": false,
+      "plant": true,
+      "penthouse": false,
+      "door_x": 0.25
+    },
+    "triangles": 348,
+    "min": [
+      -5.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      5.389999866485596,
+      8.149999618530273,
+      6.900000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-04",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 2.9,
+      "wall": "plaster",
+      "cols": 2,
+      "balcony": false,
+      "setback": true,
+      "mullions": true,
+      "plant": true,
+      "penthouse": false,
+      "door_x": 0.0
+    },
+    "triangles": 420,
+    "min": [
+      -6.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      10.949999809265137,
+      6.150000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-05",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": false,
+      "setback": false,
+      "mullions": false,
+      "plant": true,
+      "penthouse": false,
+      "door_x": -0.25
+    },
+    "triangles": 540,
+    "min": [
+      -6.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      13.949999809265137,
+      6.900000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-06",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 3,
+      "balcony": false,
+      "setback": false,
+      "mullions": false,
+      "plant": true,
+      "penthouse": false,
+      "door_x": 0.0
+    },
+    "triangles": 588,
+    "min": [
+      -6.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      11.050000190734863,
+      6.150000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-07",
+    "spec": {
+      "width": 10.0,
+      "depth": 10.5,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": true,
+      "setback": true,
+      "mullions": true,
+      "plant": true,
+      "penthouse": true,
+      "door_x": 0.25
+    },
+    "triangles": 1092,
+    "min": [
+      -5.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      5.389999866485596,
+      16.799999237060547,
+      7.300000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-08",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 3,
+      "balcony": false,
+      "setback": false,
+      "mullions": true,
+      "plant": false,
+      "penthouse": false,
+      "door_x": 0.0
+    },
+    "triangles": 660,
+    "min": [
+      -6.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      10.180000305175781,
+      6.900000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-09",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": true,
+      "setback": false,
+      "mullions": false,
+      "plant": true,
+      "penthouse": true,
+      "door_x": -0.25
+    },
+    "triangles": 768,
+    "min": [
+      -6.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      11.100000381469727,
+      6.550000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-10",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.5,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": false,
+      "setback": false,
+      "mullions": true,
+      "plant": true,
+      "penthouse": false,
+      "door_x": 0.0
+    },
+    "triangles": 504,
+    "min": [
+      -7.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      7.389999866485596,
+      11.050000190734863,
+      6.900000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-11",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 3,
+      "balcony": true,
+      "setback": true,
+      "mullions": false,
+      "plant": true,
+      "penthouse": true,
+      "door_x": 0.25
+    },
+    "triangles": 924,
+    "min": [
+      -5.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      5.389999866485596,
+      13.899999618530273,
+      6.550000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-12",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "wall": "plaster",
+      "cols": 2,
+      "balcony": false,
+      "setback": false,
+      "mullions": true,
+      "plant": true,
+      "penthouse": false,
+      "door_x": 0.25
+    },
+    "triangles": 600,
+    "min": [
+      -6.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      13.949999809265137,
+      6.150000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-13",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": true,
+      "setback": false,
+      "mullions": true,
+      "plant": false,
+      "penthouse": false,
+      "door_x": 0.25
+    },
+    "triangles": 804,
+    "min": [
+      -7.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      7.389999866485596,
+      10.180000305175781,
+      6.550000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-14",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.5,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "wall": "plaster",
+      "cols": 3,
+      "balcony": true,
+      "setback": false,
+      "mullions": false,
+      "plant": true,
+      "penthouse": true,
+      "door_x": 0.0
+    },
+    "triangles": 1212,
+    "min": [
+      -7.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      7.389999866485596,
+      14.0,
+      7.300000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-15",
+    "spec": {
+      "width": 10.0,
+      "depth": 10.5,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "wall": "plaster",
+      "cols": 3,
+      "balcony": true,
+      "setback": false,
+      "mullions": true,
+      "plant": true,
+      "penthouse": false,
+      "door_x": 0.0
+    },
+    "triangles": 984,
+    "min": [
+      -5.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      5.389999866485596,
+      11.050000190734863,
+      7.300000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-16",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 2.9,
+      "wall": "plaster",
+      "cols": 2,
+      "balcony": true,
+      "setback": false,
+      "mullions": true,
+      "plant": false,
+      "penthouse": false,
+      "door_x": -0.25
+    },
+    "triangles": 552,
+    "min": [
+      -7.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      7.389999866485596,
+      7.28000020980835,
+      6.550000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-17",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "storeys": 2,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": false,
+      "setback": false,
+      "mullions": true,
+      "plant": true,
+      "penthouse": false,
+      "door_x": -0.25
+    },
+    "triangles": 408,
+    "min": [
+      -6.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      8.149999618530273,
+      6.900000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-18",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 3,
+      "balcony": false,
+      "setback": false,
+      "mullions": true,
+      "plant": true,
+      "penthouse": false,
+      "door_x": -0.25
+    },
+    "triangles": 528,
+    "min": [
+      -7.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      7.389999866485596,
+      8.149999618530273,
+      6.150000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-19",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": true,
+      "setback": true,
+      "mullions": false,
+      "plant": true,
+      "penthouse": false,
+      "door_x": 0.25
+    },
+    "triangles": 1020,
+    "min": [
+      -6.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      16.75,
+      7.300000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-20",
+    "spec": {
+      "width": 10.0,
+      "depth": 10.5,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": false,
+      "setback": false,
+      "mullions": true,
+      "plant": true,
+      "penthouse": true,
+      "door_x": 0.25
+    },
+    "triangles": 516,
+    "min": [
+      -5.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      5.389999866485596,
+      11.100000381469727,
+      6.900000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-21",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 2.9,
+      "wall": "plaster",
+      "cols": 2,
+      "balcony": false,
+      "setback": false,
+      "mullions": true,
+      "plant": true,
+      "penthouse": true,
+      "door_x": 0.0
+    },
+    "triangles": 420,
+    "min": [
+      -5.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      5.389999866485596,
+      8.199999809265137,
+      6.150000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-22",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": false,
+      "setback": false,
+      "mullions": true,
+      "plant": true,
+      "penthouse": true,
+      "door_x": -0.25
+    },
+    "triangles": 612,
+    "min": [
+      -7.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      7.389999866485596,
+      14.0,
+      6.150000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-23",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 2.9,
+      "wall": "plaster",
+      "cols": 2,
+      "balcony": true,
+      "setback": false,
+      "mullions": true,
+      "plant": true,
+      "penthouse": false,
+      "door_x": -0.25
+    },
+    "triangles": 564,
+    "min": [
+      -5.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      5.389999866485596,
+      8.149999618530273,
+      6.550000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-24",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "wall": "plaster",
+      "cols": 2,
+      "balcony": false,
+      "setback": false,
+      "mullions": true,
+      "plant": true,
+      "penthouse": true,
+      "door_x": -0.25
+    },
+    "triangles": 516,
+    "min": [
+      -5.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      5.389999866485596,
+      11.100000381469727,
+      6.150000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-25",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.5,
+      "storeys": 2,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": false,
+      "setback": true,
+      "mullions": true,
+      "plant": false,
+      "penthouse": false,
+      "door_x": -0.25
+    },
+    "triangles": 408,
+    "min": [
+      -7.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      7.389999866485596,
+      10.079999923706055,
+      6.900000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-26",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.5,
+      "storeys": 2,
+      "floor_h": 2.9,
+      "wall": "plaster",
+      "cols": 3,
+      "balcony": true,
+      "setback": false,
+      "mullions": true,
+      "plant": true,
+      "penthouse": false,
+      "door_x": 0.25
+    },
+    "triangles": 684,
+    "min": [
+      -7.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      7.389999866485596,
+      8.149999618530273,
+      7.300000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-27",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": false,
+      "setback": false,
+      "mullions": false,
+      "plant": false,
+      "penthouse": false,
+      "door_x": 0.0
+    },
+    "triangles": 528,
+    "min": [
+      -5.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      5.389999866485596,
+      13.079999923706055,
+      6.150000095367432
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-28",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 2.9,
+      "wall": "concrete",
+      "cols": 2,
+      "balcony": true,
+      "setback": false,
+      "mullions": true,
+      "plant": false,
+      "penthouse": false,
+      "door_x": -0.25
+    },
+    "triangles": 1056,
+    "min": [
+      -6.389999866485596,
+      -0.8899999856948853,
+      -4.889999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      13.079999923706055,
+      6.550000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-29",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.5,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "wall": "plaster",
+      "cols": 3,
+      "balcony": true,
+      "setback": false,
+      "mullions": false,
+      "plant": false,
+      "penthouse": false,
+      "door_x": 0.0
+    },
+    "triangles": 888,
+    "min": [
+      -7.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      7.389999866485596,
+      10.180000305175781,
+      7.300000190734863
+    ]
+  },
+  {
+    "era": "modern",
+    "name": "modern-30",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "storeys": 3,
+      "floor_h": 2.9,
+      "wall": "plaster",
+      "cols": 3,
+      "balcony": true,
+      "setback": true,
+      "mullions": false,
+      "plant": false,
+      "penthouse": true,
+      "door_x": 0.25
+    },
+    "triangles": 912,
+    "min": [
+      -6.389999866485596,
+      -0.8899999856948853,
+      -5.639999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      13.899999618530273,
+      7.300000190734863
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-01",
+    "spec": {
+      "radius": 3.8,
+      "wall_h": 2.2,
+      "apex": 9.0,
+      "eave": 1.12,
+      "eave_lift": -0.15,
+      "posts": 8,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 16,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 936,
+    "min": [
+      -5.135979175567627,
+      0.0,
+      -5.135979175567627
+    ],
+    "max": [
+      5.135979175567627,
+      9.475000381469727,
+      5.135979175567627
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-02",
+    "spec": {
+      "radius": 4.1,
+      "wall_h": 2.2,
+      "apex": 8.0,
+      "eave": 1.0,
+      "eave_lift": -0.15,
+      "posts": 7,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 18,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 924,
+    "min": [
+      -5.31376314163208,
+      0.0,
+      -5.31376314163208
+    ],
+    "max": [
+      5.31376314163208,
+      8.475000381469727,
+      5.31376314163208
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-03",
+    "spec": {
+      "radius": 3.8,
+      "wall_h": 2.5,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 8,
+      "post_lift": 0.4,
+      "courses": 5,
+      "door_deg": 18,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 912,
+    "min": [
+      -5.254501819610596,
+      0.0,
+      -5.254501819610596
+    ],
+    "max": [
+      7.199999809265137,
+      10.475000381469727,
+      5.254501819610596
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-04",
+    "spec": {
+      "radius": 4.1,
+      "wall_h": 2.2,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 7,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 20,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 980,
+    "min": [
+      -5.550808429718018,
+      0.0,
+      -5.550808429718018
+    ],
+    "max": [
+      7.5,
+      10.475000381469727,
+      5.550808429718018
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-05",
+    "spec": {
+      "radius": 3.2,
+      "wall_h": 2.5,
+      "apex": 9.0,
+      "eave": 1.12,
+      "eave_lift": -0.15,
+      "posts": 6,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 20,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 924,
+    "min": [
+      -4.543366432189941,
+      0.0,
+      -4.543366432189941
+    ],
+    "max": [
+      4.543366432189941,
+      9.475000381469727,
+      4.543366432189941
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-06",
+    "spec": {
+      "radius": 3.5,
+      "wall_h": 2.8,
+      "apex": 9.0,
+      "eave": 1.12,
+      "eave_lift": -0.15,
+      "posts": 6,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 18,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 980,
+    "min": [
+      -4.839673042297363,
+      0.0,
+      -4.839673042297363
+    ],
+    "max": [
+      6.900000095367432,
+      9.475000381469727,
+      4.839673042297363
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-07",
+    "spec": {
+      "radius": 4.1,
+      "wall_h": 2.5,
+      "apex": 8.0,
+      "eave": 1.0,
+      "eave_lift": -0.15,
+      "posts": 6,
+      "post_lift": 0.4,
+      "courses": 5,
+      "door_deg": 20,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 844,
+    "min": [
+      -5.31376314163208,
+      0.0,
+      -5.31376314163208
+    ],
+    "max": [
+      5.31376314163208,
+      8.475000381469727,
+      5.31376314163208
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-08",
+    "spec": {
+      "radius": 3.2,
+      "wall_h": 2.2,
+      "apex": 9.0,
+      "eave": 1.12,
+      "eave_lift": -0.15,
+      "posts": 6,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 16,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 924,
+    "min": [
+      -4.543366432189941,
+      0.0,
+      -4.543366432189941
+    ],
+    "max": [
+      4.543366432189941,
+      9.475000381469727,
+      4.543366432189941
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-09",
+    "spec": {
+      "radius": 3.8,
+      "wall_h": 2.5,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 8,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 18,
+      "porch": true,
+      "lean_to": false
+    },
+    "triangles": 972,
+    "min": [
+      -5.254501819610596,
+      0.0,
+      -5.254501819610596
+    ],
+    "max": [
+      5.254501819610596,
+      10.475000381469727,
+      5.254501819610596
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-10",
+    "spec": {
+      "radius": 3.2,
+      "wall_h": 2.5,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 8,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 20,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 992,
+    "min": [
+      -4.66188907623291,
+      0.0,
+      -4.66188907623291
+    ],
+    "max": [
+      6.599999904632568,
+      10.475000381469727,
+      4.66188907623291
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-11",
+    "spec": {
+      "radius": 3.2,
+      "wall_h": 2.2,
+      "apex": 8.0,
+      "eave": 1.0,
+      "eave_lift": -0.15,
+      "posts": 8,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 18,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 992,
+    "min": [
+      -4.424843788146973,
+      0.0,
+      -4.424843788146973
+    ],
+    "max": [
+      6.599999904632568,
+      8.475000381469727,
+      4.424843788146973
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-12",
+    "spec": {
+      "radius": 4.1,
+      "wall_h": 2.5,
+      "apex": 9.0,
+      "eave": 1.12,
+      "eave_lift": -0.15,
+      "posts": 7,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 16,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 980,
+    "min": [
+      -5.432285785675049,
+      0.0,
+      -5.432285785675049
+    ],
+    "max": [
+      7.5,
+      9.475000381469727,
+      5.432285785675049
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-13",
+    "spec": {
+      "radius": 3.2,
+      "wall_h": 2.8,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 8,
+      "post_lift": 0.4,
+      "courses": 5,
+      "door_deg": 16,
+      "porch": true,
+      "lean_to": false
+    },
+    "triangles": 892,
+    "min": [
+      -4.66188907623291,
+      0.0,
+      -4.66188907623291
+    ],
+    "max": [
+      4.66188907623291,
+      10.475000381469727,
+      4.66188907623291
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-14",
+    "spec": {
+      "radius": 3.8,
+      "wall_h": 2.5,
+      "apex": 9.0,
+      "eave": 1.12,
+      "eave_lift": -0.15,
+      "posts": 6,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 20,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 980,
+    "min": [
+      -5.135979175567627,
+      0.0,
+      -5.135979175567627
+    ],
+    "max": [
+      7.199999809265137,
+      9.475000381469727,
+      5.135979175567627
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-15",
+    "spec": {
+      "radius": 3.2,
+      "wall_h": 2.8,
+      "apex": 9.0,
+      "eave": 1.12,
+      "eave_lift": -0.15,
+      "posts": 8,
+      "post_lift": 0.4,
+      "courses": 5,
+      "door_deg": 18,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 912,
+    "min": [
+      -4.543366432189941,
+      0.0,
+      -4.543366432189941
+    ],
+    "max": [
+      6.599999904632568,
+      9.475000381469727,
+      4.543366432189941
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-16",
+    "spec": {
+      "radius": 3.5,
+      "wall_h": 2.5,
+      "apex": 9.0,
+      "eave": 1.12,
+      "eave_lift": -0.15,
+      "posts": 6,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 20,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1016,
+    "min": [
+      -4.839673042297363,
+      0.0,
+      -4.839673042297363
+    ],
+    "max": [
+      6.900000095367432,
+      9.475000381469727,
+      4.839673042297363
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-17",
+    "spec": {
+      "radius": 4.1,
+      "wall_h": 2.5,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 6,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 16,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 924,
+    "min": [
+      -5.550808429718018,
+      0.0,
+      -5.550808429718018
+    ],
+    "max": [
+      5.550808429718018,
+      10.475000381469727,
+      5.550808429718018
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-18",
+    "spec": {
+      "radius": 3.2,
+      "wall_h": 2.5,
+      "apex": 8.0,
+      "eave": 1.0,
+      "eave_lift": -0.15,
+      "posts": 7,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 16,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 924,
+    "min": [
+      -4.424843788146973,
+      0.0,
+      -4.424843788146973
+    ],
+    "max": [
+      4.424843788146973,
+      8.475000381469727,
+      4.424843788146973
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-19",
+    "spec": {
+      "radius": 3.8,
+      "wall_h": 2.2,
+      "apex": 8.0,
+      "eave": 1.0,
+      "eave_lift": -0.15,
+      "posts": 6,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 16,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 924,
+    "min": [
+      -5.017457008361816,
+      0.0,
+      -5.017457008361816
+    ],
+    "max": [
+      5.017457008361816,
+      8.475000381469727,
+      5.017457008361816
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-20",
+    "spec": {
+      "radius": 3.5,
+      "wall_h": 2.8,
+      "apex": 9.0,
+      "eave": 1.12,
+      "eave_lift": -0.15,
+      "posts": 7,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 20,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 980,
+    "min": [
+      -4.839673042297363,
+      0.0,
+      -4.839673042297363
+    ],
+    "max": [
+      6.900000095367432,
+      9.475000381469727,
+      4.839673042297363
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-21",
+    "spec": {
+      "radius": 3.2,
+      "wall_h": 2.8,
+      "apex": 8.0,
+      "eave": 1.0,
+      "eave_lift": -0.15,
+      "posts": 7,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 20,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 980,
+    "min": [
+      -4.424843788146973,
+      0.0,
+      -4.424843788146973
+    ],
+    "max": [
+      6.599999904632568,
+      8.475000381469727,
+      4.424843788146973
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-22",
+    "spec": {
+      "radius": 4.1,
+      "wall_h": 2.8,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 8,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 20,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 992,
+    "min": [
+      -5.550808429718018,
+      0.0,
+      -5.550808429718018
+    ],
+    "max": [
+      7.5,
+      10.475000381469727,
+      5.550808429718018
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-23",
+    "spec": {
+      "radius": 3.2,
+      "wall_h": 2.2,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 6,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 18,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 980,
+    "min": [
+      -4.66188907623291,
+      0.0,
+      -4.66188907623291
+    ],
+    "max": [
+      6.599999904632568,
+      10.475000381469727,
+      4.66188907623291
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-24",
+    "spec": {
+      "radius": 3.5,
+      "wall_h": 2.5,
+      "apex": 8.0,
+      "eave": 1.0,
+      "eave_lift": -0.15,
+      "posts": 7,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 18,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 980,
+    "min": [
+      -4.7211503982543945,
+      0.0,
+      -4.7211503982543945
+    ],
+    "max": [
+      6.900000095367432,
+      8.475000381469727,
+      4.7211503982543945
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-25",
+    "spec": {
+      "radius": 3.5,
+      "wall_h": 2.8,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 8,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 18,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 992,
+    "min": [
+      -4.958195686340332,
+      0.0,
+      -4.958195686340332
+    ],
+    "max": [
+      6.900000095367432,
+      10.475000381469727,
+      4.958195686340332
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-26",
+    "spec": {
+      "radius": 3.5,
+      "wall_h": 2.5,
+      "apex": 8.0,
+      "eave": 1.0,
+      "eave_lift": -0.15,
+      "posts": 8,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 20,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 936,
+    "min": [
+      -4.7211503982543945,
+      0.0,
+      -4.7211503982543945
+    ],
+    "max": [
+      4.7211503982543945,
+      8.475000381469727,
+      4.7211503982543945
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-27",
+    "spec": {
+      "radius": 3.8,
+      "wall_h": 2.2,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 7,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 16,
+      "porch": true,
+      "lean_to": false
+    },
+    "triangles": 960,
+    "min": [
+      -5.254501819610596,
+      0.0,
+      -5.254501819610596
+    ],
+    "max": [
+      5.254501819610596,
+      10.475000381469727,
+      5.254501819610596
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-28",
+    "spec": {
+      "radius": 4.1,
+      "wall_h": 2.2,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 6,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 20,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1016,
+    "min": [
+      -5.550808429718018,
+      0.0,
+      -5.550808429718018
+    ],
+    "max": [
+      7.5,
+      10.475000381469727,
+      5.550808429718018
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-29",
+    "spec": {
+      "radius": 3.5,
+      "wall_h": 2.2,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 8,
+      "post_lift": 0.4,
+      "courses": 5,
+      "door_deg": 18,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 912,
+    "min": [
+      -4.958195686340332,
+      0.0,
+      -4.958195686340332
+    ],
+    "max": [
+      6.900000095367432,
+      10.475000381469727,
+      4.958195686340332
+    ]
+  },
+  {
+    "era": "neolithic",
+    "name": "neolithic-30",
+    "spec": {
+      "radius": 3.5,
+      "wall_h": 2.5,
+      "apex": 10.0,
+      "eave": 1.24,
+      "eave_lift": -0.15,
+      "posts": 8,
+      "post_lift": 0.4,
+      "courses": 6,
+      "door_deg": 16,
+      "porch": true,
+      "lean_to": false
+    },
+    "triangles": 972,
+    "min": [
+      -4.958195686340332,
+      0.0,
+      -4.958195686340332
+    ],
+    "max": [
+      4.958195686340332,
+      10.475000381469727,
+      4.958195686340332
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-01",
+    "spec": {
+      "radius": 4.4,
+      "wall_h": 3.4,
+      "apex": 11.2,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 8,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 17,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1188,
+    "min": [
+      -5.856991767883301,
+      0.0,
+      -5.856991767883301
+    ],
+    "max": [
+      7.800000190734863,
+      11.675000190734863,
+      5.856991767883301
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-02",
+    "spec": {
+      "radius": 4.4,
+      "wall_h": 3.4,
+      "apex": 12.4,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 9,
+      "post_lift": 0.55,
+      "courses": 7,
+      "door_deg": 15,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1120,
+    "min": [
+      -5.856991767883301,
+      0.0,
+      -5.856991767883301
+    ],
+    "max": [
+      7.800000190734863,
+      12.875,
+      5.856991767883301
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-03",
+    "spec": {
+      "radius": 5.2,
+      "wall_h": 3.4,
+      "apex": 10.0,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 8,
+      "post_lift": 0.55,
+      "courses": 7,
+      "door_deg": 19,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 1072,
+    "min": [
+      -6.64714241027832,
+      0.0,
+      -6.64714241027832
+    ],
+    "max": [
+      8.600000381469727,
+      10.475000381469727,
+      6.64714241027832
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-04",
+    "spec": {
+      "radius": 4.0,
+      "wall_h": 3.4,
+      "apex": 11.2,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 11,
+      "post_lift": 0.55,
+      "courses": 6,
+      "door_deg": 17,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1064,
+    "min": [
+      -5.461916446685791,
+      0.0,
+      -5.461916446685791
+    ],
+    "max": [
+      7.400000095367432,
+      11.675000190734863,
+      5.461916446685791
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-05",
+    "spec": {
+      "radius": 5.2,
+      "wall_h": 3.1,
+      "apex": 11.2,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 9,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 19,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1200,
+    "min": [
+      -6.64714241027832,
+      0.0,
+      -6.64714241027832
+    ],
+    "max": [
+      8.600000381469727,
+      11.675000190734863,
+      6.64714241027832
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-06",
+    "spec": {
+      "radius": 4.4,
+      "wall_h": 3.4,
+      "apex": 10.0,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 10,
+      "post_lift": 0.55,
+      "courses": 7,
+      "door_deg": 15,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1144,
+    "min": [
+      -5.856991767883301,
+      0.0,
+      -5.856991767883301
+    ],
+    "max": [
+      7.800000190734863,
+      10.475000381469727,
+      5.856991767883301
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-07",
+    "spec": {
+      "radius": 4.4,
+      "wall_h": 3.1,
+      "apex": 11.2,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 11,
+      "post_lift": 0.55,
+      "courses": 7,
+      "door_deg": 19,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 1052,
+    "min": [
+      -5.856991767883301,
+      0.0,
+      -5.856991767883301
+    ],
+    "max": [
+      5.856991767883301,
+      11.675000190734863,
+      5.856991767883301
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-08",
+    "spec": {
+      "radius": 4.0,
+      "wall_h": 3.1,
+      "apex": 12.4,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 10,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 17,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 1188,
+    "min": [
+      -5.461916446685791,
+      0.0,
+      -5.461916446685791
+    ],
+    "max": [
+      7.400000095367432,
+      12.875,
+      5.461916446685791
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-09",
+    "spec": {
+      "radius": 4.0,
+      "wall_h": 2.8,
+      "apex": 10.0,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 11,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 17,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 1188,
+    "min": [
+      -5.461916446685791,
+      0.0,
+      -5.461916446685791
+    ],
+    "max": [
+      7.400000095367432,
+      10.475000381469727,
+      5.461916446685791
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-10",
+    "spec": {
+      "radius": 5.2,
+      "wall_h": 3.4,
+      "apex": 11.2,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 8,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 15,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 1096,
+    "min": [
+      -6.64714241027832,
+      0.0,
+      -6.64714241027832
+    ],
+    "max": [
+      6.64714241027832,
+      11.675000190734863,
+      6.64714241027832
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-11",
+    "spec": {
+      "radius": 4.8,
+      "wall_h": 3.4,
+      "apex": 12.4,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 10,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 19,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1200,
+    "min": [
+      -6.2520670890808105,
+      0.0,
+      -6.2520670890808105
+    ],
+    "max": [
+      8.199999809265137,
+      12.875,
+      6.2520670890808105
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-12",
+    "spec": {
+      "radius": 4.8,
+      "wall_h": 2.8,
+      "apex": 10.0,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 10,
+      "post_lift": 0.55,
+      "courses": 6,
+      "door_deg": 19,
+      "porch": true,
+      "lean_to": false
+    },
+    "triangles": 984,
+    "min": [
+      -6.2520670890808105,
+      0.0,
+      -6.2520670890808105
+    ],
+    "max": [
+      6.2520670890808105,
+      10.475000381469727,
+      6.2520670890808105
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-13",
+    "spec": {
+      "radius": 4.4,
+      "wall_h": 2.8,
+      "apex": 12.4,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 11,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 15,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 1188,
+    "min": [
+      -5.856991767883301,
+      0.0,
+      -5.856991767883301
+    ],
+    "max": [
+      7.800000190734863,
+      12.875,
+      5.856991767883301
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-14",
+    "spec": {
+      "radius": 4.0,
+      "wall_h": 3.4,
+      "apex": 12.4,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 11,
+      "post_lift": 0.55,
+      "courses": 6,
+      "door_deg": 19,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 972,
+    "min": [
+      -5.461916446685791,
+      0.0,
+      -5.461916446685791
+    ],
+    "max": [
+      5.461916446685791,
+      12.875,
+      5.461916446685791
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-15",
+    "spec": {
+      "radius": 4.4,
+      "wall_h": 3.4,
+      "apex": 10.0,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 10,
+      "post_lift": 0.55,
+      "courses": 7,
+      "door_deg": 19,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 1084,
+    "min": [
+      -5.856991767883301,
+      0.0,
+      -5.856991767883301
+    ],
+    "max": [
+      7.800000190734863,
+      10.475000381469727,
+      5.856991767883301
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-16",
+    "spec": {
+      "radius": 5.2,
+      "wall_h": 2.8,
+      "apex": 12.4,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 10,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 19,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 1108,
+    "min": [
+      -6.64714241027832,
+      0.0,
+      -6.64714241027832
+    ],
+    "max": [
+      6.64714241027832,
+      12.875,
+      6.64714241027832
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-17",
+    "spec": {
+      "radius": 4.8,
+      "wall_h": 3.1,
+      "apex": 11.2,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 9,
+      "post_lift": 0.55,
+      "courses": 6,
+      "door_deg": 15,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1040,
+    "min": [
+      -6.2520670890808105,
+      0.0,
+      -6.2520670890808105
+    ],
+    "max": [
+      8.199999809265137,
+      11.675000190734863,
+      6.2520670890808105
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-18",
+    "spec": {
+      "radius": 4.4,
+      "wall_h": 2.8,
+      "apex": 11.2,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 10,
+      "post_lift": 0.55,
+      "courses": 7,
+      "door_deg": 17,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 1052,
+    "min": [
+      -5.856991767883301,
+      0.0,
+      -5.856991767883301
+    ],
+    "max": [
+      5.856991767883301,
+      11.675000190734863,
+      5.856991767883301
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-19",
+    "spec": {
+      "radius": 5.2,
+      "wall_h": 2.8,
+      "apex": 11.2,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 11,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 15,
+      "porch": false,
+      "lean_to": false
+    },
+    "triangles": 1132,
+    "min": [
+      -6.64714241027832,
+      0.0,
+      -6.64714241027832
+    ],
+    "max": [
+      6.64714241027832,
+      11.675000190734863,
+      6.64714241027832
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-20",
+    "spec": {
+      "radius": 4.0,
+      "wall_h": 3.4,
+      "apex": 12.4,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 9,
+      "post_lift": 0.55,
+      "courses": 7,
+      "door_deg": 17,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1120,
+    "min": [
+      -5.461916446685791,
+      0.0,
+      -5.461916446685791
+    ],
+    "max": [
+      7.400000095367432,
+      12.875,
+      5.461916446685791
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-21",
+    "spec": {
+      "radius": 4.0,
+      "wall_h": 3.1,
+      "apex": 12.4,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 11,
+      "post_lift": 0.55,
+      "courses": 7,
+      "door_deg": 15,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1144,
+    "min": [
+      -5.461916446685791,
+      0.0,
+      -5.461916446685791
+    ],
+    "max": [
+      7.400000095367432,
+      12.875,
+      5.461916446685791
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-22",
+    "spec": {
+      "radius": 5.2,
+      "wall_h": 2.8,
+      "apex": 11.2,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 11,
+      "post_lift": 0.55,
+      "courses": 6,
+      "door_deg": 19,
+      "porch": true,
+      "lean_to": false
+    },
+    "triangles": 1008,
+    "min": [
+      -6.64714241027832,
+      0.0,
+      -6.64714241027832
+    ],
+    "max": [
+      6.64714241027832,
+      11.675000190734863,
+      6.64714241027832
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-23",
+    "spec": {
+      "radius": 4.4,
+      "wall_h": 3.1,
+      "apex": 11.2,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 9,
+      "post_lift": 0.55,
+      "courses": 6,
+      "door_deg": 15,
+      "porch": true,
+      "lean_to": false
+    },
+    "triangles": 984,
+    "min": [
+      -5.856991767883301,
+      0.0,
+      -5.856991767883301
+    ],
+    "max": [
+      5.856991767883301,
+      11.675000190734863,
+      5.856991767883301
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-24",
+    "spec": {
+      "radius": 4.4,
+      "wall_h": 3.1,
+      "apex": 10.0,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 10,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 17,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 1188,
+    "min": [
+      -5.856991767883301,
+      0.0,
+      -5.856991767883301
+    ],
+    "max": [
+      7.800000190734863,
+      10.475000381469727,
+      5.856991767883301
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-25",
+    "spec": {
+      "radius": 5.2,
+      "wall_h": 2.8,
+      "apex": 10.0,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 11,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 19,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1224,
+    "min": [
+      -6.64714241027832,
+      0.0,
+      -6.64714241027832
+    ],
+    "max": [
+      8.600000381469727,
+      10.475000381469727,
+      6.64714241027832
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-26",
+    "spec": {
+      "radius": 4.8,
+      "wall_h": 3.4,
+      "apex": 11.2,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 11,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 15,
+      "porch": true,
+      "lean_to": false
+    },
+    "triangles": 1168,
+    "min": [
+      -6.2520670890808105,
+      0.0,
+      -6.2520670890808105
+    ],
+    "max": [
+      6.2520670890808105,
+      11.675000190734863,
+      6.2520670890808105
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-27",
+    "spec": {
+      "radius": 4.0,
+      "wall_h": 2.8,
+      "apex": 10.0,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 10,
+      "post_lift": 0.55,
+      "courses": 6,
+      "door_deg": 17,
+      "porch": true,
+      "lean_to": false
+    },
+    "triangles": 1008,
+    "min": [
+      -5.461916446685791,
+      0.0,
+      -5.461916446685791
+    ],
+    "max": [
+      5.461916446685791,
+      10.475000381469727,
+      5.461916446685791
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-28",
+    "spec": {
+      "radius": 4.0,
+      "wall_h": 2.8,
+      "apex": 12.4,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 8,
+      "post_lift": 0.55,
+      "courses": 8,
+      "door_deg": 19,
+      "porch": true,
+      "lean_to": false
+    },
+    "triangles": 1132,
+    "min": [
+      -5.461916446685791,
+      0.0,
+      -5.461916446685791
+    ],
+    "max": [
+      5.461916446685791,
+      12.875,
+      5.461916446685791
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-29",
+    "spec": {
+      "radius": 4.8,
+      "wall_h": 2.8,
+      "apex": 10.0,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 9,
+      "post_lift": 0.55,
+      "courses": 6,
+      "door_deg": 17,
+      "porch": false,
+      "lean_to": true
+    },
+    "triangles": 1004,
+    "min": [
+      -6.2520670890808105,
+      0.0,
+      -6.2520670890808105
+    ],
+    "max": [
+      8.199999809265137,
+      10.475000381469727,
+      6.2520670890808105
+    ]
+  },
+  {
+    "era": "bronze",
+    "name": "bronze-30",
+    "spec": {
+      "radius": 4.0,
+      "wall_h": 3.1,
+      "apex": 10.0,
+      "eave": 1.25,
+      "eave_lift": -0.1,
+      "posts": 8,
+      "post_lift": 0.55,
+      "courses": 7,
+      "door_deg": 19,
+      "porch": true,
+      "lean_to": true
+    },
+    "triangles": 1108,
+    "min": [
+      -5.461916446685791,
+      0.0,
+      -5.461916446685791
+    ],
+    "max": [
+      7.400000095367432,
+      10.475000381469727,
+      5.461916446685791
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-01",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "portico",
+      "wall": "stone",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 4.4,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "dormers": true,
+      "balcony": true,
+      "door_x": -0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 2344,
+    "min": [
+      -5.449999809265137,
+      -0.41499999165534973,
+      -4.949999809265137
+    ],
+    "max": [
+      5.449999809265137,
+      18.93000030517578,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-02",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 4.1,
+      "cols": 4,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "dormers": false,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1768,
+    "min": [
+      -5.449999809265137,
+      -0.41499999165534973,
+      -4.949999809265137
+    ],
+    "max": [
+      5.449999809265137,
+      15.59000015258789,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-03",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "storeys": 4,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 4.4,
+      "cols": 3,
+      "shutters": false,
+      "quoins": false,
+      "pediments": true,
+      "dormers": true,
+      "balcony": true,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 2044,
+    "min": [
+      -6.599999904632568,
+      -0.41499999165534973,
+      -5.849999904632568
+    ],
+    "max": [
+      6.599999904632568,
+      18.93000030517578,
+      7.050000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-04",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "storeys": 2,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 3.8000000000000003,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "dormers": true,
+      "balcony": false,
+      "door_x": -0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1288,
+    "min": [
+      -6.599999904632568,
+      -0.41499999165534973,
+      -5.849999904632568
+    ],
+    "max": [
+      6.599999904632568,
+      12.25,
+      7.050000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-05",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "portico",
+      "wall": "stone",
+      "trim": "stone",
+      "roof_mat": "slate",
+      "roof_h": 4.4,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "dormers": true,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 2188,
+    "min": [
+      -6.449999809265137,
+      -0.41499999165534973,
+      -4.949999809265137
+    ],
+    "max": [
+      6.449999809265137,
+      18.93000030517578,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-06",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "slate",
+      "roof_h": 4.1,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "dormers": true,
+      "balcony": true,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1808,
+    "min": [
+      -6.449999809265137,
+      -0.41499999165534973,
+      -5.699999809265137
+    ],
+    "max": [
+      6.449999809265137,
+      15.59000015258789,
+      6.349999904632568
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-07",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "slate",
+      "roof_h": 4.4,
+      "cols": 3,
+      "shutters": true,
+      "quoins": true,
+      "pediments": false,
+      "dormers": true,
+      "balcony": false,
+      "door_x": 0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 2944,
+    "min": [
+      -6.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.599999904632568,
+      18.93000030517578,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-08",
+    "spec": {
+      "width": 10.0,
+      "depth": 10.5,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "plain",
+      "wall": "stone",
+      "trim": "stone",
+      "roof_mat": "slate",
+      "roof_h": 4.1,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "dormers": true,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1832,
+    "min": [
+      -5.449999809265137,
+      -0.41499999165534973,
+      -5.699999809265137
+    ],
+    "max": [
+      5.449999809265137,
+      15.59000015258789,
+      5.699999809265137
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-09",
+    "spec": {
+      "width": 10.0,
+      "depth": 10.5,
+      "storeys": 2,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "stone",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 3.8000000000000003,
+      "cols": 3,
+      "shutters": false,
+      "quoins": false,
+      "pediments": false,
+      "dormers": false,
+      "balcony": false,
+      "door_x": -0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 752,
+    "min": [
+      -5.599999904632568,
+      -0.41499999165534973,
+      -5.849999904632568
+    ],
+    "max": [
+      5.599999904632568,
+      12.25,
+      5.849999904632568
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-10",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.5,
+      "storeys": 4,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 4.4,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "dormers": true,
+      "balcony": false,
+      "door_x": -0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 2188,
+    "min": [
+      -7.489999771118164,
+      -0.41499999165534973,
+      -5.699999809265137
+    ],
+    "max": [
+      7.489999771118164,
+      18.93000030517578,
+      7.050000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-11",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.5,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "slate",
+      "roof_h": 4.1,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "dormers": false,
+      "balcony": false,
+      "door_x": -0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1616,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -5.849999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      15.59000015258789,
+      5.849999904632568
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-12",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 3.8000000000000003,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "dormers": true,
+      "balcony": false,
+      "door_x": 0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1196,
+    "min": [
+      -6.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.599999904632568,
+      12.25,
+      5.099999904632568
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-13",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 3.8000000000000003,
+      "cols": 3,
+      "shutters": true,
+      "quoins": false,
+      "pediments": true,
+      "dormers": false,
+      "balcony": true,
+      "door_x": 0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1516,
+    "min": [
+      -7.489999771118164,
+      -0.41499999165534973,
+      -4.949999809265137
+    ],
+    "max": [
+      7.489999771118164,
+      12.25,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-14",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "stone",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 3.8000000000000003,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "dormers": false,
+      "balcony": true,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1360,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      12.25,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-15",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "plain",
+      "wall": "stone",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 4.4,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": false,
+      "dormers": true,
+      "balcony": true,
+      "door_x": -0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 2252,
+    "min": [
+      -7.489999771118164,
+      -0.41499999165534973,
+      -4.949999809265137
+    ],
+    "max": [
+      7.489999771118164,
+      18.93000030517578,
+      5.599999904632568
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-16",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "storeys": 2,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "slate",
+      "roof_h": 3.8000000000000003,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "dormers": true,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1328,
+    "min": [
+      -6.449999809265137,
+      -0.41499999165534973,
+      -5.699999809265137
+    ],
+    "max": [
+      6.449999809265137,
+      12.25,
+      5.699999809265137
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-17",
+    "spec": {
+      "width": 10.0,
+      "depth": 10.5,
+      "storeys": 4,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "slate",
+      "roof_h": 4.4,
+      "cols": 3,
+      "shutters": true,
+      "quoins": false,
+      "pediments": true,
+      "dormers": false,
+      "balcony": false,
+      "door_x": -0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 2464,
+    "min": [
+      -5.449999809265137,
+      -0.41499999165534973,
+      -5.699999809265137
+    ],
+    "max": [
+      5.449999809265137,
+      18.93000030517578,
+      7.050000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-18",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.5,
+      "storeys": 4,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 4.4,
+      "cols": 4,
+      "shutters": false,
+      "quoins": false,
+      "pediments": false,
+      "dormers": true,
+      "balcony": false,
+      "door_x": 0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1844,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -5.849999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      18.93000030517578,
+      5.849999904632568
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-19",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 4,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "stone",
+      "trim": "stone",
+      "roof_mat": "slate",
+      "roof_h": 4.4,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "dormers": false,
+      "balcony": false,
+      "door_x": -0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 2212,
+    "min": [
+      -5.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      5.599999904632568,
+      18.93000030517578,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-20",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "portico",
+      "wall": "stone",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 3.8000000000000003,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "dormers": false,
+      "balcony": true,
+      "door_x": -0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1372,
+    "min": [
+      -6.449999809265137,
+      -0.41499999165534973,
+      -4.949999809265137
+    ],
+    "max": [
+      6.449999809265137,
+      12.25,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-21",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "slate",
+      "roof_h": 4.1,
+      "cols": 3,
+      "shutters": false,
+      "quoins": false,
+      "pediments": false,
+      "dormers": true,
+      "balcony": false,
+      "door_x": 0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1256,
+    "min": [
+      -5.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      5.599999904632568,
+      15.59000015258789,
+      5.099999904632568
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-22",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.5,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "portico",
+      "wall": "stone",
+      "trim": "stone",
+      "roof_mat": "slate",
+      "roof_h": 4.1,
+      "cols": 4,
+      "shutters": true,
+      "quoins": false,
+      "pediments": true,
+      "dormers": false,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 2344,
+    "min": [
+      -7.489999771118164,
+      -0.41499999165534973,
+      -5.699999809265137
+    ],
+    "max": [
+      7.489999771118164,
+      15.59000015258789,
+      7.050000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-23",
+    "spec": {
+      "width": 10.0,
+      "depth": 10.5,
+      "storeys": 2,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 3.8000000000000003,
+      "cols": 3,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "dormers": true,
+      "balcony": false,
+      "door_x": 0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1420,
+    "min": [
+      -5.449999809265137,
+      -0.41499999165534973,
+      -5.699999809265137
+    ],
+    "max": [
+      5.449999809265137,
+      12.25,
+      7.050000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-24",
+    "spec": {
+      "width": 10.0,
+      "depth": 10.5,
+      "storeys": 4,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "slate",
+      "roof_h": 4.4,
+      "cols": 4,
+      "shutters": true,
+      "quoins": true,
+      "pediments": false,
+      "dormers": true,
+      "balcony": true,
+      "door_x": 0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 3488,
+    "min": [
+      -5.599999904632568,
+      -0.41499999165534973,
+      -5.849999904632568
+    ],
+    "max": [
+      5.599999904632568,
+      18.93000030517578,
+      6.349999904632568
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-25",
+    "spec": {
+      "width": 14.0,
+      "depth": 10.5,
+      "storeys": 2,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 3.8000000000000003,
+      "cols": 3,
+      "shutters": false,
+      "quoins": false,
+      "pediments": false,
+      "dormers": true,
+      "balcony": false,
+      "door_x": 0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 968,
+    "min": [
+      -7.489999771118164,
+      -0.41499999165534973,
+      -5.699999809265137
+    ],
+    "max": [
+      7.489999771118164,
+      12.25,
+      5.699999809265137
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-26",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "slate",
+      "roof_h": 4.1,
+      "cols": 3,
+      "shutters": true,
+      "quoins": false,
+      "pediments": false,
+      "dormers": true,
+      "balcony": true,
+      "door_x": -0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1988,
+    "min": [
+      -6.599999904632568,
+      -0.41499999165534973,
+      -5.849999904632568
+    ],
+    "max": [
+      6.599999904632568,
+      15.59000015258789,
+      6.349999904632568
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-27",
+    "spec": {
+      "width": 14.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 4.1,
+      "cols": 3,
+      "shutters": false,
+      "quoins": false,
+      "pediments": false,
+      "dormers": true,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1256,
+    "min": [
+      -7.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      7.599999904632568,
+      15.59000015258789,
+      5.099999904632568
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-28",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "roof": "mansard",
+      "frontage": "plain",
+      "wall": "stone",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 4.1,
+      "cols": 3,
+      "shutters": true,
+      "quoins": true,
+      "pediments": true,
+      "dormers": true,
+      "balcony": false,
+      "door_x": 0.0,
+      "chimney_mat": "brick"
+    },
+    "triangles": 2408,
+    "min": [
+      -6.449999809265137,
+      -0.41499999165534973,
+      -4.949999809265137
+    ],
+    "max": [
+      6.449999809265137,
+      15.59000015258789,
+      4.949999809265137
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-29",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "storeys": 3,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "portico",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 4.1,
+      "cols": 3,
+      "shutters": true,
+      "quoins": true,
+      "pediments": true,
+      "dormers": false,
+      "balcony": false,
+      "door_x": 0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 2284,
+    "min": [
+      -6.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      6.599999904632568,
+      15.59000015258789,
+      6.300000190734863
+    ]
+  },
+  {
+    "era": "renaissance",
+    "name": "renaissance-30",
+    "spec": {
+      "width": 10.0,
+      "depth": 9.0,
+      "storeys": 2,
+      "floor_h": 3.1,
+      "roof": "hip",
+      "frontage": "plain",
+      "wall": "plaster",
+      "trim": "stone",
+      "roof_mat": "tile",
+      "roof_h": 3.8000000000000003,
+      "cols": 4,
+      "shutters": false,
+      "quoins": true,
+      "pediments": true,
+      "dormers": true,
+      "balcony": true,
+      "door_x": 0.15,
+      "chimney_mat": "brick"
+    },
+    "triangles": 1656,
+    "min": [
+      -5.599999904632568,
+      -0.41499999165534973,
+      -5.099999904632568
+    ],
+    "max": [
+      5.599999904632568,
+      12.25,
+      5.599999904632568
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-01",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.5,
+      "floors": 6,
+      "setback_floor": 4,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "flat",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "ribbon",
+      "window_cols": 3
+    },
+    "triangles": 1572,
+    "min": [
+      -5.889999866485596,
+      -1.2899999618530273,
+      -5.139999866485596
+    ],
+    "max": [
+      5.889999866485596,
+      20.299999237060547,
+      5.139999866485596
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-02",
+    "spec": {
+      "width": 9.5,
+      "depth": 8.0,
+      "floors": 6,
+      "setback_floor": 5,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "flat",
+      "crown_h": 6.0,
+      "terrace": true,
+      "podium": true,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "glass",
+      "window_cols": 4
+    },
+    "triangles": 1392,
+    "min": [
+      -6.650000095367432,
+      -1.3899999856948853,
+      -5.599999904632568
+    ],
+    "max": [
+      6.650000095367432,
+      24.5,
+      6.369999885559082
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-03",
+    "spec": {
+      "width": 8.0,
+      "depth": 8.0,
+      "floors": 8,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "antenna",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "punched",
+      "window_cols": 4
+    },
+    "triangles": 3576,
+    "min": [
+      -4.389999866485596,
+      -1.2899999618530273,
+      -4.389999866485596
+    ],
+    "max": [
+      4.389999866485596,
+      32.5,
+      5.900000095367432
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-04",
+    "spec": {
+      "width": 9.5,
+      "depth": 9.5,
+      "floors": 8,
+      "setback_floor": 3,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "flat",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "stone",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 2904,
+    "min": [
+      -6.650000095367432,
+      -1.3899999856948853,
+      -6.650000095367432
+    ],
+    "max": [
+      6.650000095367432,
+      30.5,
+      7.480000019073486
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-05",
+    "spec": {
+      "width": 9.5,
+      "depth": 9.5,
+      "floors": 8,
+      "setback_floor": 0,
+      "balconies": false,
+      "balcony_every": 3,
+      "crown": "terrace",
+      "crown_h": 8.0,
+      "terrace": true,
+      "podium": false,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "punched",
+      "window_cols": 3
+    },
+    "triangles": 2292,
+    "min": [
+      -5.139999866485596,
+      -1.2899999618530273,
+      -5.139999866485596
+    ],
+    "max": [
+      5.139999866485596,
+      27.899999618530273,
+      5.139999866485596
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-06",
+    "spec": {
+      "width": 8.0,
+      "depth": 9.5,
+      "floors": 4,
+      "setback_floor": 3,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "antenna",
+      "crown_h": 8.0,
+      "terrace": true,
+      "podium": true,
+      "twin": true,
+      "cladding": "stone",
+      "facade": "glass",
+      "window_cols": 4
+    },
+    "triangles": 1380,
+    "min": [
+      -5.599999904632568,
+      -1.3899999856948853,
+      -6.650000095367432
+    ],
+    "max": [
+      9.904000282287598,
+      24.700000762939453,
+      7.480000019073486
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-07",
+    "spec": {
+      "width": 8.0,
+      "depth": 9.5,
+      "floors": 8,
+      "setback_floor": 5,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "lantern",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "glass",
+      "window_cols": 4
+    },
+    "triangles": 916,
+    "min": [
+      -4.389999866485596,
+      -1.2899999618530273,
+      -5.139999866485596
+    ],
+    "max": [
+      4.389999866485596,
+      31.5,
+      5.139999866485596
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-08",
+    "spec": {
+      "width": 8.0,
+      "depth": 9.5,
+      "floors": 6,
+      "setback_floor": 4,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "terrace",
+      "crown_h": 8.0,
+      "terrace": true,
+      "podium": false,
+      "twin": false,
+      "cladding": "brick",
+      "facade": "fins",
+      "window_cols": 4
+    },
+    "triangles": 1908,
+    "min": [
+      -4.389999866485596,
+      -1.2899999618530273,
+      -5.139999866485596
+    ],
+    "max": [
+      4.389999866485596,
+      21.899999618530273,
+      5.139999866485596
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-09",
+    "spec": {
+      "width": 8.0,
+      "depth": 9.5,
+      "floors": 8,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "flat",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "stone",
+      "facade": "ribbon",
+      "window_cols": 3
+    },
+    "triangles": 2412,
+    "min": [
+      -4.389999866485596,
+      -1.2899999618530273,
+      -5.139999866485596
+    ],
+    "max": [
+      4.389999866485596,
+      26.299999237060547,
+      6.650000095367432
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-10",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.5,
+      "floors": 6,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "lantern",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "brick",
+      "facade": "punched",
+      "window_cols": 4
+    },
+    "triangles": 2980,
+    "min": [
+      -7.699999809265137,
+      -1.3899999856948853,
+      -6.650000095367432
+    ],
+    "max": [
+      7.699999809265137,
+      29.700000762939453,
+      7.480000019073486
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-11",
+    "spec": {
+      "width": 9.5,
+      "depth": 8.0,
+      "floors": 8,
+      "setback_floor": 4,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "terrace",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": false,
+      "twin": true,
+      "cladding": "brick",
+      "facade": "punched",
+      "window_cols": 4
+    },
+    "triangles": 3780,
+    "min": [
+      -5.139999866485596,
+      -1.2899999618530273,
+      -4.389999866485596
+    ],
+    "max": [
+      11.76099967956543,
+      27.899999618530273,
+      5.900000095367432
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-12",
+    "spec": {
+      "width": 9.5,
+      "depth": 8.0,
+      "floors": 4,
+      "setback_floor": 5,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "lantern",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "brick",
+      "facade": "glass",
+      "window_cols": 4
+    },
+    "triangles": 712,
+    "min": [
+      -5.139999866485596,
+      -1.2899999618530273,
+      -4.389999866485596
+    ],
+    "max": [
+      5.139999866485596,
+      19.5,
+      5.900000095367432
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-13",
+    "spec": {
+      "width": 9.5,
+      "depth": 9.5,
+      "floors": 4,
+      "setback_floor": 3,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "antenna",
+      "crown_h": 8.0,
+      "terrace": true,
+      "podium": true,
+      "twin": true,
+      "cladding": "brick",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 1776,
+    "min": [
+      -6.650000095367432,
+      -1.3899999856948853,
+      -6.650000095367432
+    ],
+    "max": [
+      11.76099967956543,
+      24.700000762939453,
+      7.480000019073486
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-14",
+    "spec": {
+      "width": 9.5,
+      "depth": 8.0,
+      "floors": 4,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "flat",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "brick",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 1764,
+    "min": [
+      -6.650000095367432,
+      -1.3899999856948853,
+      -5.599999904632568
+    ],
+    "max": [
+      6.650000095367432,
+      18.5,
+      6.369999885559082
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-15",
+    "spec": {
+      "width": 8.0,
+      "depth": 8.0,
+      "floors": 4,
+      "setback_floor": 0,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "antenna",
+      "crown_h": 8.0,
+      "terrace": true,
+      "podium": false,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "ribbon",
+      "window_cols": 3
+    },
+    "triangles": 1128,
+    "min": [
+      -4.389999866485596,
+      -1.2899999618530273,
+      -4.389999866485596
+    ],
+    "max": [
+      4.389999866485596,
+      20.5,
+      4.389999866485596
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-16",
+    "spec": {
+      "width": 9.5,
+      "depth": 9.5,
+      "floors": 4,
+      "setback_floor": 0,
+      "balconies": false,
+      "balcony_every": 3,
+      "crown": "lantern",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "fins",
+      "window_cols": 3
+    },
+    "triangles": 1300,
+    "min": [
+      -5.139999866485596,
+      -1.2899999618530273,
+      -5.139999866485596
+    ],
+    "max": [
+      5.139999866485596,
+      19.5,
+      5.139999866485596
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-17",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "floors": 6,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "antenna",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "stone",
+      "facade": "ribbon",
+      "window_cols": 3
+    },
+    "triangles": 2448,
+    "min": [
+      -7.699999809265137,
+      -1.3899999856948853,
+      -5.599999904632568
+    ],
+    "max": [
+      7.699999809265137,
+      30.700000762939453,
+      6.369999885559082
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-18",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.5,
+      "floors": 8,
+      "setback_floor": 5,
+      "balconies": false,
+      "balcony_every": 3,
+      "crown": "terrace",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "glass",
+      "window_cols": 3
+    },
+    "triangles": 1428,
+    "min": [
+      -7.699999809265137,
+      -1.3899999856948853,
+      -6.650000095367432
+    ],
+    "max": [
+      7.699999809265137,
+      32.099998474121094,
+      7.480000019073486
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-19",
+    "spec": {
+      "width": 9.5,
+      "depth": 9.5,
+      "floors": 6,
+      "setback_floor": 0,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "terrace",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": false,
+      "twin": true,
+      "cladding": "concrete",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 1764,
+    "min": [
+      -5.139999866485596,
+      -1.2899999618530273,
+      -5.139999866485596
+    ],
+    "max": [
+      11.76099967956543,
+      21.899999618530273,
+      5.139999866485596
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-20",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "floors": 4,
+      "setback_floor": 0,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "terrace",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 1620,
+    "min": [
+      -7.699999809265137,
+      -1.3899999856948853,
+      -5.599999904632568
+    ],
+    "max": [
+      7.699999809265137,
+      20.100000381469727,
+      6.369999885559082
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-21",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "floors": 8,
+      "setback_floor": 5,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "antenna",
+      "crown_h": 8.0,
+      "terrace": true,
+      "podium": false,
+      "twin": false,
+      "cladding": "stone",
+      "facade": "glass",
+      "window_cols": 4
+    },
+    "triangles": 936,
+    "min": [
+      -5.889999866485596,
+      -1.2899999618530273,
+      -4.389999866485596
+    ],
+    "max": [
+      5.889999866485596,
+      32.5,
+      4.389999866485596
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-22",
+    "spec": {
+      "width": 8.0,
+      "depth": 8.0,
+      "floors": 8,
+      "setback_floor": 4,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "terrace",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "stone",
+      "facade": "fins",
+      "window_cols": 4
+    },
+    "triangles": 3324,
+    "min": [
+      -5.599999904632568,
+      -1.3899999856948853,
+      -5.599999904632568
+    ],
+    "max": [
+      5.599999904632568,
+      32.099998474121094,
+      6.369999885559082
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-23",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.5,
+      "floors": 8,
+      "setback_floor": 0,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "terrace",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "punched",
+      "window_cols": 3
+    },
+    "triangles": 2280,
+    "min": [
+      -5.889999866485596,
+      -1.2899999618530273,
+      -5.139999866485596
+    ],
+    "max": [
+      5.889999866485596,
+      27.899999618530273,
+      5.139999866485596
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-24",
+    "spec": {
+      "width": 9.5,
+      "depth": 8.0,
+      "floors": 8,
+      "setback_floor": 0,
+      "balconies": false,
+      "balcony_every": 3,
+      "crown": "lantern",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "stone",
+      "facade": "punched",
+      "window_cols": 4
+    },
+    "triangles": 3520,
+    "min": [
+      -6.650000095367432,
+      -1.3899999856948853,
+      -5.599999904632568
+    ],
+    "max": [
+      6.650000095367432,
+      35.70000076293945,
+      6.369999885559082
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-25",
+    "spec": {
+      "width": 8.0,
+      "depth": 8.0,
+      "floors": 6,
+      "setback_floor": 4,
+      "balconies": false,
+      "balcony_every": 3,
+      "crown": "lantern",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": true,
+      "twin": true,
+      "cladding": "stone",
+      "facade": "ribbon",
+      "window_cols": 3
+    },
+    "triangles": 2236,
+    "min": [
+      -5.599999904632568,
+      -1.3899999856948853,
+      -5.599999904632568
+    ],
+    "max": [
+      9.904000282287598,
+      29.700000762939453,
+      6.369999885559082
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-26",
+    "spec": {
+      "width": 8.0,
+      "depth": 9.5,
+      "floors": 4,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "antenna",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "punched",
+      "window_cols": 3
+    },
+    "triangles": 1392,
+    "min": [
+      -4.389999866485596,
+      -1.2899999618530273,
+      -5.139999866485596
+    ],
+    "max": [
+      4.389999866485596,
+      18.5,
+      6.650000095367432
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-27",
+    "spec": {
+      "width": 11.0,
+      "depth": 9.5,
+      "floors": 4,
+      "setback_floor": 5,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "antenna",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "fins",
+      "window_cols": 4
+    },
+    "triangles": 1308,
+    "min": [
+      -5.889999866485596,
+      -1.2899999618530273,
+      -5.139999866485596
+    ],
+    "max": [
+      5.889999866485596,
+      20.5,
+      5.139999866485596
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-28",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "floors": 6,
+      "setback_floor": 3,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "antenna",
+      "crown_h": 6.0,
+      "terrace": true,
+      "podium": true,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 2100,
+    "min": [
+      -7.699999809265137,
+      -1.3899999856948853,
+      -5.599999904632568
+    ],
+    "max": [
+      7.699999809265137,
+      28.700000762939453,
+      6.369999885559082
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-29",
+    "spec": {
+      "width": 8.0,
+      "depth": 8.0,
+      "floors": 6,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "terrace",
+      "crown_h": 6.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "brick",
+      "facade": "fins",
+      "window_cols": 3
+    },
+    "triangles": 2568,
+    "min": [
+      -5.599999904632568,
+      -1.3899999856948853,
+      -5.599999904632568
+    ],
+    "max": [
+      5.599999904632568,
+      26.100000381469727,
+      6.369999885559082
+    ]
+  },
+  {
+    "era": "information",
+    "name": "information-30",
+    "spec": {
+      "width": 11.0,
+      "depth": 8.0,
+      "floors": 4,
+      "setback_floor": 4,
+      "balconies": false,
+      "balcony_every": 3,
+      "crown": "lantern",
+      "crown_h": 6.0,
+      "terrace": true,
+      "podium": false,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "glass",
+      "window_cols": 3
+    },
+    "triangles": 544,
+    "min": [
+      -5.889999866485596,
+      -1.2899999618530273,
+      -4.389999866485596
+    ],
+    "max": [
+      5.889999866485596,
+      19.5,
+      4.389999866485596
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-01",
+    "spec": {
+      "width": 10.5,
+      "depth": 10.5,
+      "floors": 12,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "antenna",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "glass",
+      "window_cols": 4
+    },
+    "triangles": 2700,
+    "min": [
+      -7.349999904632568,
+      -1.3899999856948853,
+      -7.349999904632568
+    ],
+    "max": [
+      7.349999904632568,
+      48.70000076293945,
+      8.220000267028809
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-02",
+    "spec": {
+      "width": 10.5,
+      "depth": 9.0,
+      "floors": 9,
+      "setback_floor": 4,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "lantern",
+      "crown_h": 8.0,
+      "terrace": true,
+      "podium": false,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "fins",
+      "window_cols": 4
+    },
+    "triangles": 2752,
+    "min": [
+      -5.639999866485596,
+      -1.2899999618530273,
+      -4.889999866485596
+    ],
+    "max": [
+      5.639999866485596,
+      35.5,
+      4.889999866485596
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-03",
+    "spec": {
+      "width": 9.0,
+      "depth": 10.5,
+      "floors": 6,
+      "setback_floor": 4,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "antenna",
+      "crown_h": 11.0,
+      "terrace": true,
+      "podium": true,
+      "twin": false,
+      "cladding": "stone",
+      "facade": "punched",
+      "window_cols": 4
+    },
+    "triangles": 3180,
+    "min": [
+      -6.300000190734863,
+      -1.3899999856948853,
+      -7.349999904632568
+    ],
+    "max": [
+      6.300000190734863,
+      33.70000076293945,
+      8.220000267028809
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-04",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "floors": 12,
+      "setback_floor": 6,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "antenna",
+      "crown_h": 11.0,
+      "terrace": true,
+      "podium": true,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "ribbon",
+      "window_cols": 3
+    },
+    "triangles": 3540,
+    "min": [
+      -8.399999618530273,
+      -1.3899999856948853,
+      -6.300000190734863
+    ],
+    "max": [
+      8.399999618530273,
+      51.70000076293945,
+      7.110000133514404
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-05",
+    "spec": {
+      "width": 9.0,
+      "depth": 9.0,
+      "floors": 9,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "terrace",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 3540,
+    "min": [
+      -6.300000190734863,
+      -1.3899999856948853,
+      -6.300000190734863
+    ],
+    "max": [
+      6.300000190734863,
+      35.099998474121094,
+      7.110000133514404
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-06",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "floors": 6,
+      "setback_floor": 0,
+      "balconies": false,
+      "balcony_every": 3,
+      "crown": "spire",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "metal",
+      "facade": "glass",
+      "window_cols": 3
+    },
+    "triangles": 1204,
+    "min": [
+      -8.399999618530273,
+      -1.3899999856948853,
+      -7.349999904632568
+    ],
+    "max": [
+      8.399999618530273,
+      30.700000762939453,
+      8.220000267028809
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-07",
+    "spec": {
+      "width": 10.5,
+      "depth": 9.0,
+      "floors": 12,
+      "setback_floor": 6,
+      "balconies": false,
+      "balcony_every": 3,
+      "crown": "antenna",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "metal",
+      "facade": "punched",
+      "window_cols": 3
+    },
+    "triangles": 3816,
+    "min": [
+      -7.349999904632568,
+      -1.3899999856948853,
+      -6.300000190734863
+    ],
+    "max": [
+      7.349999904632568,
+      48.70000076293945,
+      7.110000133514404
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-08",
+    "spec": {
+      "width": 10.5,
+      "depth": 9.0,
+      "floors": 12,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "lantern",
+      "crown_h": 11.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "metal",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 3568,
+    "min": [
+      -5.639999866485596,
+      -1.2899999618530273,
+      -4.889999866485596
+    ],
+    "max": [
+      5.639999866485596,
+      46.0,
+      6.400000095367432
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-09",
+    "spec": {
+      "width": 9.0,
+      "depth": 9.0,
+      "floors": 12,
+      "setback_floor": 6,
+      "balconies": false,
+      "balcony_every": 3,
+      "crown": "antenna",
+      "crown_h": 11.0,
+      "terrace": true,
+      "podium": true,
+      "twin": false,
+      "cladding": "stone",
+      "facade": "punched",
+      "window_cols": 4
+    },
+    "triangles": 4980,
+    "min": [
+      -6.300000190734863,
+      -1.3899999856948853,
+      -6.300000190734863
+    ],
+    "max": [
+      6.300000190734863,
+      51.70000076293945,
+      7.110000133514404
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-10",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "floors": 12,
+      "setback_floor": 0,
+      "balconies": false,
+      "balcony_every": 3,
+      "crown": "antenna",
+      "crown_h": 11.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 3036,
+    "min": [
+      -6.389999866485596,
+      -1.2899999618530273,
+      -5.639999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      47.5,
+      5.639999866485596
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-11",
+    "spec": {
+      "width": 9.0,
+      "depth": 10.5,
+      "floors": 12,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "antenna",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "brick",
+      "facade": "glass",
+      "window_cols": 4
+    },
+    "triangles": 1848,
+    "min": [
+      -4.889999866485596,
+      -1.2899999618530273,
+      -5.639999866485596
+    ],
+    "max": [
+      4.889999866485596,
+      44.5,
+      7.150000095367432
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-12",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "floors": 12,
+      "setback_floor": 4,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "spire",
+      "crown_h": 11.0,
+      "terrace": true,
+      "podium": false,
+      "twin": false,
+      "cladding": "metal",
+      "facade": "glass",
+      "window_cols": 4
+    },
+    "triangles": 2200,
+    "min": [
+      -6.389999866485596,
+      -1.2899999618530273,
+      -5.639999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      47.5,
+      7.150000095367432
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-13",
+    "spec": {
+      "width": 9.0,
+      "depth": 9.0,
+      "floors": 6,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "terrace",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": true,
+      "twin": true,
+      "cladding": "brick",
+      "facade": "ribbon",
+      "window_cols": 3
+    },
+    "triangles": 2616,
+    "min": [
+      -6.300000190734863,
+      -1.3899999856948853,
+      -6.300000190734863
+    ],
+    "max": [
+      11.142000198364258,
+      26.100000381469727,
+      7.110000133514404
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-14",
+    "spec": {
+      "width": 9.0,
+      "depth": 10.5,
+      "floors": 12,
+      "setback_floor": 6,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "spire",
+      "crown_h": 11.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "punched",
+      "window_cols": 3
+    },
+    "triangles": 4336,
+    "min": [
+      -6.300000190734863,
+      -1.3899999856948853,
+      -7.349999904632568
+    ],
+    "max": [
+      6.300000190734863,
+      51.70000076293945,
+      8.220000267028809
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-15",
+    "spec": {
+      "width": 12.0,
+      "depth": 10.5,
+      "floors": 9,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "spire",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "brick",
+      "facade": "punched",
+      "window_cols": 3
+    },
+    "triangles": 3364,
+    "min": [
+      -8.399999618530273,
+      -1.3899999856948853,
+      -7.349999904632568
+    ],
+    "max": [
+      8.399999618530273,
+      39.70000076293945,
+      8.220000267028809
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-16",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "floors": 9,
+      "setback_floor": 6,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "spire",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "stone",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 3016,
+    "min": [
+      -6.389999866485596,
+      -1.2899999618530273,
+      -4.889999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      35.5,
+      6.400000095367432
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-17",
+    "spec": {
+      "width": 9.0,
+      "depth": 9.0,
+      "floors": 12,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "spire",
+      "crown_h": 11.0,
+      "terrace": false,
+      "podium": true,
+      "twin": true,
+      "cladding": "concrete",
+      "facade": "glass",
+      "window_cols": 4
+    },
+    "triangles": 2620,
+    "min": [
+      -6.300000190734863,
+      -1.3899999856948853,
+      -6.300000190734863
+    ],
+    "max": [
+      11.142000198364258,
+      51.70000076293945,
+      7.110000133514404
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-18",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "floors": 6,
+      "setback_floor": 4,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "spire",
+      "crown_h": 11.0,
+      "terrace": true,
+      "podium": true,
+      "twin": false,
+      "cladding": "metal",
+      "facade": "fins",
+      "window_cols": 4
+    },
+    "triangles": 2368,
+    "min": [
+      -8.399999618530273,
+      -1.3899999856948853,
+      -6.300000190734863
+    ],
+    "max": [
+      8.399999618530273,
+      33.70000076293945,
+      7.110000133514404
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-19",
+    "spec": {
+      "width": 9.0,
+      "depth": 10.5,
+      "floors": 9,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "antenna",
+      "crown_h": 8.0,
+      "terrace": true,
+      "podium": false,
+      "twin": true,
+      "cladding": "brick",
+      "facade": "fins",
+      "window_cols": 4
+    },
+    "triangles": 3348,
+    "min": [
+      -4.889999866485596,
+      -1.2899999618530273,
+      -5.639999866485596
+    ],
+    "max": [
+      11.142000198364258,
+      35.5,
+      7.150000095367432
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-20",
+    "spec": {
+      "width": 10.5,
+      "depth": 9.0,
+      "floors": 9,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "lantern",
+      "crown_h": 11.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "metal",
+      "facade": "ribbon",
+      "window_cols": 3
+    },
+    "triangles": 3028,
+    "min": [
+      -5.639999866485596,
+      -1.2899999618530273,
+      -4.889999866485596
+    ],
+    "max": [
+      5.639999866485596,
+      37.0,
+      6.400000095367432
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-21",
+    "spec": {
+      "width": 10.5,
+      "depth": 10.5,
+      "floors": 9,
+      "setback_floor": 4,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "spire",
+      "crown_h": 8.0,
+      "terrace": true,
+      "podium": true,
+      "twin": true,
+      "cladding": "brick",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 3388,
+    "min": [
+      -7.349999904632568,
+      -1.3899999856948853,
+      -7.349999904632568
+    ],
+    "max": [
+      12.99899959564209,
+      39.70000076293945,
+      8.220000267028809
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-22",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "floors": 6,
+      "setback_floor": 0,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "terrace",
+      "crown_h": 11.0,
+      "terrace": false,
+      "podium": false,
+      "twin": false,
+      "cladding": "stone",
+      "facade": "punched",
+      "window_cols": 4
+    },
+    "triangles": 2328,
+    "min": [
+      -6.389999866485596,
+      -1.2899999618530273,
+      -4.889999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      21.899999618530273,
+      4.889999866485596
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-23",
+    "spec": {
+      "width": 10.5,
+      "depth": 9.0,
+      "floors": 6,
+      "setback_floor": 4,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "terrace",
+      "crown_h": 11.0,
+      "terrace": true,
+      "podium": true,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "ribbon",
+      "window_cols": 3
+    },
+    "triangles": 2112,
+    "min": [
+      -7.349999904632568,
+      -1.3899999856948853,
+      -6.300000190734863
+    ],
+    "max": [
+      7.349999904632568,
+      26.100000381469727,
+      7.110000133514404
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-24",
+    "spec": {
+      "width": 9.0,
+      "depth": 10.5,
+      "floors": 9,
+      "setback_floor": 4,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "terrace",
+      "crown_h": 11.0,
+      "terrace": true,
+      "podium": false,
+      "twin": true,
+      "cladding": "concrete",
+      "facade": "fins",
+      "window_cols": 3
+    },
+    "triangles": 3000,
+    "min": [
+      -4.889999866485596,
+      -1.2899999618530273,
+      -5.639999866485596
+    ],
+    "max": [
+      11.142000198364258,
+      30.899999618530273,
+      5.639999866485596
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-25",
+    "spec": {
+      "width": 10.5,
+      "depth": 10.5,
+      "floors": 6,
+      "setback_floor": 4,
+      "balconies": false,
+      "balcony_every": 2,
+      "crown": "spire",
+      "crown_h": 8.0,
+      "terrace": true,
+      "podium": true,
+      "twin": true,
+      "cladding": "metal",
+      "facade": "glass",
+      "window_cols": 3
+    },
+    "triangles": 1372,
+    "min": [
+      -7.349999904632568,
+      -1.3899999856948853,
+      -7.349999904632568
+    ],
+    "max": [
+      12.99899959564209,
+      30.700000762939453,
+      8.220000267028809
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-26",
+    "spec": {
+      "width": 9.0,
+      "depth": 9.0,
+      "floors": 9,
+      "setback_floor": 6,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "terrace",
+      "crown_h": 8.0,
+      "terrace": true,
+      "podium": true,
+      "twin": true,
+      "cladding": "stone",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 3780,
+    "min": [
+      -6.300000190734863,
+      -1.3899999856948853,
+      -6.300000190734863
+    ],
+    "max": [
+      11.142000198364258,
+      35.099998474121094,
+      7.110000133514404
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-27",
+    "spec": {
+      "width": 10.5,
+      "depth": 10.5,
+      "floors": 6,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "spire",
+      "crown_h": 11.0,
+      "terrace": true,
+      "podium": false,
+      "twin": false,
+      "cladding": "metal",
+      "facade": "glass",
+      "window_cols": 3
+    },
+    "triangles": 904,
+    "min": [
+      -5.639999866485596,
+      -1.2899999618530273,
+      -5.639999866485596
+    ],
+    "max": [
+      5.639999866485596,
+      29.5,
+      7.150000095367432
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-28",
+    "spec": {
+      "width": 9.0,
+      "depth": 10.5,
+      "floors": 6,
+      "setback_floor": 0,
+      "balconies": true,
+      "balcony_every": 3,
+      "crown": "spire",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": true,
+      "twin": false,
+      "cladding": "concrete",
+      "facade": "glass",
+      "window_cols": 4
+    },
+    "triangles": 1384,
+    "min": [
+      -6.300000190734863,
+      -1.3899999856948853,
+      -7.349999904632568
+    ],
+    "max": [
+      6.300000190734863,
+      30.700000762939453,
+      8.220000267028809
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-29",
+    "spec": {
+      "width": 12.0,
+      "depth": 9.0,
+      "floors": 12,
+      "setback_floor": 0,
+      "balconies": false,
+      "balcony_every": 3,
+      "crown": "spire",
+      "crown_h": 8.0,
+      "terrace": true,
+      "podium": false,
+      "twin": false,
+      "cladding": "stone",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 3028,
+    "min": [
+      -6.389999866485596,
+      -1.2899999618530273,
+      -4.889999866485596
+    ],
+    "max": [
+      6.389999866485596,
+      44.5,
+      4.889999866485596
+    ]
+  },
+  {
+    "era": "future",
+    "name": "future-30",
+    "spec": {
+      "width": 9.0,
+      "depth": 9.0,
+      "floors": 6,
+      "setback_floor": 6,
+      "balconies": true,
+      "balcony_every": 2,
+      "crown": "terrace",
+      "crown_h": 8.0,
+      "terrace": false,
+      "podium": false,
+      "twin": true,
+      "cladding": "stone",
+      "facade": "ribbon",
+      "window_cols": 4
+    },
+    "triangles": 2124,
+    "min": [
+      -4.889999866485596,
+      -1.2899999618530273,
+      -4.889999866485596
+    ],
+    "max": [
+      11.142000198364258,
+      21.899999618530273,
+      6.400000095367432
+    ]
+  }
+]
