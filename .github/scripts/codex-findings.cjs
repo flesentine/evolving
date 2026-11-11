@@ -10,7 +10,7 @@ const fs = require('fs');
 
 const CODEX_LOGIN = 'chatgpt-codex-connector[bot]';
 const MARKER_RE =
-  /<!--\s*opencode-autofix\s+attempt=(\d+)\s+sha=([0-9a-f]{7,40})\s+findings=([0-9a-f]{6,64})\s*-->/gi;
+  /<!--\s*opencode-autofix\s+attempt=(\d+)\s+sha=([0-9a-f]{40})\s+findings=([0-9a-f]{12})\s*-->/gi;
 const TRUSTED_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
 const TRUSTED_BOTS = new Set(['github-actions[bot]', 'opencode-agent[bot]']);
 // Attempt markers are written by the fix workflow and must not be accepted
@@ -137,8 +137,43 @@ function trustedAuthor(pr, owner) {
   return !!(pr.user && TRUSTED_BOTS.has(pr.user.login));
 }
 
+/**
+ * Keep the sections that actually trigger a fix ahead of the context
+ * truncation. The one-line P0/P1 hits are appended last so they survive even
+ * when an individual review section is very long.
+ */
+function selectFindingsText(text, budget = 16000) {
+  const all = normalize(text);
+  if (!all) return '';
+
+  const sections = all.split(/\n\n---\n\n/);
+  const actionable = [];
+  const context = [];
+  for (const section of sections) {
+    if (countFindings(section).count > 0) actionable.push(section);
+    else context.push(section);
+  }
+
+  const hits = countFindings(all).hits.join('\n');
+  const hitBlock = hits
+    ? `\n\nActionable P0/P1 lines (all must be addressed):\n${hits}`
+    : '';
+  const contextBudget = Math.max(2000, budget - hitBlock.length);
+
+  let body = actionable.join('\n\n---\n\n');
+  const other = context.join('\n\n---\n\n');
+  if (other && body.length < contextBudget) {
+    const room = contextBudget - body.length - 2;
+    if (room > 200) {
+      body += `\n\nAdditional review context (truncated):\n${other.slice(0, room)}`;
+    }
+  }
+  if (!body) body = all;
+  return `${body.slice(0, contextBudget)}${hitBlock}`;
+}
+
 function buildPrompt(pr, sha, findings, reviewUrl) {
-  const excerpt = normalize(findings).slice(0, 12000);
+  const excerpt = selectFindingsText(findings, 16000);
   return `You are fixing Codex review findings on PR #${pr} in this repository.
 
 Current head commit: ${sha}
@@ -344,9 +379,13 @@ async function detect({ github, context, core }) {
     const body = comment.body || '';
     for (const match of body.matchAll(MARKER_RE)) {
       const attempt = Number(match[1]);
+      // A malformed or out-of-range marker must never exhaust the budget.
+      // Old markers for earlier commits still count toward the per-PR cap;
+      // only the authenticated workflow bot can create them.
+      if (!Number.isInteger(attempt) || attempt < 1 || attempt > 2) continue;
       const sha = match[2];
       const markerHash = match[3].toLowerCase();
-      if (Number.isFinite(attempt)) attempts = Math.max(attempts, attempt);
+      attempts = Math.max(attempts, attempt);
       if (sameSha(sha, headSha) && markerHash === findingsHash(combined)) {
         sameShaAndFindings = true;
       }
@@ -378,7 +417,7 @@ async function detect({ github, context, core }) {
     same_findings: sameShaAndFindings,
     findings_count: count,
     findings_hash: hash,
-    findings_excerpt: combined.slice(0, 6000),
+    findings_excerpt: selectFindingsText(combined, 6000),
     prompt: shouldFix ? buildPrompt(prNumber, headSha, combined, reviewUrl) : '',
     review_url: reviewUrl,
   };
@@ -423,6 +462,7 @@ async function detect({ github, context, core }) {
 
 module.exports = {
   CODEX_LOGIN,
+  buildPrompt,
   detect,
   hasActionableFindings,
   countFindings,
@@ -431,4 +471,5 @@ module.exports = {
   fixtureText,
   isStatusOnly,
   sameSha,
+  selectFindingsText,
 };
