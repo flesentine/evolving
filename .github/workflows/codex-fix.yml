@@ -1,0 +1,318 @@
+name: codex-fix
+
+on:
+  workflow_run:
+    workflows: ["codex-detect"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  fix:
+    # Disabled until a human enables the repository variable after the
+    # read-only detection test. Set OPENCODE_AUTOFIX_ENABLED=true to arm it.
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      vars.OPENCODE_AUTOFIX_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+    outputs:
+      pushed: ${{ steps.push.outputs.pushed }}
+      head_ref: ${{ steps.meta.outputs.head_ref }}
+      pr: ${{ steps.meta.outputs.pr }}
+    steps:
+      - name: Download detection result
+        uses: actions/download-artifact@v4
+        with:
+          name: codex-findings
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/automation
+
+      - name: Validate event and pull request
+        id: meta
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const artifact = path.join(
+              process.env.RUNNER_TEMP, 'automation', 'codex-findings.json',
+            );
+            core.setOutput('ok', 'false');
+            if (!fs.existsSync(artifact)) {
+              core.info('no detection artifact');
+              return;
+            }
+
+            let p;
+            try {
+              p = JSON.parse(fs.readFileSync(artifact, 'utf8'));
+            } catch (error) {
+              core.info(`invalid detection artifact: ${error.message}`);
+              return;
+            }
+
+            const attempt = Number(p.attempt);
+            const maxAttempts = Number(p.max_attempts);
+            core.setOutput('pr', String(p.pr || ''));
+            core.setOutput('head_ref', p.head_ref || '');
+            core.setOutput('sha', p.sha || '');
+            core.setOutput('attempt', String(attempt || 1));
+            core.setOutput('findings_hash', p.findings_hash || '');
+            core.setOutput('prompt', p.prompt || '');
+
+            if (!p.should_fix || p.test) {
+              core.info('detector did not request a fix (or this is a test run)');
+              return;
+            }
+            if (p.base_ref !== 'main') {
+              core.info('base branch is not main');
+              return;
+            }
+            if (!p.head_ref || ['main', 'master'].includes(p.head_ref)) {
+              core.info('refusing to write to the default branch');
+              return;
+            }
+            if (!Number.isInteger(attempt) || attempt < 1 || attempt > 2) {
+              core.info(`invalid attempt ${p.attempt}; the cap is two`);
+              return;
+            }
+            if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 2 || attempt > maxAttempts) {
+              core.info(`invalid max_attempts ${p.max_attempts}; the cap is two`);
+              return;
+            }
+            if (!/^[0-9a-f]{40}$/i.test(String(p.sha || ''))) {
+              core.info('invalid head SHA in detection artifact');
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const { data: pr } = await github.rest.pulls.get({
+              owner, repo, pull_number: Number(p.pr),
+            });
+            if (pr.state !== 'open') {
+              core.info('PR is not open');
+              return;
+            }
+            if (pr.head.repo?.full_name !== `${owner}/${repo}`) {
+              core.info('fork PR');
+              return;
+            }
+            if (pr.head.ref !== p.head_ref) {
+              core.info('PR head branch changed');
+              return;
+            }
+            if (pr.head.sha !== p.sha) {
+              core.info('PR head commit changed since detection');
+              return;
+            }
+            if (pr.base.ref !== 'main') {
+              core.info('PR base is not main');
+              return;
+            }
+            const trusted =
+              ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(pr.author_association) ||
+              pr.user?.login === owner ||
+              ['github-actions[bot]', 'opencode-agent[bot]'].includes(pr.user?.login);
+            if (!trusted) {
+              core.info(`untrusted PR author ${pr.user?.login} (${pr.author_association})`);
+              return;
+            }
+            if (!p.prompt) {
+              core.info('empty fix prompt');
+              return;
+            }
+            core.setOutput('ok', 'true');
+
+      - name: Checkout pull request branch
+        if: steps.meta.outputs.ok == 'true'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.meta.outputs.head_ref }}
+          fetch-depth: 0
+          # The OpenCode agent must not be able to push or call the GitHub API.
+          # Credentials are configured only in the final push step.
+          persist-credentials: false
+
+      - name: Verify checked-out commit
+        if: steps.meta.outputs.ok == 'true'
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.meta.outputs.sha }}
+          HEAD_REF: ${{ steps.meta.outputs.head_ref }}
+        run: |
+          set -euo pipefail
+          actual=$(git rev-parse HEAD)
+          if [ "${actual}" != "${EXPECTED_SHA}" ]; then
+            echo "::error::checked-out commit ${actual} does not match detected head ${EXPECTED_SHA}"
+            exit 1
+          fi
+          git check-ref-format "refs/heads/${HEAD_REF}"
+
+      - name: Configure git
+        if: steps.meta.outputs.ok == 'true'
+        shell: bash
+        run: |
+          git config user.name "opencode-autofix[bot]"
+          git config user.email "opencode-autofix[bot]@users.noreply.github.com"
+
+      - name: Record attempt
+        if: steps.meta.outputs.ok == 'true'
+        uses: actions/github-script@v7
+        env:
+          PR: ${{ steps.meta.outputs.pr }}
+          ATTEMPT: ${{ steps.meta.outputs.attempt }}
+          SHA: ${{ steps.meta.outputs.sha }}
+          HASH: ${{ steps.meta.outputs.findings_hash }}
+        with:
+          script: |
+            const pr = Number(process.env.PR);
+            const attempt = Number(process.env.ATTEMPT);
+            const sha = process.env.SHA;
+            const hash = process.env.HASH;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: `<!-- opencode-autofix attempt=${attempt} sha=${sha} findings=${hash} -->\nOpenCode autofix attempt ${attempt} for ${sha.slice(0, 7)}.`,
+            });
+
+      - name: Install OpenCode
+        if: steps.meta.outputs.ok == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://opencode.ai/install | bash
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+
+      - name: Run OpenCode fixer
+        if: steps.meta.outputs.ok == 'true'
+        shell: bash
+        env:
+          # Only the model credential is exposed to the agent. It has no
+          # GitHub token, so it cannot push, merge, or force-push anything.
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          PROMPT: ${{ steps.meta.outputs.prompt }}
+          ATTEMPT: ${{ steps.meta.outputs.attempt }}
+        run: |
+          set -euo pipefail
+          opencode run --auto \
+            --model opencode-go/deepseek-v4.1-flash \
+            --agent build \
+            --title "Codex autofix attempt ${ATTEMPT}" \
+            "${PROMPT}"
+
+      - name: Commit and push to the pull request branch
+        id: push
+        if: steps.meta.outputs.ok == 'true'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_REF: ${{ steps.meta.outputs.head_ref }}
+          ATTEMPT: ${{ steps.meta.outputs.attempt }}
+        run: |
+          set -euo pipefail
+          # Configure credentials only for the guarded push below.
+          git remote set-url origin \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
+          git fetch origin "${HEAD_REF}"
+          before=$(git rev-parse "origin/${HEAD_REF}")
+
+          # Refuse agent changes to the automation itself. Everything else is
+          # fair game for a Codex fix.
+          changed=$(
+            {
+              git diff --name-only "origin/${HEAD_REF}"...HEAD
+              git diff --name-only
+              git diff --cached --name-only
+              git ls-files --others --exclude-standard
+            } | sort -u
+          )
+          if printf '%s\n' "${changed}" | grep -Eq '^\.github/(workflows|scripts)/'; then
+            echo "::error::refusing to push changes to .github/workflows or .github/scripts"
+            exit 1
+          fi
+          printf 'changed files:\n%s\n' "${changed}"
+
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "opencode: address Codex review (attempt ${ATTEMPT})"
+          fi
+
+          # A normal push only: never force, never target main.
+          git push origin "HEAD:refs/heads/${HEAD_REF}"
+          git fetch origin "${HEAD_REF}"
+          after=$(git rev-parse "origin/${HEAD_REF}")
+
+          if [ "${before}" != "${after}" ]; then
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report result
+        if: always() && steps.meta.outputs.ok == 'true'
+        uses: actions/github-script@v7
+        env:
+          PR: ${{ steps.meta.outputs.pr }}
+          ATTEMPT: ${{ steps.meta.outputs.attempt }}
+          PUSHED: ${{ steps.push.outputs.pushed }}
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const pr = Number(process.env.PR);
+            const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const pushed = process.env.PUSHED === 'true';
+            const status = process.env.JOB_STATUS || 'unknown';
+            const body = pushed
+              ? `OpenCode pushed corrections for attempt ${process.env.ATTEMPT}. Run: ${url}. Codex can review the new commit.`
+              : `OpenCode attempt ${process.env.ATTEMPT} finished with status ${status} and no new commits. Human review may be needed. Run: ${url}.`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body,
+            });
+
+  build:
+    needs: fix
+    if: needs.fix.outputs.pushed == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout corrected branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.fix.outputs.head_ref }}
+          fetch-depth: 0
+
+      - name: Build and verify
+        run: ./Scripts/build.sh
+
+      - name: Report build failure
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          PR: ${{ needs.fix.outputs.pr }}
+        with:
+          script: |
+            const pr = Number(process.env.PR);
+            if (!pr) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: `Automatic build after OpenCode attempt failed. Human review is required. Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });
