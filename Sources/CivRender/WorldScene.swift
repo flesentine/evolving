@@ -622,7 +622,8 @@ final class WorldScene {
                     for (pointIndex, point) in profile.enumerated() {
                         let p = sample.position + side * point.offset
                         // Sink the waterline vertex a few millimetres below
-                        // the sheet. Coplanar bank and water edges z-fight,
+                        // the sheet. This offset is measured in world units.
+                        // Coplanar bank and water edges z-fight,
                         // and the bank triangles win in alternating pixels,
                         // which reads as a sawtooth of land inside the water.
                         let y = pointIndex == 0
