@@ -1,0 +1,76 @@
+name: codex-detect
+
+on:
+  # Codex normally reports through review events. `pull_request` is also
+  # included so a review that arrives without a review event (and a re-run of
+  # this read-only detector) can still be evaluated for the current head SHA.
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review:
+    types: [submitted, edited]
+  pull_request_review_comment:
+    types: [created, edited]
+  issue_comment:
+    types: [created, edited]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: true
+        type: number
+      fixture:
+        description: Parser fixture (live uses real Codex reviews; fixtures are test-only)
+        required: false
+        default: live
+        type: choice
+        options: [live, none, running, zero, p1, p0]
+      max_attempts:
+        description: Maximum automatic fix attempts per PR
+        required: false
+        default: 2
+        type: number
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+concurrency:
+  group: codex-detect-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}-${{ inputs.fixture || 'live' }}
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    # Fork PRs must not execute their copy of the detector. Review events for
+    # same-repository PRs are trusted; issue comments are re-checked by the
+    # detector itself once it has the pull request.
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'issue_comment' ||
+      (github.event.pull_request &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Detect Codex findings
+        id: detect
+        uses: actions/github-script@v7
+        env:
+          OPENCODE_AUTOFIX_MAX: ${{ inputs.max_attempts || 2 }}
+        with:
+          script: |
+            const { detect } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/codex-findings.cjs`);
+            await detect({ github, context, core });
+
+      - name: Upload detection result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-findings
+          path: codex-findings.json
+          if-no-files-found: warn
+          retention-days: 2

@@ -1,0 +1,527 @@
+name: codex-fix
+
+on:
+  workflow_run:
+    workflows: ["codex-detect"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  # Read the untrusted artifact only to discover which pull request it names.
+  # The fix job below never trusts this job's artifact data beyond the PR
+  # number; it reconstructs findings with the default-branch parser.
+  prepare:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      pr: ${{ steps.read.outputs.pr }}
+    steps:
+      - name: Download detection result
+        uses: actions/download-artifact@v4
+        with:
+          name: codex-findings
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/automation
+
+      - name: Read detection result
+        id: read
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const artifact = path.join(
+              process.env.RUNNER_TEMP,
+              'automation',
+              'codex-findings.json',
+            );
+            if (!fs.existsSync(artifact)) {
+              core.info('no detection artifact');
+              return;
+            }
+            let data;
+            try {
+              data = JSON.parse(fs.readFileSync(artifact, 'utf8'));
+            } catch (error) {
+              core.info(`invalid detection artifact: ${error.message}`);
+              return;
+            }
+            if (data.should_fix !== true || data.test) {
+              core.info('detector did not request a live fix');
+              return;
+            }
+            const pr = Number(data.pr);
+            if (!Number.isInteger(pr) || pr <= 0) {
+              core.info('artifact has no valid pull request number');
+              return;
+            }
+            core.setOutput('pr', String(pr));
+
+  fix:
+    needs: prepare
+    # Disabled until a human enables the repository variable after the
+    # read-only detection test. Set OPENCODE_AUTOFIX_ENABLED=true to arm it.
+    if: |
+      needs.prepare.outputs.pr != '' &&
+      vars.OPENCODE_AUTOFIX_ENABLED == 'true'
+    # Serialize fixes for one pull request. The detector can produce several
+    # artifacts in quick succession; the validator below re-reads the attempt
+    # markers after this lock is acquired before starting another agent.
+    concurrency:
+      group: codex-fix-${{ needs.prepare.outputs.pr }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+    outputs:
+      pushed: ${{ steps.push.outputs.pushed }}
+      head_ref: ${{ steps.meta.outputs.head_ref }}
+      pr: ${{ steps.meta.outputs.pr }}
+    steps:
+      - name: Download detection result
+        uses: actions/download-artifact@v4
+        with:
+          name: codex-findings
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/automation
+
+      - name: Checkout trusted automation scripts
+        uses: actions/checkout@v6
+        with:
+          # The artifact is untrusted data. Reconstruct the findings and the
+          # prompt with the default-branch parser instead of using the
+          # artifact's prompt.
+          ref: ${{ github.event.repository.default_branch }}
+          path: trusted
+          fetch-depth: 1
+          # This checkout must not leave the job's write token behind for the
+          # OpenCode agent or build scripts to reuse.
+          persist-credentials: false
+
+      - name: Validate artifact and reconstruct findings
+        id: meta
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT: ${{ runner.temp }}/automation/codex-findings.json
+          VERIFIED: ${{ runner.temp }}/verified-findings.json
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            core.setOutput('ok', 'false');
+
+            const artifactPath = process.env.ARTIFACT;
+            if (!fs.existsSync(artifactPath)) {
+              core.info('no detection artifact');
+              return;
+            }
+
+            let artifact;
+            try {
+              artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
+            } catch (error) {
+              core.info(`invalid detection artifact: ${error.message}`);
+              return;
+            }
+
+            const artifactPr = Number(artifact.pr);
+            if (!Number.isInteger(artifactPr) || artifactPr <= 0) {
+              core.info('artifact has no valid pull request number');
+              return;
+            }
+            if (artifact.should_fix !== true || artifact.test) {
+              core.info('detector did not request a live fix');
+              return;
+            }
+            if (!/^[0-9a-f]{40}$/i.test(String(artifact.sha || ''))) {
+              core.info('artifact has no valid head SHA');
+              return;
+            }
+
+            const run = context.payload.workflow_run || {};
+            const defaultBranch =
+              context.payload.repository?.default_branch || 'main';
+            if (run.head_repository?.full_name !==
+                `${context.repo.owner}/${context.repo.repo}`) {
+              core.info('detection run is not from this repository');
+              return;
+            }
+
+            const trustedPath = path.join(
+              process.env.GITHUB_WORKSPACE,
+              'trusted',
+              '.github',
+              'scripts',
+              'codex-findings.cjs',
+            );
+            if (!fs.existsSync(trustedPath)) {
+              core.info('trusted detector is missing from the default branch');
+              return;
+            }
+
+            const trusted = require(trustedPath);
+            process.env.CODEX_FINDINGS_OUTPUT = process.env.VERIFIED;
+            process.env.OPENCODE_AUTOFIX_MAX = '2';
+            const quietCore = {
+              info: (message) => core.info(`trusted detector: ${message}`),
+              setOutput: () => {},
+              summary: {
+                addHeading() { return this; },
+                addTable() { return this; },
+                addCodeBlock() { return this; },
+                async write() {},
+              },
+            };
+            const syntheticContext = {
+              repo: context.repo,
+              eventName: 'workflow_dispatch',
+              payload: {
+                inputs: {
+                  pr: String(artifactPr),
+                  fixture: 'live',
+                  max_attempts: '2',
+                },
+              },
+            };
+
+            try {
+              await trusted.detect({
+                github,
+                context: syntheticContext,
+                core: quietCore,
+              });
+            } catch (error) {
+              core.info(`trusted detector failed: ${error.message}`);
+              return;
+            }
+            if (!fs.existsSync(process.env.VERIFIED)) {
+              core.info('trusted detector produced no result');
+              return;
+            }
+
+            let p;
+            try {
+              p = JSON.parse(fs.readFileSync(process.env.VERIFIED, 'utf8'));
+            } catch (error) {
+              core.info(`invalid verified result: ${error.message}`);
+              return;
+            }
+
+            if (!p.should_fix || p.test) {
+              core.info('trusted detector did not request a fix');
+              return;
+            }
+            if (p.maxed || p.same_findings) {
+              core.info('trusted detector says the attempt cap was reached or already tried');
+              return;
+            }
+            if (String(p.pr) !== String(artifactPr)) {
+              core.info('artifact PR and trusted PR disagree');
+              return;
+            }
+            // PR review events run on the PR head. issue_comment and manual
+            // dispatches may run on the default branch instead, where the run
+            // SHA is the default branch tip, not the PR head. Bind strictly
+            // only when the run is actually on the PR branch.
+            const prHeadEvent = [
+              'pull_request',
+              'pull_request_review',
+              'pull_request_review_comment',
+            ].includes(run.event);
+            if (prHeadEvent) {
+              if (run.head_branch && run.head_branch !== p.head_ref) {
+                core.info('detection run branch and PR head branch disagree');
+                return;
+              }
+              if (run.head_sha &&
+                  String(run.head_sha).toLowerCase() !==
+                    String(p.sha).toLowerCase()) {
+                core.info('detection run SHA and PR head SHA disagree');
+                return;
+              }
+            } else if (run.head_branch &&
+                       run.head_branch !== p.head_ref &&
+                       run.head_branch !== defaultBranch) {
+              core.info('detection run is on neither the PR head nor the default branch');
+              return;
+            } else if (run.head_branch === p.head_ref && run.head_sha &&
+                       String(run.head_sha).toLowerCase() !==
+                         String(p.sha).toLowerCase()) {
+              core.info('detection run SHA and PR head SHA disagree');
+              return;
+            }
+            if (String(artifact.sha).toLowerCase() !== String(p.sha).toLowerCase()) {
+              core.info('stale artifact: the PR head moved since detection');
+              return;
+            }
+            if (artifact.head_ref && artifact.head_ref !== p.head_ref) {
+              core.info('artifact branch and trusted branch disagree');
+              return;
+            }
+            if (p.base_ref !== 'main') {
+              core.info('base branch is not main');
+              return;
+            }
+            if (!p.head_ref || ['main', 'master'].includes(p.head_ref)) {
+              core.info('refusing to write to the default branch');
+              return;
+            }
+
+            const attempt = Number(p.attempt);
+            const maxAttempts = Number(p.max_attempts);
+            if (!Number.isInteger(attempt) || attempt < 1 || attempt > 2) {
+              core.info(`invalid attempt ${p.attempt}; the cap is two`);
+              return;
+            }
+            if (!Number.isInteger(maxAttempts) || maxAttempts < 1 ||
+                maxAttempts > 2 || attempt > maxAttempts) {
+              core.info(`invalid max_attempts ${p.max_attempts}; the cap is two`);
+              return;
+            }
+            if (!p.prompt) {
+              core.info('trusted detector produced an empty prompt');
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const { data: pr } = await github.rest.pulls.get({
+              owner, repo, pull_number: artifactPr,
+            });
+            if (pr.state !== 'open') {
+              core.info('PR is not open');
+              return;
+            }
+            if (pr.head.repo?.full_name !== `${owner}/${repo}`) {
+              core.info('fork PR');
+              return;
+            }
+            if (pr.head.ref !== p.head_ref) {
+              core.info('PR head branch changed');
+              return;
+            }
+            if (pr.head.sha !== p.sha) {
+              core.info('PR head commit changed since verification');
+              return;
+            }
+            if (pr.base.ref !== 'main') {
+              core.info('PR base is not main');
+              return;
+            }
+            const trustedAuthor =
+              ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(pr.author_association) ||
+              pr.user?.login === owner ||
+              ['github-actions[bot]', 'opencode-agent[bot]'].includes(pr.user?.login);
+            if (!trustedAuthor) {
+              core.info(`untrusted PR author ${pr.user?.login} (${pr.author_association})`);
+              return;
+            }
+
+            core.setOutput('pr', String(artifactPr));
+            core.setOutput('head_ref', p.head_ref);
+            core.setOutput('sha', p.sha);
+            core.setOutput('attempt', String(attempt));
+            core.setOutput('findings_hash', p.findings_hash || '');
+            core.setOutput('prompt', p.prompt);
+            core.setOutput('ok', 'true');
+
+      - name: Checkout pull request branch
+        if: steps.meta.outputs.ok == 'true'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.meta.outputs.head_ref }}
+          path: pr
+          fetch-depth: 0
+          # The OpenCode agent must not be able to push or call the GitHub API.
+          # Credentials are configured only in the final push step.
+          persist-credentials: false
+
+      - name: Verify checked-out commit
+        if: steps.meta.outputs.ok == 'true'
+        working-directory: pr
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.meta.outputs.sha }}
+          HEAD_REF: ${{ steps.meta.outputs.head_ref }}
+        run: |
+          set -euo pipefail
+          actual=$(git rev-parse HEAD)
+          if [ "${actual}" != "${EXPECTED_SHA}" ]; then
+            echo "::error::checked-out commit ${actual} does not match verified head ${EXPECTED_SHA}"
+            exit 1
+          fi
+          git check-ref-format "refs/heads/${HEAD_REF}"
+
+      - name: Configure git
+        if: steps.meta.outputs.ok == 'true'
+        working-directory: pr
+        shell: bash
+        run: |
+          git config user.name "opencode-autofix[bot]"
+          git config user.email "opencode-autofix[bot]@users.noreply.github.com"
+
+      - name: Record attempt
+        if: steps.meta.outputs.ok == 'true'
+        uses: actions/github-script@v7
+        env:
+          PR: ${{ steps.meta.outputs.pr }}
+          ATTEMPT: ${{ steps.meta.outputs.attempt }}
+          SHA: ${{ steps.meta.outputs.sha }}
+          HASH: ${{ steps.meta.outputs.findings_hash }}
+        with:
+          script: |
+            const pr = Number(process.env.PR);
+            const attempt = Number(process.env.ATTEMPT);
+            const sha = process.env.SHA;
+            const hash = process.env.HASH;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: `<!-- opencode-autofix attempt=${attempt} sha=${sha} findings=${hash} -->\nOpenCode autofix attempt ${attempt} for ${sha.slice(0, 7)}.`,
+            });
+
+      - name: Install OpenCode
+        if: steps.meta.outputs.ok == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://opencode.ai/install | bash
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+
+      - name: Run OpenCode fixer
+        if: steps.meta.outputs.ok == 'true'
+        working-directory: pr
+        shell: bash
+        env:
+          # Only the model credential is exposed to the agent. It has no
+          # GitHub token, so it cannot push, merge, or force-push anything.
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          PROMPT: ${{ steps.meta.outputs.prompt }}
+          ATTEMPT: ${{ steps.meta.outputs.attempt }}
+        run: |
+          set -euo pipefail
+          opencode run --auto \
+            --model opencode-go/deepseek-v4.1-flash \
+            --agent build \
+            --title "Codex autofix attempt ${ATTEMPT}" \
+            "${PROMPT}"
+
+      - name: Commit and push to the pull request branch
+        id: push
+        if: steps.meta.outputs.ok == 'true'
+        working-directory: pr
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_REF: ${{ steps.meta.outputs.head_ref }}
+          ATTEMPT: ${{ steps.meta.outputs.attempt }}
+        run: |
+          set -euo pipefail
+          # Configure credentials only for the guarded push below.
+          git remote set-url origin \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
+          git fetch origin "${HEAD_REF}"
+          before=$(git rev-parse "origin/${HEAD_REF}")
+
+          # Refuse agent changes to the automation itself. Everything else is
+          # fair game for a Codex fix.
+          changed=$(
+            {
+              git diff --name-only "origin/${HEAD_REF}"...HEAD
+              git diff --name-only
+              git diff --cached --name-only
+              git ls-files --others --exclude-standard
+            } | sort -u
+          )
+          if printf '%s\n' "${changed}" | grep -Eq '^\.github/(workflows|scripts)/'; then
+            echo "::error::refusing to push changes to .github/workflows or .github/scripts"
+            exit 1
+          fi
+          printf 'changed files:\n%s\n' "${changed}"
+
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "opencode: address Codex review (attempt ${ATTEMPT})"
+          fi
+
+          # A normal push only: never force, never target main.
+          git push origin "HEAD:refs/heads/${HEAD_REF}"
+          git fetch origin "${HEAD_REF}"
+          after=$(git rev-parse "origin/${HEAD_REF}")
+
+          if [ "${before}" != "${after}" ]; then
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report result
+        if: always() && steps.meta.outputs.ok == 'true'
+        uses: actions/github-script@v7
+        env:
+          PR: ${{ steps.meta.outputs.pr }}
+          ATTEMPT: ${{ steps.meta.outputs.attempt }}
+          PUSHED: ${{ steps.push.outputs.pushed }}
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const pr = Number(process.env.PR);
+            const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const pushed = process.env.PUSHED === 'true';
+            const status = process.env.JOB_STATUS || 'unknown';
+            const body = pushed
+              ? `OpenCode pushed corrections for attempt ${process.env.ATTEMPT}. Run: ${url}. Codex can review the new commit.`
+              : `OpenCode attempt ${process.env.ATTEMPT} finished with status ${status} and no new commits. Human review may be needed. Run: ${url}.`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body,
+            });
+
+  build:
+    needs: fix
+    if: needs.fix.outputs.pushed == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout corrected branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.fix.outputs.head_ref }}
+          fetch-depth: 0
+
+      - name: Build and verify
+        run: ./Scripts/build.sh
+
+      - name: Report build failure
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          PR: ${{ needs.fix.outputs.pr }}
+        with:
+          script: |
+            const pr = Number(process.env.PR);
+            if (!pr) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: `Automatic build after OpenCode attempt failed. Human review is required. Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });
