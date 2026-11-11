@@ -18,6 +18,28 @@ function normalize(text) {
   return String(text || '').replace(/\r\n/g, '\n').trim();
 }
 
+function sameSha(a, b) {
+  const left = String(a || '').toLowerCase();
+  const right = String(b || '').toLowerCase();
+  if (!left || !right) return false;
+  if (left === right) return true;
+  return (left.length >= 7 && right.startsWith(left)) ||
+    (right.length >= 7 && left.startsWith(right));
+}
+
+/**
+ * Codex summary comments embed the reviewed SHA both in a hidden JSON state
+ * block and in the visible "Reviewed commit" line. A summary that cannot be
+ * tied to the current head must not contribute actionable text.
+ */
+function extractReviewSha(text) {
+  const body = normalize(text);
+  let match = /"commit_sha"\s*:\s*"([0-9a-f]{40})"/i.exec(body);
+  if (match) return match[1].toLowerCase();
+  match = /\breviewed commit\b[^\n]{0,40}?([0-9a-f]{7,40})\b/i.exec(body);
+  return match ? match[1].toLowerCase() : null;
+}
+
 function findingsHash(text) {
   return crypto.createHash('sha256').update(normalize(text)).digest('hex').slice(0, 12);
 }
@@ -94,6 +116,8 @@ function fixtureText(name) {
       return 'Codex Review\n\nP0: 0\nP1: 0\nNo actionable findings.';
     case 'running':
       return 'Codex is running. Review in progress; findings will appear below.';
+    case 'live':
+      return '';
     case 'none':
     default:
       return 'Codex Review\n\nNo P0/P1 issues found. LGTM.';
@@ -131,7 +155,10 @@ async function detect({ github, context, core }) {
   const { owner, repo } = context.repo;
   const isDispatch = context.eventName === 'workflow_dispatch';
   const inputs = context.payload.inputs || {};
-  const fixture = isDispatch ? String(inputs.fixture || '') : '';
+  const fixtureName = isDispatch ? String(inputs.fixture || 'live') : '';
+  // A manual "live" dispatch is a real detection, not a parser fixture.
+  const useFixture = isDispatch && fixtureName !== 'live';
+  const fixture = useFixture ? fixtureName : '';
   let prNumber;
   let reviewedSha = null;
   let eventBody = '';
@@ -171,6 +198,11 @@ async function detect({ github, context, core }) {
     }
     prNumber = context.payload.issue.number;
     eventBody = context.payload.comment.body || '';
+    reviewedSha = extractReviewSha(eventBody);
+    if (!reviewedSha) {
+      core.info('summary comment has no reviewed SHA; ignoring its text');
+      eventBody = '';
+    }
   } else if (isDispatch) {
     prNumber = Number(inputs.pr);
   } else {
@@ -222,7 +254,7 @@ async function detect({ github, context, core }) {
   }
 
   const headSha = pr.head.sha;
-  if (reviewedSha && reviewedSha !== headSha) {
+  if (reviewedSha && !sameSha(reviewedSha, headSha)) {
     core.info(`stale review: ${reviewedSha} != ${headSha}`);
     return;
   }
@@ -257,6 +289,15 @@ async function detect({ github, context, core }) {
     (c) => c.user?.login === CODEX_LOGIN && c.commit_id === headSha,
   );
 
+  // Attempt markers and Codex summary updates both live in issue comments.
+  // A summary is trusted only when it names the current head SHA.
+  const issueComments = await github.paginate(github.rest.issues.listComments, {
+    owner, repo, issue_number: prNumber, per_page: 100,
+  });
+  const codexIssueComments = issueComments.filter((c) =>
+    c.user?.login === CODEX_LOGIN &&
+    sameSha(extractReviewSha(c.body || ''), headSha));
+
   const seen = new Set();
   const parts = [];
   const addText = (value) => {
@@ -266,23 +307,19 @@ async function detect({ github, context, core }) {
     parts.push(text);
   };
 
-  if (isDispatch) {
+  if (useFixture) {
     addText(fixtureText(fixture));
   } else {
     addText(eventBody);
     for (const review of codexReviews) addText(review.body || '');
     for (const comment of codexComments) addText(comment.body || '');
+    for (const comment of codexIssueComments) addText(comment.body || '');
   }
 
   const combined = parts.join('\n\n---\n\n');
   const count = countFindings(combined).count;
   const hasFindings = count > 0;
 
-  // Attempt markers are posted by the fix workflow. They persist on the PR
-  // and let later reviews see how many automatic corrections already ran.
-  const issueComments = await github.paginate(github.rest.issues.listComments, {
-    owner, repo, issue_number: prNumber, per_page: 100,
-  });
   let attempts = 0;
   let sameShaAndFindings = false;
   for (const comment of issueComments) {
@@ -292,7 +329,7 @@ async function detect({ github, context, core }) {
       const sha = match[2];
       const markerHash = match[3].toLowerCase();
       if (Number.isFinite(attempt)) attempts = Math.max(attempts, attempt);
-      if (headSha.startsWith(sha) && markerHash === findingsHash(combined)) {
+      if (sameSha(sha, headSha) && markerHash === findingsHash(combined)) {
         sameShaAndFindings = true;
       }
     }
@@ -312,13 +349,15 @@ async function detect({ github, context, core }) {
 
   const payload = {
     should_fix: shouldFix,
-    test: isDispatch,
+    test: useFixture,
     pr: prNumber,
     sha: headSha,
     head_ref: pr.head.ref,
     base_ref: pr.base.ref,
     attempt,
     max_attempts: maxAttempts,
+    maxed,
+    same_findings: sameShaAndFindings,
     findings_count: count,
     findings_hash: hash,
     findings_excerpt: combined.slice(0, 6000),
@@ -327,7 +366,7 @@ async function detect({ github, context, core }) {
   };
 
   core.setOutput('should_fix', String(shouldFix));
-  core.setOutput('test', String(isDispatch));
+  core.setOutput('test', String(useFixture));
   core.setOutput('pr', String(prNumber));
   core.setOutput('sha', headSha);
   core.setOutput('head_ref', pr.head.ref);
@@ -338,7 +377,8 @@ async function detect({ github, context, core }) {
   core.setOutput('maxed', String(maxed));
   core.setOutput('same_findings', String(sameShaAndFindings));
 
-  fs.writeFileSync('codex-findings.json', `${JSON.stringify(payload, null, 2)}\n`);
+  const outputPath = process.env.CODEX_FINDINGS_OUTPUT || 'codex-findings.json';
+  fs.writeFileSync(outputPath, `${JSON.stringify(payload, null, 2)}\n`);
 
   core.summary
     .addHeading('Codex finding detection')
@@ -351,7 +391,7 @@ async function detect({ github, context, core }) {
       ['Same findings already attempted', String(sameShaAndFindings)],
       ['Max reached', String(maxed)],
       ['Should fix', String(shouldFix)],
-      ['Test mode', String(isDispatch)],
+      ['Test mode', String(useFixture)],
     ]);
   if (count > 0) {
     core.summary.addHeading('Findings', 3).addCodeBlock(
@@ -368,7 +408,9 @@ module.exports = {
   detect,
   hasActionableFindings,
   countFindings,
+  extractReviewSha,
   findingsHash,
   fixtureText,
   isStatusOnly,
+  sameSha,
 };
