@@ -13,6 +13,9 @@ const MARKER_RE =
   /<!--\s*opencode-autofix\s+attempt=(\d+)\s+sha=([0-9a-f]{7,40})\s+findings=([0-9a-f]{6,64})\s*-->/gi;
 const TRUSTED_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
 const TRUSTED_BOTS = new Set(['github-actions[bot]', 'opencode-agent[bot]']);
+// Attempt markers are written by the fix workflow and must not be accepted
+// from arbitrary commenters on a public pull request.
+const TRUSTED_MARKER_AUTHORS = new Set(['github-actions[bot]', 'opencode-agent[bot]']);
 
 function normalize(text) {
   return String(text || '').replace(/\r\n/g, '\n').trim();
@@ -45,7 +48,11 @@ function findingsHash(text) {
 }
 
 function isStatusLine(line) {
-  return /\b(will appear|will be posted|running|in progress|pending|queued|started|analyzing|scanning|reviewing)\b/i.test(line);
+  // A real finding may contain words such as "running" or "pending" in its
+  // title. A P0/P1 badge or count prefix means this is a finding line, not a
+  // status line.
+  if (/\bP[01]\b\s*(?:Badge|[:=—–-])/i.test(line)) return false;
+  return /\b(codex (?:is )?running|review (?:is )?(?:running|in progress)|in progress|will appear|will be posted|pending review|queued|started|analyzing|scanning|reviewing)\b/i.test(line);
 }
 
 const NEGATIVE_PHRASES =
@@ -330,6 +337,10 @@ async function detect({ github, context, core }) {
   let attempts = 0;
   let sameShaAndFindings = false;
   for (const comment of issueComments) {
+    const markerTrusted =
+      TRUSTED_MARKER_AUTHORS.has(comment.user?.login) ||
+      TRUSTED_ASSOCIATIONS.has(comment.author_association);
+    if (!markerTrusted) continue;
     const body = comment.body || '';
     for (const match of body.matchAll(MARKER_RE)) {
       const attempt = Number(match[1]);
