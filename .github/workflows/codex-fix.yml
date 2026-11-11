@@ -106,6 +106,9 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           path: trusted
           fetch-depth: 1
+          # This checkout must not leave the job's write token behind for the
+          # OpenCode agent or build scripts to reuse.
+          persist-credentials: false
 
       - name: Validate artifact and reconstruct findings
         id: meta
@@ -148,6 +151,8 @@ jobs:
             }
 
             const run = context.payload.workflow_run || {};
+            const defaultBranch =
+              context.payload.repository?.default_branch || 'main';
             if (run.head_repository?.full_name !==
                 `${context.repo.owner}/${context.repo.repo}`) {
               core.info('detection run is not from this repository');
@@ -226,12 +231,34 @@ jobs:
               core.info('artifact PR and trusted PR disagree');
               return;
             }
-            if (run.head_branch && run.head_branch !== p.head_ref) {
-              core.info('detection run branch and PR head branch disagree');
+            // PR review events run on the PR head. issue_comment and manual
+            // dispatches may run on the default branch instead, where the run
+            // SHA is the default branch tip, not the PR head. Bind strictly
+            // only when the run is actually on the PR branch.
+            const prHeadEvent = [
+              'pull_request',
+              'pull_request_review',
+              'pull_request_review_comment',
+            ].includes(run.event);
+            if (prHeadEvent) {
+              if (run.head_branch && run.head_branch !== p.head_ref) {
+                core.info('detection run branch and PR head branch disagree');
+                return;
+              }
+              if (run.head_sha &&
+                  String(run.head_sha).toLowerCase() !==
+                    String(p.sha).toLowerCase()) {
+                core.info('detection run SHA and PR head SHA disagree');
+                return;
+              }
+            } else if (run.head_branch &&
+                       run.head_branch !== p.head_ref &&
+                       run.head_branch !== defaultBranch) {
+              core.info('detection run is on neither the PR head nor the default branch');
               return;
-            }
-            if (run.head_sha &&
-                String(run.head_sha).toLowerCase() !== String(p.sha).toLowerCase()) {
+            } else if (run.head_branch === p.head_ref && run.head_sha &&
+                       String(run.head_sha).toLowerCase() !==
+                         String(p.sha).toLowerCase()) {
               core.info('detection run SHA and PR head SHA disagree');
               return;
             }
