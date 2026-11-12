@@ -377,6 +377,17 @@ jobs:
           git config user.name "opencode-autofix[bot]"
           git config user.email "opencode-autofix[bot]@users.noreply.github.com"
 
+      - name: Verify dedicated push credential
+        if: steps.meta.outputs.ok == 'true'
+        shell: bash
+        env:
+          AUTOFIX_PUSH_TOKEN: ${{ secrets.OPENCODE_AUTOFIX_PUSH_TOKEN }}
+        run: |
+          if [[ -z "${AUTOFIX_PUSH_TOKEN}" ]]; then
+            echo "::error::Missing OPENCODE_AUTOFIX_PUSH_TOKEN. Leave autofix disabled until the scoped credential is configured."
+            exit 1
+          fi
+
       - name: Record attempt
         if: steps.meta.outputs.ok == 'true'
         uses: actions/github-script@v7
@@ -430,7 +441,9 @@ jobs:
         working-directory: pr
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This scoped credential is used only for the final, guarded push.
+          # Unlike GITHUB_TOKEN, it allows PR synchronize events to run normally.
+          AUTOFIX_PUSH_TOKEN: ${{ secrets.OPENCODE_AUTOFIX_PUSH_TOKEN }}
           REPO: ${{ github.repository }}
           HEAD_REF: ${{ steps.meta.outputs.head_ref }}
           ATTEMPT: ${{ steps.meta.outputs.attempt }}
@@ -438,7 +451,7 @@ jobs:
           set -euo pipefail
           # Configure credentials only for the guarded push below.
           git remote set-url origin \
-            "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
+            "https://x-access-token:${AUTOFIX_PUSH_TOKEN}@github.com/${REPO}.git"
           git fetch origin "${HEAD_REF}"
           before=$(git rev-parse "origin/${HEAD_REF}")
 
