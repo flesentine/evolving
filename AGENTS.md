@@ -13,8 +13,14 @@ Treat river changes as geometry changes, not cosmetic tweaks.
   or distance expression means **4 m**, not 4 mm. Every threshold, offset,
   clearance, dedupe radius and slope must either be declared in metres and
   divided by `metresPerUnit`, or be explicitly documented as world units.
-- **Never push to `main` or `master`, never merge, never force-push.** Automation
-  only updates the existing pull-request branch.
+- **OpenCode autofix never pushes to `main` or `master`, merges, or force-pushes.**
+  The fixer only updates the existing pull-request branch.
+- **A separate, opt-in, trusted auto-merge workflow may squash-merge a PR**
+  into `main` using GitHub's PR API, without per-PR human approval, only after
+  Codex has completed a clean review of the exact head commit and both current
+  macOS build and detection checks have passed. Never auto-merge tests, drafts,
+  forks, untrusted authors, or changes to automation/security-sensitive files.
+  Never merge a PR with unresolved findings or failing/missing checks.
 - **Keep the world deterministic.** The same seed, year, hour and camera must
   produce byte-stable geometry. Do not introduce unordered iteration into
   geometry that affects output.
@@ -49,8 +55,9 @@ it. A review with zero findings should say so explicitly; a “running” or
   gates).
 - A graph cycle, a reach with no outlet to the sea/tarn, or a graph identity
   failure (`sources = outlets + Σ(indegree − 1)`) that changes the drawn network.
-- Non-determinism, a crash, or a change that lets automation push to the default
-  branch, merge, or force-push.
+- Non-determinism, a crash, or a change that lets the OpenCode fixer push to
+  the default branch or force-push, or allows the separate auto-merge workflow
+  to merge without all required current-head review and CI checks.
 
 ### P1 — fix in the same pass
 
@@ -126,4 +133,6 @@ every intentional diagnostic change.
 - If a finding is invalid or needs a product decision, say so explicitly instead
   of making a risky change.
 - Keep the automatic-fix loop bounded: at most two OpenCode attempts per pull
-  request, then stop for a human.
+  request. If unresolved, stop and report rather than merge or loop forever.
+  Clean, eligible PRs may be merged by the separate opt-in workflow without a
+  per-PR human approval.

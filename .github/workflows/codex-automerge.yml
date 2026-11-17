@@ -1,0 +1,218 @@
+# Merge clean, reviewed, passing same-repository PRs without per-PR approval.
+# Fail closed unless the one-time OPENCODE_AUTOMERGE_ENABLED variable is true.
+# Never merge test PRs or changes to automation/security-sensitive files.
+name: codex-automerge
+
+on:
+  issue_comment:
+    types: [created, edited]
+  pull_request_review:
+    types: [submitted, edited]
+  workflow_run:
+    workflows: ["macos-build", "codex-detect"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "PR number (still subject to all checks and guards)"
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  actions: read
+
+concurrency:
+  group: codex-automerge-${{ github.event.pull_request.number || github.event.issue.number || github.event.workflow_run.head_sha || inputs.pr || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  automerge:
+    if: |
+      vars.OPENCODE_AUTOMERGE_ENABLED == 'true' &&
+      (github.event_name != 'issue_comment' ||
+       github.event.comment.user.login == 'chatgpt-codex-connector[bot]') &&
+      (github.event_name != 'pull_request_review' ||
+       github.event.review.user.login == 'chatgpt-codex-connector[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Uses only the default GitHub token to READ reviews and checks. No PR
+      # code is checked out or executed in this privileged workflow.
+      - name: Verify current SHA, Codex and CI
+        id: gate
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const evt = context.eventName;
+            let numbers = [];
+            if (evt === 'issue_comment') {
+              if (!context.payload.issue?.pull_request) return;
+              numbers = [Number(context.payload.issue.number)];
+            } else if (evt === 'pull_request_review') {
+              numbers = [Number(context.payload.pull_request?.number)];
+            } else if (evt === 'workflow_dispatch') {
+              numbers = [Number(context.payload.inputs?.pr)];
+            } else if (evt === 'workflow_run') {
+              const run = context.payload.workflow_run;
+              if (!['macos-build', 'codex-detect'].includes(run?.name) ||
+                  run?.event !== 'pull_request' ||
+                  run?.conclusion !== 'success') return;
+              const associated = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner, repo, commit_sha: run.head_sha, per_page: 100,
+              });
+              numbers = associated.data.filter((p) => p.state === 'open')
+                .map((p) => p.number);
+            } else {
+              return;
+            }
+            numbers = [...new Set(numbers)].filter(Number.isInteger);
+            // Only one PR at a time: never choose an arbitrary candidate for
+            // a shared commit SHA.
+            if (numbers.length !== 1 || numbers[0] < 1) {
+              core.info('No unique PR candidate');
+              return;
+            }
+            const number = numbers[0];
+            const prResponse = await github.rest.pulls.get({
+              owner, repo, pull_number: number,
+            });
+            const pr = prResponse.data;
+            if (pr.state !== 'open' || pr.draft || pr.merged ||
+                pr.base.ref !== 'main' ||
+                pr.head.repo?.full_name !== owner + '/' + repo ||
+                pr.head.ref === 'main' || pr.head.ref === 'master' ||
+                pr.head.ref.startsWith('test/') ||
+                pr.head.ref.startsWith('ci/') ||
+                /DO NOT MERGE|^TEST ONLY\b/i.test(pr.title || '') ||
+                /DO NOT MERGE/i.test(pr.body || '')) {
+              core.info('PR is test-only, draft, from a fork, or otherwise ineligible');
+              return;
+            }
+            const trustedAuthor =
+              ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(pr.author_association) ||
+              pr.user?.login === owner;
+            if (!trustedAuthor || pr.mergeable !== true) {
+              core.info('PR author is not trusted or PR is not mergeable');
+              return;
+            }
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner, repo, pull_number: number, per_page: 100,
+            });
+            const isSensitivePath = (filename) =>
+              /^(?:\.github\/|Scripts\/|AGENTS\.md$|Package\.swift$|Package\.resolved$)/i.test(filename) ||
+              /(?:^|\/)(?:\.env(?:\..*)?|CODEOWNERS|Makefile)$/i.test(filename) ||
+              /(?:\.sh|\.ya?ml|\.entitlements|\.xcconfig)$|\.xcodeproj\/|\.xcworkspace\//i.test(filename);
+            if (!files.length || files.length > 100 ||
+                files.some((f) =>
+                  isSensitivePath(f.filename) ||
+                  (f.previous_filename && isSensitivePath(f.previous_filename)))) {
+              core.info('No files or sensitive/tooling files modified; no auto-merge');
+              return;
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number: number, per_page: 100,
+            });
+            const summaries = comments.filter((comment) =>
+              comment.user?.login === 'chatgpt-codex-connector[bot]' &&
+              comment.body?.includes('<!-- codex-pull-request-review-summary -->'));
+            summaries.sort((a, b) =>
+              new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+            if (!summaries.length) {
+              core.info('No authenticated Codex review summary');
+              return;
+            }
+            const match = summaries[0].body.match(
+              /<!--\s*codex-review-state:v1\s+(\{[^\n]*\})\s*-->/);
+            let review;
+            try {
+              review = match && JSON.parse(match[1]).code_review;
+            } catch {
+              core.info('Codex summary could not be parsed');
+              return;
+            }
+            const sha = pr.head.sha;
+            if (!review || review.commit_sha !== sha ||
+                review.status !== 'completed' ||
+                review.has_any_findings !== false ||
+                review.has_unresolved_findings !== false) {
+              core.info('Codex has not cleared the exact current commit ' + sha);
+              return;
+            }
+
+            // Check the latest macOS build AND the read-only detection run
+            // corresponding to this exact PR head. Old-SHA checks cannot pass.
+            for (const workflowId of ['macos-build.yml', 'codex-detect.yml']) {
+              const runsResponse = await github.rest.actions.listWorkflowRuns({
+                owner, repo, workflow_id: workflowId, head_sha: sha,
+                event: 'pull_request', per_page: 100,
+              });
+              const runs = runsResponse.data.workflow_runs
+                .filter((run) => run.head_sha === sha &&
+                                 run.event === 'pull_request' &&
+                                 run.head_branch === pr.head.ref)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+              if (!runs.length || runs[0].status !== 'completed' ||
+                  runs[0].conclusion !== 'success') {
+                core.info('Passing current-head ' + workflowId + ' is missing');
+                return;
+              }
+            }
+
+            // Re-read the PR immediately before authorizing the separate,
+            // scoped-token merge step. The merge API checks the SHA again.
+            const current = (await github.rest.pulls.get({
+              owner, repo, pull_number: number,
+            })).data;
+            if (current.state !== 'open' || current.head.sha !== sha ||
+                current.base.ref !== 'main' || current.draft ||
+                current.mergeable !== true) {
+              core.info('PR changed during verification');
+              return;
+            }
+            core.setOutput('pr', String(number));
+            core.setOutput('sha', sha);
+            core.info('Approved for bot merge: PR #' + number + ' at ' + sha);
+
+      # A dedicated token permits downstream push workflows on main to run.
+      # It is NOT exposed to PR code, OpenCode, or the read-only gate.
+      - name: Squash merge verified PR
+        if: steps.gate.outputs.pr != '' && steps.gate.outputs.sha != ''
+        uses: actions/github-script@v7
+        env:
+          EXPECTED_PR: ${{ steps.gate.outputs.pr }}
+          EXPECTED_SHA: ${{ steps.gate.outputs.sha }}
+        with:
+          github-token: ${{ secrets.OPENCODE_AUTOFIX_PUSH_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const pull_number = Number(process.env.EXPECTED_PR);
+            const sha = process.env.EXPECTED_SHA;
+            if (!Number.isInteger(pull_number) || !/^[0-9a-f]{40}$/i.test(sha)) {
+              throw new Error('Invalid verified PR or SHA');
+            }
+            const pr = (await github.rest.pulls.get({
+              owner, repo, pull_number,
+            })).data;
+            if (pr.state !== 'open' || pr.draft ||
+                pr.base.ref !== 'main' || pr.head.sha !== sha ||
+                pr.head.repo?.full_name !== owner + '/' + repo ||
+                pr.head.ref.startsWith('test/') ||
+                pr.head.ref.startsWith('ci/') ||
+                /DO NOT MERGE|^TEST ONLY\b/i.test(pr.title || '') ||
+                /DO NOT MERGE/i.test(pr.body || '')) {
+              throw new Error('PR no longer eligible for bot merge');
+            }
+            const result = await github.rest.pulls.merge({
+              owner, repo, pull_number, sha, merge_method: 'squash',
+              commit_title: 'Auto-merge #' + pull_number + ': ' + pr.title,
+            });
+            if (!result.data.merged) {
+              throw new Error('GitHub refused the merge: ' + result.data.message);
+            }
+            core.info('Merged verified PR #' + pull_number + ' at ' + sha);
