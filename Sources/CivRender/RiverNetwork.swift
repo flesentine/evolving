@@ -151,6 +151,10 @@ enum RiverChannel {
     /// A hair of clearance used to keep coplanar surfaces apart.
     static let seam: Float = 0.015 / metresPerUnit         // 1.5 cm
 
+    /// Shared junction cut distance for water ribbons and bank strips.
+    /// Different trim multipliers leave exposed banks or an uncovered seam.
+    static let junctionTrimFactor: Float = 1.05
+
     /// Five samples across the water surface, left to right.
     static let across: [Float] = [-1, -0.5, 0, 0.5, 1]
 
