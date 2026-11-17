@@ -2503,8 +2503,9 @@ final class Renderer: NSObject, MTKViewDelegate {
 
         // Still-frame debugging aids. They cost nothing in the normal path.
         let debug = ProcessInfo.processInfo.environment
-        let hideRiver = debug["EVOLVING_HIDE_RIVER"] == "1"
-        let hideBanks = debug["EVOLVING_HIDE_BANKS"] == "1"
+        let riverView = debug["EVOLVING_RIVER_VIEW"] ?? ""
+        let hideRiver = debug["EVOLVING_HIDE_RIVER"] == "1" || ["banks", "terrain"].contains(riverView)
+        let hideBanks = debug["EVOLVING_HIDE_BANKS"] == "1" || ["water", "wire", "terrain"].contains(riverView)
         let debugShadow: Float
         if debug["EVOLVING_NO_SHADOW"] == "1" { debugShadow = 1 }
         else if debug["EVOLVING_RIVER_MAGENTA"] == "1" { debugShadow = 2 }
@@ -2552,7 +2553,9 @@ final class Renderer: NSObject, MTKViewDelegate {
         encoder.setFragmentTexture(rockNormal, index: 9)
         encoder.setFragmentTexture(groundFine, index: 12)
         encoder.setFragmentTexture(groundFineNormal, index: 13)
-        draw(scene.terrainMesh, with: encoder, instances: 1)
+        if !["water", "wire"].contains(riverView) {
+            draw(scene.terrainMesh, with: encoder, instances: 1)
+        }
 
         if let buffer = bankIdentityBuffer {
             encoder.setVertexBuffer(buffer, offset: 0, index: 2)
@@ -2561,6 +2564,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             draw(scene.riverBankMesh, with: encoder, instances: 1)
         }
 
+        if riverView.isEmpty {
         // Roads sit just above the terrain and below the buildings.
         if let streets = scene.streetMesh {
             if let buffer = streetIdentityBuffer {
@@ -2574,12 +2578,16 @@ final class Renderer: NSObject, MTKViewDelegate {
             }
             draw(roads, with: encoder, instances: 1)
         }
+        }
         if let buffer = riverIdentityBuffer {
             encoder.setVertexBuffer(buffer, offset: 0, index: 2)
         }
         if !hideRiver {
+            if riverView == "wire" { encoder.setTriangleFillMode(.lines) }
             draw(scene.riverMesh, with: encoder, instances: 1)
+            encoder.setTriangleFillMode(.fill)
         }
+        if riverView.isEmpty {
         if let rail = scene.railMesh {
             if let buffer = railIdentityBuffer {
                 encoder.setVertexBuffer(buffer, offset: 0, index: 2)
@@ -2635,6 +2643,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         encoder.setFragmentTexture(scene.heightTexture, index: 0)
         draw(scene.waterMesh, with: encoder, instances: 1)
 
+        }
         // Weather particles sit in front of the finished scene.
         if weatherIntensity > 0.01 {
             let batch = weatherIsSnow ? snowBatch : rainBatch

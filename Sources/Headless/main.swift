@@ -33,6 +33,8 @@ func usage() -> Never {
       civheadless determinism [year] [seed]
       civheadless plan [year] [seed]
       civheadless river [seed] [year]
+      civheadless riverfixtures
+      civheadless riverdebug <directory> [seed]
       civheadless info
     """)
     exit(2)
@@ -181,9 +183,25 @@ case "river":
     for p in crossings.prefix(6) {
         print(String(format: "crossing %+.4f, %+.4f", p.x, p.y))
     }
-    if !network.diagnostics.passes || !channel.passes {
+    let meshResult = RiverMeshValidation.run(terrain, network: network.reaches, field: field)
+    print(meshResult.summary)
+    if !network.diagnostics.passes || !channel.passes || !meshResult.passes {
         exit(1)
     }
+
+case "riverdebug":
+    guard arguments.count >= 3 else { usage() }
+    let seed = arguments.count >= 4 ? UInt64(arguments[3]) ?? 1 : 1
+    let terrain = WorldGen.generate(seed: seed)
+    let network = RiverNetwork.build(terrain).reaches
+    let field = RiverChannel.Field(terrain: terrain, network: network)
+    do {
+        try RiverDebugImage.write(terrain: terrain, network: network, field: field,
+                                  directory: URL(fileURLWithPath: arguments[2]))
+    } catch { fail("riverdebug failed — \(error)") }
+
+case "riverfixtures":
+    if !RiverMeshValidation.fixtures() { exit(1) }
 
 case "plan":
     let year = arguments.count >= 3 ? Float(arguments[2]) ?? 1200 : 1200
@@ -305,6 +323,24 @@ case "determinism":
     if ha != hb {
         fail("determinism failed — geometry differs between identical runs")
     }
+    func surfaceHash(_ mesh: RiverSurface.Geometry) -> UInt64 {
+        var hash: UInt64 = 0xCBF2_9CE4_8422_2325
+        func mix(_ bits: UInt32) {
+            hash = (hash ^ UInt64(bits)) &* 0x0000_0100_0000_01B3
+        }
+        for vertex in mesh.vertices {
+            for value in [vertex.position.x, vertex.position.y, vertex.position.z,
+                          vertex.normal.x, vertex.normal.y, vertex.normal.z,
+                          vertex.color.x, vertex.color.y, vertex.color.z, vertex.color.w,
+                          vertex.uv.x, vertex.uv.y] { mix(value.bitPattern) }
+        }
+        for index in mesh.indices { mix(index) }
+        return hash
+    }
+    let riverA = surfaceHash(field.mesh)
+    let riverB = surfaceHash(RiverSurface.build(terrain, network: RiverNetwork.build(terrain).reaches))
+    print(String(format: "river mesh hash %016llx / %016llx", riverA, riverB))
+    if riverA != riverB { fail("determinism failed — river mesh differs") }
     print("deterministic: OK")
 
 case "resources":
@@ -398,6 +434,7 @@ case "sim":
         simulation.advance(to: simYear)
         let elapsed = Date().timeIntervalSince(started)
 
+        let sceneStarted = Date()
         let renderer = try Renderer(context: context,
                                     terrain: terrain,
                                     colorPixelFormat: .bgra8Unorm_srgb,
@@ -413,12 +450,14 @@ case "sim":
                                                seed: seed,
                                                riverField: renderer.scene.riverField))
 
+        let sceneBuildMilliseconds = Date().timeIntervalSince(sceneStarted) * 1000
         let env = ProcessInfo.processInfo.environment
         let width = Int(env["EVOLVING_WIDTH"] ?? "") ?? 1600
         let height = Int(env["EVOLVING_HEIGHT"] ?? "") ?? 1000
         let url = try Snapshot.write(renderer: renderer,
                                      width: width, height: height, time: seconds, to: out)
 
+        print(String(format: "  scene build/update %.1f ms", sceneBuildMilliseconds))
         print("wrote \(url.path)")
         print("  year \(Int(simulation.year)) · \(simulation.era.name)")
         print("  population \(Int(simulation.totalPopulation)) in \(simulation.settlements.count) settlements")

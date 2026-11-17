@@ -133,6 +133,19 @@ struct RiverDiagnostics {
 /// headless diagnostics. Keeping one definition of the waterline and the bank
 /// profile is what stops the three from disagreeing by a few centimetres.
 enum RiverChannel {
+    static func carvedTerrain(_ terrain: Terrain, field: RiverChannel.Field) -> Terrain {
+        var carved = terrain
+        for j in 0..<carved.size {
+            for i in 0..<carved.size {
+                let index = carved.index(i, j)
+                carved.height[index] = RiverChannel.carvedHeight(terrain.height[index], field: field,
+                                                               x: carved.worldX(i), z: carved.worldZ(j))
+            }
+        }
+        return carved
+    }
+
+
     /// Metres per world unit, mirrored for convenience.
     static let metresPerUnit: Float = RiverNetwork.metresPerUnit
 
@@ -189,10 +202,11 @@ enum RiverChannel {
     static let shelfRise: Float = 0.44 / metresPerUnit
     static let valleySlope: Float = 0.55          // vertical / horizontal
 
-    static func carvedHeight(_ h: Float, field: Field, x: Float, z: Float) -> Float {
-        guard let s = field.carveWater(at: SIMD2(x, z)) else { return h }
+    static func carvedHeight(_ h: Float, field: Field, x: Float, z: Float,
+                             supportRadius: Float = 0) -> Float {
+        guard let s = field.carveWater(at: SIMD2(x, z), supportRadius: supportRadius) else { return h }
         let d = s.distance
-        if d <= 0 { return s.water - bedClearance }
+        if d <= 0 { return min(h, min(s.water - bedClearance, s.ceiling)) }
         let allowed: Float
         if d <= wetShelf {
             allowed = s.water - bedClearance
@@ -201,7 +215,7 @@ enum RiverChannel {
             allowed = s.water - (bedClearance - shelfRise)
                 + (d - wetShelf) * valleySlope
         }
-        return min(h, allowed)
+        return min(h, min(allowed, s.ceiling))
     }
 
     /// The water plane for one sample and the lowest terrain under it.
@@ -405,169 +419,123 @@ enum RiverChannel {
         return result
     }
 
-    /// A swept-capsule query used for carving and object clipping. Each entry
-    /// is the segment between two consecutive samples, with width and water
-    /// level interpolated along it. Segment distance is smooth, so the carve
-    /// no longer follows a chain of scalloped circles.
+    /// Queries the actual submitted water triangles, including the Boolean
+    /// junction union. Capsules and enlarged junction discs are not a second
+    /// definition of wetness. Buckets index complete triangle AABBs, so large
+    /// tarns and long segments cannot fall between endpoint buckets.
     struct Field {
-        struct Entry {
-            var a: SIMD2<Float>
-            var b: SIMD2<Float>
-            var halfA: Float
-            var halfB: Float
-            var waterA: Float
-            var waterB: Float
-        }
-
-        private let entries: [Entry]
+        let mesh: RiverSurface.Geometry
+        let network: [RiverReach]
+        var geometry: (vertices: [Vertex], indices: [UInt32]) { (mesh.vertices, mesh.indices) }
+        private let triangles: [[Vertex]]
         private let buckets: [Int64: [Int]]
-        private let bucketSize: Float = 0.02
+        private let bucketSize: Float = 20 / metresPerUnit // 20 m
 
         init(terrain: Terrain, network: [RiverReach]) {
-            var list: [Entry] = []
-            for reach in network {
-                let samples = reach.samples
-                if samples.count == 1 {
-                    let s = samples[0]
-                    let h = halfWidth(s)
-                    let w = waterLine(terrain, s).y
-                    list.append(Entry(a: s.position, b: s.position,
-                                      halfA: h, halfB: h,
-                                      waterA: w, waterB: w))
-                }
-                if samples.count >= 2 {
-                    for i in 0..<(samples.count - 1) {
-                        let a = samples[i], b = samples[i + 1]
-                        list.append(Entry(a: a.position, b: b.position,
-                                          halfA: halfWidth(a),
-                                          halfB: halfWidth(b),
-                                          waterA: waterLine(terrain, a).y,
-                                          waterB: waterLine(terrain, b).y))
-                    }
-                }
+            self.network = RiverSurface.prepared(network)
+            let mesh = RiverSurface.build(terrain, network: self.network)
+            self.mesh = mesh
+            var list: [[Vertex]] = []
+            for i in stride(from: 0, to: mesh.indices.count, by: 3) {
+                list.append((0..<3).map { mesh.vertices[Int(mesh.indices[i + $0])] })
             }
-            for reach in network where !reach.upstream.isEmpty {
-                guard let first = reach.samples.first else { continue }
-                var radius = halfWidth(first)
-                var level = waterLine(terrain, first).y
-                for a in reach.upstream where a < network.count {
-                    if let end = network[a].samples.last {
-                        radius = max(radius, halfWidth(end))
-                        level = max(level, waterLine(terrain, end).y)
-                    }
-                }
-                list.append(Entry(a: first.position, b: first.position,
-                                  halfA: radius * 1.30, halfB: radius * 1.30,
-                                  waterA: level, waterB: level))
-            }
-            // Closed-basin ends get a small lake disc rather than a
-            // rounded ribbon cap.
-            for reach in network where reach.downstream == nil
-                && !reach.isMouth {
-                guard let last = reach.samples.last else { continue }
-                let radius = halfWidth(last) * 2.5
-                let level = waterLine(terrain, last).y
-                list.append(Entry(a: last.position, b: last.position,
-                                  halfA: radius, halfB: radius,
-                                  waterA: level, waterB: level))
-            }
-            entries = list
+            triangles = list
             var map: [Int64: [Int]] = [:]
-            for (i, entry) in list.enumerated() {
-                map[Field.key(entry.a), default: []].append(i)
-                map[Field.key(entry.b), default: []].append(i)
+            let size: Float = 20 / metresPerUnit
+            for (i, triangle) in list.enumerated() {
+                let x = triangle.map { $0.position.x }, z = triangle.map { $0.position.z }
+                for bx in (Int(floor(x.min()! / size)) - 1)...(Int(floor(x.max()! / size)) + 1) {
+                    for bz in (Int(floor(z.min()! / size)) - 1)...(Int(floor(z.max()! / size)) + 1) {
+                        map[Field.key(bx, bz), default: []].append(i)
+                    }
+                }
             }
             buckets = map
         }
-
-        private static func key(_ p: SIMD2<Float>) -> Int64 {
-            let x = Int64(floor(p.x / 0.02))
-            let y = Int64(floor(p.y / 0.02))
-            return x &* 73_856_093 &+ y
+        private static func key(_ x: Int, _ z: Int) -> Int64 {
+            Int64(x) &* 73_856_093 &+ Int64(z)
         }
-
-        private func closest(_ e: Entry, _ p: SIMD2<Float>)
-            -> (distance: Float, half: Float, water: Float) {
-            let ab = e.b - e.a
-            let length2 = simd_dot(ab, ab)
-            var t: Float = 0
-            if length2 > 1e-12 {
-                t = min(max(simd_dot(p - e.a, ab) / length2, 0), 1)
+        func nearbyTriangles(_ p: SIMD2<Float>) -> [[Vertex]] {
+            let x = Int(floor(p.x / bucketSize)), z = Int(floor(p.y / bucketSize))
+            return (buckets[Field.key(x, z)] ?? []).map { triangles[$0] }
+        }
+        static func probe(_ triangle: [Vertex], _ p: SIMD2<Float>)
+            -> (distance: Float, water: Float) {
+            let a = RiverPolygon.point(triangle[0]), b = RiverPolygon.point(triangle[1])
+            let c = RiverPolygon.point(triangle[2]), q = SIMD2<Double>(Double(p.x), Double(p.y))
+            let denominator = RiverPolygon.cross(b - a, c - a)
+            guard abs(denominator) > 1e-30 else {
+                return (.greatestFiniteMagnitude, 0)
             }
-            let q = e.a + ab * t
-            let half = e.halfA + (e.halfB - e.halfA) * t
-            let water = e.waterA + (e.waterB - e.waterA) * t
-            return (simd_distance(q, p) - half, half, water)
-        }
-
-        private func nearby(_ p: SIMD2<Float>, _ body: (Entry) -> Void) {
-            let baseX = Int64(floor(p.x / bucketSize))
-            let baseY = Int64(floor(p.y / bucketSize))
-            for dx in -1...1 {
-                for dy in -1...1 {
-                    let key = (baseX + Int64(dx)) &* 73_856_093
-                        &+ (baseY + Int64(dy))
-                    guard let list = buckets[key] else { continue }
-                    for i in list { body(entries[i]) }
+            let v = RiverPolygon.cross(q - a, c - a) / denominator
+            let w = RiverPolygon.cross(b - a, q - a) / denominator
+            let u = 1 - v - w
+            let inside = min(u, min(v, w)) >= -1e-8 // dimensionless barycentric tolerance
+            let points = [SIMD2(triangle[0].position.x, triangle[0].position.z),
+                          SIMD2(triangle[1].position.x, triangle[1].position.z),
+                          SIMD2(triangle[2].position.x, triangle[2].position.z)]
+            var distance = Float.greatestFiniteMagnitude, edgeWater: Float = 0
+            for i in 0..<3 {
+                let j = (i + 1) % 3, ab = points[j] - points[i]
+                let t = min(max(simd_dot(p - points[i], ab) / max(simd_length_squared(ab), 1e-20), 0), 1)
+                let d = simd_distance(p, points[i] + ab * t)
+                if d < distance {
+                    distance = d
+                    edgeWater = triangle[i].position.y + (triangle[j].position.y - triangle[i].position.y) * t
                 }
             }
+            let water = Float(u) * triangle[0].position.y + Float(v) * triangle[1].position.y
+                + Float(w) * triangle[2].position.y
+            return (inside ? -max(distance, Float.leastNonzeroMagnitude) : distance,
+                    inside ? water : edgeWater)
         }
-
         func surface(at p: SIMD2<Float>) -> (water: Float?, distance: Float)? {
-            var water: Float?
-            var best = Float.greatestFiniteMagnitude
-            nearby(p) { entry in
-                let c = closest(entry, p)
-                best = min(best, c.distance)
-                if c.distance <= 0 {
-                    water = max(water ?? -Float.greatestFiniteMagnitude,
-                                c.water)
+            guard let value = carveWater(at: p) else { return nil }
+            return (value.distance <= 0 ? value.water : nil, value.distance)
+        }
+        func carveWater(at p: SIMD2<Float>, supportRadius: Float = 0)
+            -> (water: Float, distance: Float, ceiling: Float)? {
+            let x = Int(floor(p.x / bucketSize)), z = Int(floor(p.y / bucketSize))
+            guard let ids = buckets[Field.key(x, z)] else { return nil }
+            var best = Float.greatestFiniteMagnitude, level: Float = 0
+            var candidates: [(Float, Float)] = []
+            var ceiling = Float.greatestFiniteMagnitude
+            for id in ids {
+                let value = Field.probe(triangles[id], p)
+                if value.distance < best { best = value.distance; level = value.water }
+                candidates.append((value.distance, value.water))
+                if supportRadius > 0 {
+                    let low = min(triangles[id][0].position.y, min(triangles[id][1].position.y, triangles[id][2].position.y))
+                    ceiling = min(ceiling, low - bedClearance + max(value.distance - supportRadius, 0) * valleySlope)
                 }
             }
             guard best < .greatestFiniteMagnitude else { return nil }
-            return (water, best)
-        }
-
-        func carveWater(at p: SIMD2<Float>) -> (water: Float, distance: Float)? {
-            var best = Float.greatestFiniteMagnitude
-            var bestWater: Float = 0
-            nearby(p) { entry in
-                let c = closest(entry, p)
-                if c.distance < best {
-                    best = c.distance
-                    bestWater = c.water
-                } else if c.distance <= 0 {
-                    bestWater = max(bestWater, c.water)
+            if best > 0 {
+                // Blend water levels over nearest-boundary ties. The support
+                // shrinks to zero at the shoreline, preserving exact mesh Y.
+                let support = min(best, 2 / metresPerUnit) // at most 2 m
+                var sum: Float = 0, weight: Float = 0
+                for (d, water) in candidates where d - best < support {
+                    let w = pow(1 - (d - best) / support, 2)
+                    sum += water * w; weight += w
                 }
+                if weight > 0 { level = sum / weight }
             }
-            guard best < .greatestFiniteMagnitude else { return nil }
-            return (bestWater, best)
+            return (level, best, ceiling)
         }
-
         func waterLevel(at p: SIMD2<Float>) -> Float? {
-            var best: Float?
-            nearby(p) { entry in
-                let c = closest(entry, p)
-                if c.distance <= 0 {
-                    best = max(best ?? -Float.greatestFiniteMagnitude, c.water)
-                }
-            }
-            return best
+            guard let value = carveWater(at: p), value.distance <= 0 else { return nil }
+            return value.water
         }
-
         func signedDistance(at p: SIMD2<Float>) -> Float? {
-            var best = Float.greatestFiniteMagnitude
-            nearby(p) { entry in
-                best = min(best, closest(entry, p).distance)
-            }
-            return best == .greatestFiniteMagnitude ? nil : best
+            carveWater(at: p)?.distance
         }
-
         func isNearWater(at p: SIMD2<Float>, margin: Float) -> Bool {
             guard let d = signedDistance(at: p) else { return false }
             return d <= margin
         }
     }
+
 }
 
 /// Phase 2 gate: bank height, channel depth, wet margin, freeboard and the
@@ -1553,9 +1521,10 @@ enum RiverNetwork {
         // canal. Ramp the rendered width from a couple of metres at the first
         // sample to the full channel over the first 55 m.
         if isSource, let first = samples.first?.along {
+            let taperLengthMetres: Float = 55
             for i in samples.indices {
                 let d = samples[i].along - first
-                let t = min(max(d / (55 / metresPerUnit), 0), 1)
+                let t = min(max(d / taperLengthMetres, 0), 1)
                 let f = t * t * (3 - 2 * t)
                 samples[i].channelWidth *= max(f, 0.16)
             }
