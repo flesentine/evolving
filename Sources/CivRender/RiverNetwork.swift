@@ -133,16 +133,25 @@ struct RiverDiagnostics {
 /// headless diagnostics. Keeping one definition of the waterline and the bank
 /// profile is what stops the three from disagreeing by a few centimetres.
 enum RiverChannel {
-    static func carvedTerrain(_ terrain: Terrain, field: RiverChannel.Field) -> Terrain {
+    static func carvedTerrain(_ terrain: Terrain, field: RiverChannel.Field,
+                              supportRadius: Float = 0) -> Terrain {
         var carved = terrain
         for j in 0..<carved.size {
             for i in 0..<carved.size {
                 let index = carved.index(i, j)
                 carved.height[index] = RiverChannel.carvedHeight(terrain.height[index], field: field,
-                                                               x: carved.worldX(i), z: carved.worldZ(j))
+                                                               x: carved.worldX(i), z: carved.worldZ(j),
+                                                               supportRadius: supportRadius)
             }
         }
         return carved
+    }
+
+    /// Distance from a sampled terrain vertex to the nearest water triangle
+    /// that must be covered for the interpolated render triangles to stay
+    /// below the water sheet. One subcell diagonal on the default detail grid.
+    static func terrainSupportRadius(_ terrain: Terrain, detail: Int = 2) -> Float {
+        terrain.cellSize / Float(max(detail, 1)) * sqrt(2)
     }
 
 

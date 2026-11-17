@@ -83,18 +83,23 @@ final class WorldScene {
         let field = RiverChannel.Field(terrain: terrain, network: network)
         riverField = field
 
-        // One carved copy of the terrain is used for every visible surface
-        // and every placement. Otherwise props still use the sim height and
-        // float above the valley the renderer cut.
+        // The displayed terrain, banks and water are carved without support.
+        // The render vertices add a supported carve so interpolated triangles
+        // stay under the water sheet between grid samples. Placements and the
+        // height texture must use that same supported surface, otherwise they
+        // sit above the terrain that is actually drawn near banks/junctions.
         let carved = RiverChannel.carvedTerrain(terrain, field: field)
-        self.terrain = carved
+        let supportRadius = RiverChannel.terrainSupportRadius(terrain, detail: 2)
+        let placementTerrain = RiverChannel.carvedTerrain(terrain, field: field,
+                                                          supportRadius: supportRadius)
+        self.terrain = placementTerrain
 
-        carved.height.withUnsafeBytes { raw in
-            heightTexture.replace(region: MTLRegionMake2D(0, 0, carved.size,
-                                                          carved.size),
+        placementTerrain.height.withUnsafeBytes { raw in
+            heightTexture.replace(region: MTLRegionMake2D(0, 0, placementTerrain.size,
+                                                          placementTerrain.size),
                                   mipmapLevel: 0,
                                   withBytes: raw.baseAddress!,
-                                  bytesPerRow: carved.size
+                                  bytesPerRow: placementTerrain.size
                                     * MemoryLayout<Float>.stride)
         }
 
@@ -201,7 +206,7 @@ final class WorldScene {
                     guard let riverField else { return raw }
                     return RiverChannel.carvedHeight(raw, field: riverField,
                                                      x: x, z: z,
-                                                     supportRadius: cell / Float(step) * sqrt(2))
+                                                     supportRadius: RiverChannel.terrainSupportRadius(t, detail: step))
                 }
 
                 let h = surfaceHeight(x, z)
