@@ -626,7 +626,7 @@ final class WorldScene {
                         // and the bank triangles win in alternating pixels,
                         // which reads as a sawtooth of land inside the water.
                         let y = pointIndex == 0
-                            ? point.y - (0.004 / RiverChannel.metresPerUnit) : point.y
+                            ? point.y - (4.0 / RiverChannel.metresPerUnit) : point.y
                         verts.append(Vertex(position: SIMD3(p.x, y, p.y),
                                             normal: point.normal,
                                             color: SIMD4(point.color,
