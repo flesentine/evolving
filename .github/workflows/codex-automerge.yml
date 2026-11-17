@@ -103,11 +103,14 @@ jobs:
             const files = await github.paginate(github.rest.pulls.listFiles, {
               owner, repo, pull_number: number, per_page: 100,
             });
+            const isSensitivePath = (filename) =>
+              /^(?:\.github\/|Scripts\/|AGENTS\.md$|Package\.swift$|Package\.resolved$)/i.test(filename) ||
+              /(?:^|\/)(?:\.env(?:\..*)?|CODEOWNERS|Makefile)$/i.test(filename) ||
+              /(?:\.sh|\.ya?ml|\.entitlements|\.xcconfig)$|\.xcodeproj\/|\.xcworkspace\//i.test(filename);
             if (!files.length || files.length > 100 ||
                 files.some((f) =>
-                  /^(?:\.github\/|Scripts\/|AGENTS\.md$|Package\.swift$|Package\.resolved$)/i.test(f.filename) ||
-                  /(?:^|\/)(?:\.env(?:\..*)?|CODEOWNERS|Makefile)$/i.test(f.filename) ||
-                  /(?:\.sh|\.ya?ml|\.entitlements|\.xcconfig)$|\.xcodeproj\/|\.xcworkspace\//i.test(f.filename))) {
+                  isSensitivePath(f.filename) ||
+                  (f.previous_filename && isSensitivePath(f.previous_filename)))) {
               core.info('No files or sensitive/tooling files modified; no auto-merge');
               return;
             }
