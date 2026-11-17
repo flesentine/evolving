@@ -368,13 +368,13 @@ final class WorldScene {
                         radius = max(radius, RiverChannel.halfWidth(end))
                     }
                 }
-                startTrim = radius * 1.05 * metres
+                startTrim = radius * RiverChannel.junctionTrimFactor * metres
             }
             var endTrim: Float = 0
             if let d = reach.downstream, d < network.count,
                let first = network[d].samples.first, let last = samples.last {
                 endTrim = max(RiverChannel.halfWidth(last),
-                              RiverChannel.halfWidth(first)) * 1.05 * metres
+                              RiverChannel.halfWidth(first)) * RiverChannel.junctionTrimFactor * metres
             }
             var fs = 0
             while fs < samples.count - 1 && samples[fs].along < startTrim {
@@ -600,14 +600,14 @@ final class WorldScene {
                         radius = max(radius, RiverChannel.halfWidth(end))
                     }
                 }
-                startTrim = radius * 1.0 * metres
+                startTrim = radius * RiverChannel.junctionTrimFactor * metres
             }
             var endTrim: Float = 0
             if let d = reach.downstream, d < network.count,
                let first = network[d].samples.first,
                let last = samples.last {
                 endTrim = max(RiverChannel.halfWidth(last),
-                              RiverChannel.halfWidth(first)) * 1.0 * metres
+                              RiverChannel.halfWidth(first)) * RiverChannel.junctionTrimFactor * metres
             }
             let totalLength = samples.last?.along ?? 0
 
