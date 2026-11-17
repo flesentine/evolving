@@ -34,6 +34,7 @@ func usage() -> Never {
       civheadless plan [year] [seed]
       civheadless river [seed] [year]
       civheadless riverfixtures
+      civheadless riverterrainfixtures
       civheadless riverdebug <directory> [seed]
       civheadless info
     """)
@@ -200,6 +201,9 @@ case "riverdebug":
                                   directory: URL(fileURLWithPath: arguments[2]))
     } catch { fail("riverdebug failed — \(error)") }
 
+case "riverterrainfixtures":
+    if !RiverTerrainFixtures.run() { exit(1) }
+
 case "riverfixtures":
     if !RiverMeshValidation.fixtures() { exit(1) }
 
@@ -304,16 +308,18 @@ case "determinism":
 
     let network = RiverNetwork.build(terrain).reaches
     let field = RiverChannel.Field(terrain: terrain, network: network)
+    let placementTerrain = RiverChannel.carvedTerrain(terrain, field: field,
+                                                      supportRadius: RiverChannel.terrainSupportRadius(terrain))
     let a = CityBuilder.build(settlements: first.settlements,
                               era: first.era,
                               year: first.year,
-                              terrain: terrain,
+                              terrain: placementTerrain,
                               seed: seed,
                               riverField: field)
     let b = CityBuilder.build(settlements: second.settlements,
                               era: second.era,
                               year: second.year,
-                              terrain: terrain,
+                              terrain: placementTerrain,
                               seed: seed,
                               riverField: field)
     let ha = hash(a), hb = hash(b)
@@ -341,6 +347,18 @@ case "determinism":
     let riverB = surfaceHash(RiverSurface.build(terrain, network: RiverNetwork.build(terrain).reaches))
     print(String(format: "river mesh hash %016llx / %016llx", riverA, riverB))
     if riverA != riverB { fail("determinism failed — river mesh differs") }
+    let fieldB = RiverChannel.Field(terrain: terrain, network: RiverNetwork.build(terrain).reaches)
+    let carvedA = RiverChannel.carvedTerrain(terrain, field: field)
+    let carvedB = RiverChannel.carvedTerrain(terrain, field: fieldB)
+    let supportedA = RiverChannel.supportedTerrain(carvedA, field: field, radius: RiverChannel.terrainSupportRadius(terrain))
+    let supportedB = RiverChannel.supportedTerrain(carvedB, field: fieldB, radius: RiverChannel.terrainSupportRadius(terrain))
+    let terrainA = WorldScene.terrainVertices(carvedA, detail: 2, riverField: field, coarseSupport: supportedA)
+    let terrainB = WorldScene.terrainVertices(carvedB, detail: 2, riverField: fieldB, coarseSupport: supportedB)
+    let indices = WorldScene.terrainIndices(terrain, detail: 2)
+    let terrainHashA = surfaceHash(RiverSurface.Geometry(vertices: terrainA, indices: indices, junctions: [], ribbonWidths: []))
+    let terrainHashB = surfaceHash(RiverSurface.Geometry(vertices: terrainB, indices: indices, junctions: [], ribbonWidths: []))
+    print(String(format: "submitted terrain hash %016llx / %016llx", terrainHashA, terrainHashB))
+    if terrainHashA != terrainHashB { fail("determinism failed — submitted terrain differs") }
     print("deterministic: OK")
 
 case "resources":

@@ -1,5 +1,9 @@
 # River Patch 6A — confluence footprints
 
+**Latest validation:** [PR 15 mountain/estuary follow-up](review/patch6a-followup/README.md).
+The results below describe the initial confluence implementation; the follow-up
+supersedes its terrain, graph, performance and installed-build results.
+
 Base: `e72eb508c096c2b45bfcb8d2d9991977e60c2687`. Source changes remain on
 `codex/river-patch6a-confluence-footprint`; GitHub Actions are unchanged.
 
@@ -197,3 +201,25 @@ The following are P2 observations, reported without additional cleanup:
 No remaining P0/P1 failures are reported by the confluence gates for the tested
 11 seeds. This is not a complete audit/redesign of coast/lake semantics, the
 simulation routing algorithm, or bridge assets; those remain outside Patch 6A.
+
+## Screenshot-driven PR 15 follow-up
+
+The user's saved-world screenshot exposed finite-bucket valley cutoffs that
+junction-only checks missed. The follow-up adds a deterministic global
+nearest-water hierarchy, continuous outside-water profile/support constraints,
+submitted-grid terrain normals, all-water clearance/bank checks and exhaustive
+unbucketed terrain reconstruction. A second raw-terrain visual check found
+recursive estuary excavation in WorldGen; sea classification is now snapshotted
+before the pass so only the original coastal halo is excavated.
+
+That generator correction intentionally changes some terrain, river graphs,
+water meshes and settlement replays relative to the initial version, while
+remaining deterministic. The graph-unchanged claim in the initial section
+above does not apply to this follow-up. Every diagnostic delta is retained in
+[the current before/after log](review/patch6a-followup/diagnostic-changes.txt).
+
+[Current validation, fixed findings, visual verdict and limitations](review/patch6a-followup/README.md)
+and [twelve-seed table](review/patch6a-followup/seed-table.md) accompany native
+saved-world before/after, whole-island and overhead screenshots. Screenshots
+must be captured and inspected by the agent before future merge recommendations;
+passing geometry diagnostics alone is insufficient.

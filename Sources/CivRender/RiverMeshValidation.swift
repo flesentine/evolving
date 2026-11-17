@@ -12,8 +12,12 @@ enum RiverMeshValidation {
         var minClearance: Float = .greatestFiniteMagnitude
         var maxSeamStep: Float = 0
         var minRenderedWidth: Float = 0, maxRenderedWidth: Float = 0
+        var wholeWaterTriangles = 0, wholeWaterProbes = 0, wholeWaterFailures = 0
+        var referenceProbes = 0
+        var maxReferenceError: Float = 0
+        var maxWholeCarveEdgeChange: Float = 0
         var passes: Bool {
-            topologyFailures == 0 && invalid == 0 && footprintMisses == 0 && clearanceFailures == 0
+            wholeWaterFailures == 0 && maxReferenceError <= 0.001 && topologyFailures == 0 && invalid == 0 && footprintMisses == 0 && clearanceFailures == 0
                 && bankIntrusions == 0 && seamFailures == 0 && outsideToleranceArea < 0.000001 // 1 mm² residual beyond the 0.1 mm boundary band
         }
         var summary: String {
@@ -25,6 +29,9 @@ enum RiverMeshValidation {
             boundary topology failures \(topologyFailures)
             outside swept union \(String(format: "%.6f", outsideArea)) m²; beyond 0.1 mm boundary band \(String(format: "%.9f", outsideToleranceArea)) m²
             rendered terrain clearance min \(String(format: "%.3f", minClearance)) m, failures \(clearanceFailures)
+            whole river triangles \(wholeWaterTriangles), terrain probes \(wholeWaterProbes), failures \(wholeWaterFailures)
+            unbounded terrain reference \(referenceProbes) probes, max error \(String(format: "%.6f", maxReferenceError)) m
+            max adjacent-vertex carve change \(String(format: "%.3f", maxWholeCarveEdgeChange)) m
             above-water bank intrusions \(bankIntrusions)
             cut seam failures \(seamFailures), max height error \(String(format: "%.6f", maxSeamStep)) m
             \(passes ? "PASS final junction mesh" : "FAIL final junction mesh")
@@ -38,7 +45,8 @@ enum RiverMeshValidation {
         result.minRenderedWidth = mesh.ribbonWidths.min() ?? 0
         result.maxRenderedWidth = mesh.ribbonWidths.max() ?? 0
         let carved = RiverChannel.carvedTerrain(terrain, field: field)
-        let vertices = WorldScene.terrainVertices(carved, detail: 2, riverField: field)
+        let support = RiverChannel.supportedTerrain(carved, field: field, radius: RiverChannel.terrainSupportRadius(terrain))
+        let vertices = WorldScene.terrainVertices(carved, detail: 2, riverField: field, coarseSupport: support)
         let banks = WorldScene.riverBankGeometry(carved, network: network, field: field)
         func terrainHeight(_ p: SIMD2<Float>) -> Float {
             WorldScene.renderedTerrainHeight(p, terrain: terrain, vertices: vertices)
@@ -109,28 +117,113 @@ enum RiverMeshValidation {
                     } // 1 mm
                 }
             }
-            for i in stride(from: 0, to: banks.indices.count, by: 3) {
-                let first = banks.vertices[Int(banks.indices[i])].position
-                let margin: Float = 20 / RiverChannel.metresPerUnit // largest bank triangle extent
-                if first.x < lo.x - margin || first.x > hi.x + margin
-                    || first.z < lo.y - margin || first.z > hi.y + margin { continue }
-                let bank = (0..<3).map { banks.vertices[Int(banks.indices[i + $0])] }
-                for water in final where RiverPolygon.overlaps(bank, water) {
-                    var overlap = bank
-                    let boundary = RiverPolygon.area(water) > 0 ? water : Array(water.reversed())
-                    for k in 0..<3 {
-                        overlap = RiverPolygon.clip(overlap, a: RiverPolygon.point(boundary[k]),
-                                                    b: RiverPolygon.point(boundary[(k + 1) % 3]), inside: true)
-                    }
-                    if abs(RiverPolygon.area(overlap)) * 1_000_000 > 0.000001 { // 1 mm²
-                        result.bankIntrusions += 1
-                    }
-                }
-            }
             if result.clearanceFailures != before.clearanceFailures || result.seamFailures != before.seamFailures
                 || result.bankIntrusions != before.bankIntrusions {
                 print("J\(junction.id): triangles \(final.count), terrain failures \(result.clearanceFailures - before.clearanceFailures), seam failures \(result.seamFailures - before.seamFailures), bank intrusions \(result.bankIntrusions - before.bankIntrusions)")
             }
+        }
+        struct Face: Hashable { let a: SIMD3<Float>; let b: SIMD3<Float>; let c: SIMD3<Float> }
+        func face(_ triangle: [Vertex]) -> Face {
+            let p = triangle.map { $0.position }.sorted {
+                if $0.x != $1.x { return $0.x < $1.x }
+                if $0.z != $1.z { return $0.z < $1.z }
+                return $0.y < $1.y
+            }
+            return Face(a: p[0], b: p[1], c: p[2])
+        }
+        var upward: Set<Face> = []
+        for i in stride(from: 0, to: mesh.indices.count, by: 3) {
+            let triangle = (0..<3).map { mesh.vertices[Int(mesh.indices[i + $0])] }
+            if RiverPolygon.area(triangle) < 0 { upward.insert(face(triangle)) }
+        }
+        // Inspect every submitted water triangle, not only junction patches.
+        for i in stride(from: 0, to: mesh.indices.count, by: 3) {
+            let triangle = (0..<3).map { mesh.vertices[Int(mesh.indices[i + $0])] }
+            result.wholeWaterTriangles += 1
+            let area = RiverPolygon.area(triangle)
+            if area == 0 || (area > 0 && !upward.contains(face(triangle))) { result.invalid += 1 }
+            let centre = triangle.reduce(SIMD3<Float>.zero) { $0 + $1.position } / 3
+            for p in triangle.map({ $0.position }) + [centre] {
+                let clearance = (p.y - terrainHeight(SIMD2(p.x, p.z))) * RiverChannel.metresPerUnit
+                result.wholeWaterProbes += 1
+                if clearance < 0.01 { result.wholeWaterFailures += 1 }
+            }
+        }
+        // Test the actual clipped bank triangles against all nearby submitted
+        // water, including the long straight/parallel runs outside junctions.
+        for i in stride(from: 0, to: banks.indices.count, by: 3) {
+            let bank = (0..<3).map { banks.vertices[Int(banks.indices[i + $0])] }
+            let centre = bank.reduce(SIMD2<Float>.zero) { $0 + SIMD2($1.position.x, $1.position.z) } / 3
+            for water in field.nearbyTriangles(centre) where RiverPolygon.overlaps(bank, water) {
+                var overlap = bank
+                let boundary = RiverPolygon.area(water) > 0 ? water : Array(water.reversed())
+                for k in 0..<3 {
+                    overlap = RiverPolygon.clip(overlap, a: RiverPolygon.point(boundary[k]),
+                                                b: RiverPolygon.point(boundary[(k + 1) % 3]), inside: true)
+                }
+                if abs(RiverPolygon.area(overlap)) * 1_000_000 > 0.000001 { result.bankIntrusions += 1 }
+            }
+        }
+        // Reference the submitted dry terrain too. Select the strongest carve
+        // changes and deterministic bucket-line samples, then reconstruct the
+        // exact render pipeline by scanning *all* water triangles, with no BVH
+        // or bucket acceleration. This catches cutoff walls outside wet areas.
+        let n = (terrain.size - 1) * 2 + 1
+        var strongest: [(change: Float, index: Int)] = []
+        var bucketSamples: [Int] = []
+        for j in 0..<n {
+            for i in 0..<n {
+                let index = j * n + i, p = vertices[index].position
+                let raw = terrain.interpolatedHeight(x: p.x, z: p.z)
+                let depth = raw - p.y
+                var change: Float = 0
+                for other in [i > 0 ? index - 1 : index, j > 0 ? index - n : index] {
+                    let q = vertices[other].position
+                    let otherDepth = terrain.interpolatedHeight(x: q.x, z: q.z) - q.y
+                    change = max(change, abs(depth - otherDepth))
+                }
+                result.maxWholeCarveEdgeChange = max(result.maxWholeCarveEdgeChange, change * RiverChannel.metresPerUnit)
+                if strongest.count < 16 || change > strongest.last!.change {
+                    strongest.append((change, index))
+                    strongest.sort { $0.change == $1.change ? $0.index < $1.index : $0.change > $1.change }
+                    if strongest.count > 16 { strongest.removeLast() }
+                }
+                // 20 m bucket lines, sampled where a real carve exists.
+                let bucketDistance = abs((p.x / (20 / RiverChannel.metresPerUnit)).rounded() - p.x / (20 / RiverChannel.metresPerUnit))
+                if depth > 0.01 / RiverChannel.metresPerUnit && bucketDistance < 0.08 && (i + j * 17) % 97 == 0 {
+                    bucketSamples.append(index)
+                }
+            }
+        }
+        var coarseCache: [Int: Float] = [:]
+        func coarse(_ i: Int, _ j: Int) -> Float {
+            let index = terrain.index(i, j)
+            if let value = coarseCache[index] { return value }
+            let value = field.carvedHeight(terrain.height[index], at: SIMD2(terrain.worldX(i), terrain.worldZ(j)), supportRadius: 0, exhaustive: true)
+            coarseCache[index] = value
+            return value
+        }
+        let selected = Set(strongest.map { $0.index } + Array(bucketSamples.prefix(16))).sorted()
+        for index in selected {
+            let p = vertices[index].position
+            let fi = (p.x + 1) * 0.5 * Float(terrain.size - 1)
+            let fj = (p.z + 1) * 0.5 * Float(terrain.size - 1)
+            let i = min(max(Int(floor(fi)), 0), terrain.size - 2), j = min(max(Int(floor(fj)), 0), terrain.size - 2)
+            let u = min(max(fi - Float(i), 0), 1), v = min(max(fj - Float(j), 0), 1)
+            let top = coarse(i, j) + (coarse(i + 1, j) - coarse(i, j)) * u
+            let bottom = coarse(i, j + 1) + (coarse(i + 1, j + 1) - coarse(i, j + 1)) * u
+            let raw = top + (bottom - top) * v
+            let expected: Float
+            if (index % n) % 2 == 0 && (index / n) % 2 == 0 {
+                let ci = (index % n) / 2, cj = (index / n) / 2
+                expected = field.supportedHeight(coarse(ci, cj), at: SIMD2(p.x, p.z),
+                    supportRadius: RiverChannel.terrainSupportRadius(terrain), exhaustive: true)
+            } else {
+                expected = field.carvedHeight(raw, at: SIMD2(p.x, p.z),
+                    supportRadius: RiverChannel.terrainSupportRadius(terrain), exhaustive: true)
+            }
+            result.referenceProbes += 1
+            result.maxReferenceError = max(result.maxReferenceError, abs(expected - p.y) * RiverChannel.metresPerUnit)
         }
         return result
     }

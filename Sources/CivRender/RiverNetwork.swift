@@ -147,6 +147,21 @@ enum RiverChannel {
         return carved
     }
 
+    /// Add the local mesh-support constraint to an already carved coarse
+    /// surface. Reuse the global valley calculation instead of solving it
+    /// again for the placement grid and coincident render vertices.
+    static func supportedTerrain(_ terrain: Terrain, field: Field, radius: Float) -> Terrain {
+        var result = terrain
+        for j in 0..<terrain.size {
+            for i in 0..<terrain.size {
+                let index = terrain.index(i, j)
+                result.height[index] = field.supportedHeight(terrain.height[index],
+                    at: SIMD2(terrain.worldX(i), terrain.worldZ(j)), supportRadius: radius)
+            }
+        }
+        return result
+    }
+
     /// Distance from a sampled terrain vertex to the nearest water triangle
     /// that must be covered for the interpolated render triangles to stay
     /// below the water sheet. One subcell diagonal on the default detail grid.
@@ -213,18 +228,7 @@ enum RiverChannel {
 
     static func carvedHeight(_ h: Float, field: Field, x: Float, z: Float,
                              supportRadius: Float = 0) -> Float {
-        guard let s = field.carveWater(at: SIMD2(x, z), supportRadius: supportRadius) else { return h }
-        let d = s.distance
-        if d <= 0 { return min(h, min(s.water - bedClearance, s.ceiling)) }
-        let allowed: Float
-        if d <= wetShelf {
-            allowed = s.water - bedClearance
-                + (d / wetShelf) * shelfRise
-        } else {
-            allowed = s.water - (bedClearance - shelfRise)
-                + (d - wetShelf) * valleySlope
-        }
-        return min(h, min(allowed, s.ceiling))
+        field.carvedHeight(h, at: SIMD2(x, z), supportRadius: supportRadius)
     }
 
     /// The water plane for one sample and the lowest terrain under it.
@@ -437,6 +441,8 @@ enum RiverChannel {
         let network: [RiverReach]
         var geometry: (vertices: [Vertex], indices: [UInt32]) { (mesh.vertices, mesh.indices) }
         private let triangles: [[Vertex]]
+        private let carveIndex: RiverTriangleIndex
+        private let lowestWater: Float
         private let buckets: [Int64: [Int]]
         private let bucketSize: Float = 20 / metresPerUnit // 20 m
 
@@ -449,6 +455,8 @@ enum RiverChannel {
                 list.append((0..<3).map { mesh.vertices[Int(mesh.indices[i + $0])] })
             }
             triangles = list
+            carveIndex = RiverTriangleIndex(list)
+            lowestWater = list.reduce(Float.greatestFiniteMagnitude) { min($0, min($1[0].position.y, min($1[1].position.y, $1[2].position.y))) }
             var map: [Int64: [Int]] = [:]
             let size: Float = 20 / metresPerUnit
             for (i, triangle) in list.enumerated() {
@@ -499,24 +507,21 @@ enum RiverChannel {
                     inside ? water : edgeWater)
         }
         func surface(at p: SIMD2<Float>) -> (water: Float?, distance: Float)? {
-            guard let value = carveWater(at: p) else { return nil }
+            guard let value = nearbyWater(at: p) else { return nil }
             return (value.distance <= 0 ? value.water : nil, value.distance)
         }
-        func carveWater(at p: SIMD2<Float>, supportRadius: Float = 0)
-            -> (water: Float, distance: Float, ceiling: Float)? {
+        /// Bounded query for wet classification and exclusion only. Terrain
+        /// carving uses the global hierarchy below, never this bucket halo.
+        private func nearbyWater(at p: SIMD2<Float>) -> (water: Float, distance: Float)? {
             let x = Int(floor(p.x / bucketSize)), z = Int(floor(p.y / bucketSize))
             guard let ids = buckets[Field.key(x, z)] else { return nil }
             var best = Float.greatestFiniteMagnitude, level: Float = 0
             var candidates: [(Float, Float)] = []
-            var ceiling = Float.greatestFiniteMagnitude
             for id in ids {
                 let value = Field.probe(triangles[id], p)
                 if value.distance < best { best = value.distance; level = value.water }
                 candidates.append((value.distance, value.water))
-                if supportRadius > 0 {
-                    let low = min(triangles[id][0].position.y, min(triangles[id][1].position.y, triangles[id][2].position.y))
-                    ceiling = min(ceiling, low - bedClearance + max(value.distance - supportRadius, 0) * valleySlope)
-                }
+
             }
             guard best < .greatestFiniteMagnitude else { return nil }
             if best > 0 {
@@ -530,14 +535,66 @@ enum RiverChannel {
                 }
                 if weight > 0 { level = sum / weight }
             }
-            return (level, best, ceiling)
+            return (level, best)
+        }
+        private func interiorWater(_ p: SIMD2<Float>, exhaustive: Bool) -> (water: Float, distance: Float)? {
+            let x = Int(floor(p.x / bucketSize)), z = Int(floor(p.y / bucketSize))
+            let ids = exhaustive ? Array(carveIndex.records.indices) : (buckets[Field.key(x, z)] ?? [])
+            var best: (water: Float, distance: Float)?
+            for id in ids {
+                let record = carveIndex.records[id]
+                if p.x < record.low.x || p.x > record.high.x || p.y < record.low.y || p.y > record.high.y { continue }
+                let value = Field.probe(record.triangle, p)
+                if value.distance <= 0 && value.distance < (best?.distance ?? .greatestFiniteMagnitude) {
+                    best = (value.water, value.distance)
+                }
+            }
+            return best
+        }
+        /// Continuous valley surface with no spatial-hash cutoff. Wetness and
+        /// bank clipping still use bounded triangle buckets; carving uses the
+        /// hierarchy's global nearest surface and a continuous tie blend.
+        func carvedHeight(_ original: Float, at p: SIMD2<Float>, supportRadius: Float,
+                          exhaustive: Bool = false) -> Float {
+            if original <= lowestWater - bedClearance { return original }
+            guard let water = interiorWater(p, exhaustive: exhaustive) ?? carveIndex.nearest(p, exhaustive: exhaustive) else { return original }
+            let d = max(water.distance, 0)
+            let rise = d <= wetShelf ? d / wetShelf * shelfRise
+                : shelfRise + (d - wetShelf) * valleySlope
+            let base = min(original, water.water - bedClearance + rise)
+            return supportedHeight(base, at: p, supportRadius: supportRadius, exhaustive: exhaustive)
+        }
+
+        func supportedHeight(_ base: Float, at p: SIMD2<Float>, supportRadius: Float,
+                             exhaustive: Bool = false) -> Float {
+            guard supportRadius > 0 else { return base }
+            var result = base
+            let radius = supportRadius + wetShelf
+            let key = Field.key(Int(floor(p.x / bucketSize)), Int(floor(p.y / bucketSize)))
+            let ids = exhaustive || radius > bucketSize ? Array(carveIndex.records.indices) : (buckets[key] ?? [])
+            for id in ids {
+                let record = carveIndex.records[id]
+                let query = Field.probe(record.triangle, p)
+                let distance = max(query.distance, 0)
+                if distance >= radius { continue }
+                // For a convex triangle, any point within the support disc
+                // lies at most sqrt(R²-d²) from its closest point. The affine
+                // water gradient therefore bounds the lowest local water Y.
+                let along = sqrt(max(supportRadius * supportRadius - distance * distance, 0))
+                let localLow = max(record.minWater, query.water - record.gradient * along)
+                let cap = localLow - bedClearance + max(distance - supportRadius, 0) * valleySlope
+                let t = min(max((distance - supportRadius) / wetShelf, 0), 1)
+                let weight = 1 - t * t * (3 - 2 * t)
+                result = min(result, base + (min(base, cap) - base) * weight)
+            }
+            return min(base, result)
         }
         func waterLevel(at p: SIMD2<Float>) -> Float? {
-            guard let value = carveWater(at: p), value.distance <= 0 else { return nil }
+            guard let value = nearbyWater(at: p), value.distance <= 0 else { return nil }
             return value.water
         }
         func signedDistance(at p: SIMD2<Float>) -> Float? {
-            carveWater(at: p)?.distance
+            nearbyWater(at: p)?.distance
         }
         func isNearWater(at p: SIMD2<Float>, margin: Float) -> Bool {
             guard let d = signedDistance(at: p) else { return false }

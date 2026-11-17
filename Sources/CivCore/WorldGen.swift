@@ -111,6 +111,38 @@ struct Terrain {
 
 enum WorldGen {
 
+
+    /// Open only cells close to the original sea. Reading the mutated height
+    /// here lets one new mouth become the next mouth's sea and excavates a
+    /// row-order-dependent channel arbitrarily far inland.
+    static func carveEstuaries(_ height: inout [Float], river: [UInt8], size: Int) {
+        let metresPerUnit: Float = 1_000
+        let originalSea = height.map { $0 <= 0 }
+        for idx in 0..<height.count where river[idx] > 0 {
+            let i = idx % size, j = idx / size
+            var nearSea = false
+            for dj in -2...2 where !nearSea {
+                for di in -2...2 {
+                    let ni = min(max(i + di, 0), size - 1)
+                    let nj = min(max(j + dj, 0), size - 1)
+                    if originalSea[nj * size + ni] {
+                        nearSea = true
+                        break
+                    }
+                }
+            }
+            guard nearSea else { continue }
+
+            height[idx] = min(height[idx], -6 / metresPerUnit)
+            for (di, dj) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                let ni = min(max(i + di, 0), size - 1)
+                let nj = min(max(j + dj, 0), size - 1)
+                let n = nj * size + ni
+                if height[n] > 0 { height[n] = min(height[n], 2 / metresPerUnit) }
+            }
+        }
+    }
+
     static func generate(seed: UInt64, size: Int = 384) -> Terrain {
         let noise = ValueNoise(seed: seed)
         let count = size * size
@@ -221,29 +253,7 @@ enum WorldGen {
 
         // Estuaries: open river mouths into the sea so the rivers visibly
         // reach the coast instead of fading out on the beach.
-        for idx in 0..<count where river[idx] > 0 {
-            let i = idx % size, j = idx / size
-            var nearSea = false
-            for dj in -2...2 where !nearSea {
-                for di in -2...2 {
-                    let ni = min(max(i + di, 0), size - 1)
-                    let nj = min(max(j + dj, 0), size - 1)
-                    if height[nj * size + ni] <= 0 {
-                        nearSea = true
-                        break
-                    }
-                }
-            }
-            guard nearSea else { continue }
-
-            height[idx] = min(height[idx], -0.006)
-            for (di, dj) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
-                let ni = min(max(i + di, 0), size - 1)
-                let nj = min(max(j + dj, 0), size - 1)
-                let n = nj * size + ni
-                if height[n] > 0 { height[n] = min(height[n], 0.002) }
-            }
-        }
+        carveEstuaries(&height, river: river, size: size)
 
         // ---------------------------------------------------------------
         // Distance to water (sea or river)

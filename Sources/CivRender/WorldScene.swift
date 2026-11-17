@@ -90,8 +90,7 @@ final class WorldScene {
         // sit above the terrain that is actually drawn near banks/junctions.
         let carved = RiverChannel.carvedTerrain(terrain, field: field)
         let supportRadius = RiverChannel.terrainSupportRadius(terrain, detail: 2)
-        let placementTerrain = RiverChannel.carvedTerrain(terrain, field: field,
-                                                          supportRadius: supportRadius)
+        let placementTerrain = RiverChannel.supportedTerrain(carved, field: field, radius: supportRadius)
         self.terrain = placementTerrain
 
         placementTerrain.height.withUnsafeBytes { raw in
@@ -103,7 +102,7 @@ final class WorldScene {
                                     * MemoryLayout<Float>.stride)
         }
 
-        let renderTerrain = WorldScene.terrainVertices(carved, detail: 2, riverField: field)
+        let renderTerrain = WorldScene.terrainVertices(carved, detail: 2, riverField: field, coarseSupport: placementTerrain)
         terrainMesh = try Mesh(device: context.device, vertices: renderTerrain,
                                indices: WorldScene.terrainIndices(carved, detail: 2))
 
@@ -184,7 +183,8 @@ final class WorldScene {
     /// bilinear height field on a finer grid gives the sea-level contour more
     /// segments to follow, which is what removes the visible stair-steps.
     static func terrainVertices(_ t: Terrain, detail: Int = 1,
-                                riverField: RiverChannel.Field? = nil) -> [Vertex] {
+                                riverField: RiverChannel.Field? = nil,
+                                coarseSupport: Terrain? = nil) -> [Vertex] {
         let n = t.size
         let step = max(detail, 1)
         let rn = (n - 1) * step + 1
@@ -192,27 +192,38 @@ final class WorldScene {
         verts.reserveCapacity(rn * rn)
 
         let cell = t.cellSize
-        let eps = cell / Float(step) * 0.5
-
+        let spacing = cell / Float(step)
+        // Compute each submitted height once. Normals follow neighbouring
+        // mesh vertices; re-querying the continuous carve four more times per
+        // vertex made complete global valley queries unnecessarily expensive.
+        var heights = [Float](repeating: 0, count: rn * rn)
+        for j in 0..<rn {
+            let z = -1 + Float(j) / Float(step) * cell
+            for i in 0..<rn {
+                let x = -1 + Float(i) / Float(step) * cell
+                if let coarseSupport, i % step == 0 && j % step == 0 {
+                    heights[j * rn + i] = coarseSupport.height[coarseSupport.index(i / step, j / step)]
+                    continue
+                }
+                let raw = t.interpolatedHeight(x: x, z: z)
+                heights[j * rn + i] = riverField.map {
+                    RiverChannel.carvedHeight(raw, field: $0, x: x, z: z,
+                                              supportRadius: RiverChannel.terrainSupportRadius(t, detail: step))
+                } ?? raw
+            }
+        }
         for rj in 0..<rn {
             let fj = Float(rj) / Float(step)
             let z = -1 + fj * cell
             for ri in 0..<rn {
                 let fi = Float(ri) / Float(step)
                 let x = -1 + fi * cell
-
-                func surfaceHeight(_ x: Float, _ z: Float) -> Float {
-                    let raw = t.interpolatedHeight(x: x, z: z)
-                    guard let riverField else { return raw }
-                    return RiverChannel.carvedHeight(raw, field: riverField,
-                                                     x: x, z: z,
-                                                     supportRadius: RiverChannel.terrainSupportRadius(t, detail: step))
-                }
-
-                let h = surfaceHeight(x, z)
-                let hx = surfaceHeight(x + eps, z) - surfaceHeight(x - eps, z)
-                let hz = surfaceHeight(x, z + eps) - surfaceHeight(x, z - eps)
-                let normal = simd_normalize(SIMD3<Float>(-hx / (2 * eps), 1, -hz / (2 * eps)))
+                let h = heights[rj * rn + ri]
+                let left = max(ri - 1, 0), right = min(ri + 1, rn - 1)
+                let bottomRow = max(rj - 1, 0), topRow = min(rj + 1, rn - 1)
+                let hx = (heights[rj * rn + right] - heights[rj * rn + left]) / (Float(right - left) * spacing)
+                let hz = (heights[topRow * rn + ri] - heights[bottomRow * rn + ri]) / (Float(topRow - bottomRow) * spacing)
+                let normal = simd_normalize(SIMD3<Float>(-hx, 1, -hz))
 
                 let i0 = min(max(Int(floor(fi)), 0), n - 2)
                 let j0 = min(max(Int(floor(fj)), 0), n - 2)
