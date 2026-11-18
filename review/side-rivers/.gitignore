@@ -1,0 +1,7 @@
+# Additional native isolation/island captures remain available locally.
+*.png
+!before-overhead.png
+!after-overhead.png
+!before-oblique.png
+!after-oblique.png
+!after-water-only.png

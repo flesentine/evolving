@@ -13,11 +13,12 @@ enum RiverMeshValidation {
         var maxSeamStep: Float = 0
         var minRenderedWidth: Float = 0, maxRenderedWidth: Float = 0
         var wholeWaterTriangles = 0, wholeWaterProbes = 0, wholeWaterFailures = 0
+        var meshChannelRuns = 0
         var referenceProbes = 0
         var maxReferenceError: Float = 0
         var maxWholeCarveEdgeChange: Float = 0
         var passes: Bool {
-            wholeWaterFailures == 0 && maxReferenceError <= 0.001 && topologyFailures == 0 && invalid == 0 && footprintMisses == 0 && clearanceFailures == 0
+            meshChannelRuns <= 14 && wholeWaterFailures == 0 && maxReferenceError <= 0.001 && topologyFailures == 0 && invalid == 0 && footprintMisses == 0 && clearanceFailures == 0
                 && bankIntrusions == 0 && seamFailures == 0 && outsideToleranceArea < 0.000001 // 1 mm² residual beyond the 0.1 mm boundary band
         }
         var summary: String {
@@ -30,6 +31,7 @@ enum RiverMeshValidation {
             outside swept union \(String(format: "%.6f", outsideArea)) m²; beyond 0.1 mm boundary band \(String(format: "%.9f", outsideToleranceArea)) m²
             rendered terrain clearance min \(String(format: "%.3f", minClearance)) m, failures \(clearanceFailures)
             whole river triangles \(wholeWaterTriangles), terrain probes \(wholeWaterProbes), failures \(wholeWaterFailures)
+            submitted water channel runs: \(meshChannelRuns) in 250 m, both scan axes
             unbounded terrain reference \(referenceProbes) probes, max error \(String(format: "%.6f", maxReferenceError)) m
             max adjacent-vertex carve change \(String(format: "%.3f", maxWholeCarveEdgeChange)) m
             above-water bank intrusions \(bankIntrusions)
@@ -42,6 +44,7 @@ enum RiverMeshValidation {
     static func run(_ terrain: Terrain, network: [RiverReach], field: RiverChannel.Field) -> Result {
         var result = Result()
         let mesh = field.mesh
+        result.meshChannelRuns = RiverMeshCrossings.maximum(mesh, terrain: terrain)
         result.minRenderedWidth = mesh.ribbonWidths.min() ?? 0
         result.maxRenderedWidth = mesh.ribbonWidths.max() ?? 0
         let carved = RiverChannel.carvedTerrain(terrain, field: field)

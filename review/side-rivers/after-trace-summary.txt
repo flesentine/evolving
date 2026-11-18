@@ -1,0 +1,14 @@
+reaches: 11  sources: 6  junctions: 5  mouths: 1
+width: 5.7–23.7 m
+original ground rise: 0.938 m
+min curvature radius: 2.9 m
+max adjacent turn: 21.8°
+self-intersections: 0
+max junction angle: 26.6°
+max sample spacing: 3.00 m
+linked reaches: 10  max link gap: 0.00 m
+inland terminal ends: 0  junction water step: 0.000 m
+routing-cell runs in a row (not mesh): 3
+unsupported source starts: 0; minimum source area: 1202 cells
+water surface rise: 0.000 m  graph identity: OK
+PASS

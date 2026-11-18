@@ -1,0 +1,12 @@
+15.66 ms/frame at 6016x3384 (scene scale 0.52) -> 63.9 fps
+real 5.18
+user 4.40
+sys 0.19
+19.28 ms/frame at 6016x3384 (scene scale 0.52) -> 51.9 fps
+real 5.27
+user 4.42
+sys 0.20
+18.14 ms/frame at 6016x3384 (scene scale 0.52) -> 55.1 fps
+real 5.29
+user 4.45
+sys 0.19

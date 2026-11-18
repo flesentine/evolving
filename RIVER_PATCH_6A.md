@@ -1,6 +1,7 @@
 # River Patch 6A — confluence footprints
 
-**Latest validation:** [PR 15 mountain/estuary follow-up](review/patch6a-followup/README.md).
+**Latest validation:** [PR 15 source-backed side-channel fix](review/side-rivers/README.md).
+[Earlier mountain/estuary follow-up](review/patch6a-followup/README.md) remains historical evidence.
 The results below describe the initial confluence implementation; the follow-up
 supersedes its terrain, graph, performance and installed-build results.
 
@@ -223,3 +224,20 @@ and [twelve-seed table](review/patch6a-followup/seed-table.md) accompany native
 saved-world before/after, whole-island and overhead screenshots. Screenshots
 must be captured and inspected by the agent before future merge recommendations;
 passing geometry diagnostics alone is insufficient.
+
+## Source-backed side-channel follow-up
+
+The user's second installed-world screenshot showed that geometrically valid
+water could still represent invalid selected drainage. Spill-only paths below
+the established catchment threshold were being drawn, and source thinning left
+orphan downstream fragments. Routing now uses the correct surface order,
+accumulation rejects cycles, and selection rebuilds complete retained-source
+paths before reach splitting. Spring taper survives the channel-width floor;
+true bend radii prevent inside ribbon inversion. Actual submitted triangle
+intervals replace the routing-row statistic as the channel-run gate.
+
+[Current before/after captures, twelve-seed results, regression fixtures,
+installation and merge assessment](review/side-rivers/README.md) supersede the
+previous graph, width, source-count, geometry-hash and performance results.
+The user's seed changes from 77 reaches / 22 starts to 11 reaches / six retained
+catchments. This is not a cosmetic hide flag. No workflow changes are included.

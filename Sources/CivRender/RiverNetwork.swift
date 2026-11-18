@@ -10,6 +10,9 @@ struct RiverSample {
     /// narrowed where the cross-slope is steep so a wide river never has to
     /// hang a water plane off a hillside.
     var channelWidth: Float = 0
+    /// Multiplier of the effective ribbon half-width at a retained spring.
+    /// Applied after the normal channel-width floor, so taper reaches the GPU.
+    var sourceWidthFactor: Float = 1
     /// Longest bank offset that stays outside the local bend radius. A strip
     /// offset further than the radius folds through the centreline and shows
     /// up as a triangular wedge of land inside the water.
@@ -47,7 +50,7 @@ struct RiverDiagnostics {
     var mouths = 0
     var minWidth: Float = 0
     var maxWidth: Float = 0
-    var maxUphill: Float = 0
+    var maxGroundRiseMetres: Float = 0 // original terrain, before the rendered carve
     var minCurvatureRadius: Float = .greatestFiniteMagnitude
     var maxTurnDegrees: Float = 0
     var selfIntersections = 0
@@ -57,17 +60,23 @@ struct RiverDiagnostics {
     var maxLinkGap: Float = 0
     var inlandTerminalEnds = 0
     var maxJunctionWaterStep: Float = 0
-    var maxParallelChannels = 0
+    var routingRowRuns = 0
     var maxWaterRise: Float = 0
     var graphIdentityOk = true
+    var unsupportedSources = 0
+    var minSourceArea: Float = 0 // contributing grid cells, not world distance
 
     var failures: [String] {
         var result: [String] = []
         if minWidth < 3 || maxWidth > 45 {
             result.append("width outside 3–45 m")
         }
-        if maxUphill > 0.01 {
-            result.append("uphill segment > 0.01 m")
+        // Preserve the old effective bound (0.01 world units = 10 m), but
+        // report its real unit. This is original ground, not drawn water;
+        // downstream water rise has its own metre-valued gate below.
+        let maxGroundRiseLimitMetres: Float = 10
+        if maxGroundRiseMetres > maxGroundRiseLimitMetres {
+            result.append("original ground rise > 10 m per sample")
         }
         if minCurvatureRadius < 0.5 {
             result.append("curvature radius < 0.5 m")
@@ -78,9 +87,8 @@ struct RiverDiagnostics {
         if selfIntersections > 0 {
             result.append("reach self-intersection")
         }
-        if maxParallelChannels > 14 {
-            result.append("parallel channel runs (canal look)")
-        }
+        if unsupportedSources > 0 { result.append("channel start has no retained catchment source") }
+        if minSourceArea < 1200 { result.append("source below 1200-cell catchment threshold") }
         if !graphIdentityOk {
             result.append("drainage forest identity broken")
         }
@@ -114,7 +122,7 @@ struct RiverDiagnostics {
         """
         reaches: \(reaches)  sources: \(sources)  junctions: \(junctions)  mouths: \(mouths)
         width: \(String(format: "%.1f–%.1f m", minWidth, maxWidth))
-        max uphill: \(String(format: "%.3f m", maxUphill))
+        original ground rise: \(String(format: "%.3f m", maxGroundRiseMetres))
         min curvature radius: \(String(format: "%.1f m", minCurvatureRadius))
         max adjacent turn: \(String(format: "%.1f°", maxTurnDegrees))
         self-intersections: \(selfIntersections)
@@ -122,7 +130,8 @@ struct RiverDiagnostics {
         max sample spacing: \(String(format: "%.2f m", maxSampleSpacing))
         linked reaches: \(linkedReaches)  max link gap: \(String(format: "%.2f m", maxLinkGap))
         inland terminal ends: \(inlandTerminalEnds)  junction water step: \(String(format: "%.3f m", maxJunctionWaterStep))
-        max parallel channels in a row: \(maxParallelChannels)
+        routing-cell runs in a row (not mesh): \(routingRowRuns)
+        unsupported source starts: \(unsupportedSources); minimum source area: \(Int(minSourceArea)) cells
         water surface rise: \(String(format: "%.3f m", maxWaterRise))  graph identity: \(graphIdentityOk ? "OK" : "BROKEN")
         \(passes ? "PASS" : "FAIL: " + failures.joined(separator: ", "))
         """
@@ -180,9 +189,8 @@ enum RiverChannel {
     /// Nominal crest height above the waterline.
     static let bankHeight: Float = 0.35 / metresPerUnit    // 0.35 m
 
-    /// Minimum half-width so the narrowest source still has a visible channel.
-    /// Sources taper down to this, so a headwater reads as a spring rather
-    /// than a sawn-off canal.
+    /// Minimum half-width for established channels. Retained springs apply
+    /// their sourceWidthFactor after this floor and start at 30 cm full width.
     static let minHalfWidth: Float = 1.4 / metresPerUnit   // 2.8 m channel
 
     /// A hair of clearance used to keep coplanar surfaces apart.
@@ -205,7 +213,7 @@ enum RiverChannel {
 
     static func halfWidth(_ sample: RiverSample) -> Float {
         let width = sample.channelWidth > 0 ? sample.channelWidth : sample.width
-        return max(width * 0.5, minHalfWidth)
+        return max(width * 0.5, minHalfWidth) * sample.sourceWidthFactor
     }
 
     static func sideVector(_ sample: RiverSample) -> SIMD2<Float> {
@@ -787,6 +795,12 @@ enum RiverNetwork {
                                              diagnostics: RiverDiagnostics) {
         let n = terrain.size
         let count = n * n
+        let outletHeight = 4 / metresPerUnit // 4 m coastal routing band
+        let floodSeedHeight = 2 / metresPerUnit // 2 m
+        let routingIncision = 0.12 / metresPerUnit // 12 cm per routing pass
+        let neighbourIncision = 0.03 / metresPerUnit // 3 cm per pass
+        let slopeTie = 0.0001 / metresPerUnit // 0.1 mm vertical tie predicate
+        let floodRise = 0.001 / metresPerUnit // 1 mm per priority-flood step
         let dirs: [(Int, Int)] = [
             (1, 0), (-1, 0), (0, 1), (0, -1),
             (1, 1), (1, -1), (-1, 1), (-1, -1)
@@ -796,7 +810,7 @@ enum RiverNetwork {
         // elevation) and a topological accumulation, so diagonal neighbours
         // are not penalised and the contributing area belongs to the final
         // receiver graph rather than a stale sorting order.
-        let land = (0..<count).filter { terrain.height[$0] > 0.004 }
+        let land = (0..<count).filter { terrain.height[$0] > outletHeight }
         var route = terrain.height
         var routeDown = [Int](repeating: -1, count: count)
         var routeArea = [Float](repeating: 0, count: count)
@@ -806,7 +820,7 @@ enum RiverNetwork {
             for j in 0..<n {
                 for i in 0..<n {
                     let idx = terrain.index(i, j)
-                    guard surface[idx] > 0.004 else {
+                    guard surface[idx] > outletHeight else {
                         receivers[idx] = -1
                         continue
                     }
@@ -819,7 +833,7 @@ enum RiverNetwork {
                         let distance: Float = (di != 0 && dj != 0)
                             ? 1.41421356 : 1
                         let slope = (surface[idx] - surface[nIdx]) / distance
-                        if slope > bestSlope + 1e-7 {
+                        if slope > bestSlope + slopeTie {
                             bestSlope = slope
                             best = nIdx
                         }
@@ -830,42 +844,21 @@ enum RiverNetwork {
         }
 
         func topologicalArea(receivers: [Int]) -> (area: [Float], order: [Int]) {
-            var pending = [Int](repeating: 0, count: count)
-            for idx in land where receivers[idx] >= 0 {
-                pending[receivers[idx]] += 1
-            }
-            var area = [Float](repeating: 0, count: count)
-            for idx in land { area[idx] = 1 }
-            var queue: [Int] = []
-            queue.reserveCapacity(land.count)
-            for idx in land where pending[idx] == 0 { queue.append(idx) }
-            var order: [Int] = []
-            order.reserveCapacity(land.count)
-            var head = 0
-            while head < queue.count {
-                let idx = queue[head]
-                head += 1
-                order.append(idx)
-                let down = receivers[idx]
-                if down >= 0 {
-                    area[down] += area[idx]
-                    pending[down] -= 1
-                    if pending[down] == 0 { queue.append(down) }
-                }
-            }
-            return (area, order)
+            let result = RiverRouting.accumulate(receivers: receivers, land: land)
+            precondition(result.unprocessed == 0, "River routing cycle: unprocessed land cells")
+            return (result.area, result.order)
         }
 
         for _ in 0..<3 {
             steepestDown(on: route, into: &routeDown)
             (routeArea, _) = topologicalArea(receivers: routeDown)
             for idx in land where routeArea[idx] > 250 {
-                route[idx] -= 0.00012
+                route[idx] -= routingIncision
                 let i = idx % n, j = idx / n
                 for (di, dj) in dirs {
                     let ni = i + di, nj = j + dj
                     guard ni >= 0, ni < n, nj >= 0, nj < n else { continue }
-                    route[nj * n + ni] -= 0.00003
+                    route[nj * n + ni] -= neighbourIncision
                 }
             }
         }
@@ -886,14 +879,14 @@ enum RiverNetwork {
         func seed(_ idx: Int, _ level: Float) {
             guard !seen[idx] else { return }
             seen[idx] = true
-            filled[idx] = max(terrain.height[idx], level)
+            filled[idx] = max(route[idx], level)
             heap.push(FloodNode(level: filled[idx], order: insertion,
                                 index: idx))
             insertion += 1
         }
 
-        for idx in 0..<count where route[idx] <= 0.004 {
-            seed(idx, 0.002)
+        for idx in 0..<count where route[idx] <= outletHeight {
+            seed(idx, floodSeedHeight)
         }
         for i in 0..<n {
             seed(terrain.index(i, 0), route[terrain.index(i, 0)])
@@ -915,7 +908,7 @@ enum RiverNetwork {
                 guard !seen[nIdx] else { continue }
                 seen[nIdx] = true
                 parent[nIdx] = node.index
-                filled[nIdx] = max(route[nIdx], node.level + 1e-6)
+                filled[nIdx] = max(route[nIdx], node.level + floodRise)
                 heap.push(FloodNode(level: filled[nIdx], order: insertion,
                                     index: nIdx))
                 insertion += 1
@@ -930,23 +923,24 @@ enum RiverNetwork {
         // One spill per sink keeps the network connected without a fan of
         // parallel channels.
         var settled = [Bool](repeating: false, count: count)
-        let byHeight = (0..<count).sorted {
-            terrain.height[$0] < terrain.height[$1]
+        // Receivers strictly descend on route, which has already been
+        // deepened. Original terrain order can visit a cell before its outlet
+        // and spuriously send a second parallel spill through the same valley.
+        let byRoute = (0..<count).sorted {
+            route[$0] == route[$1] ? $0 < $1 : route[$0] < route[$1]
         }
-        for idx in byHeight {
-            if route[idx] <= 0.004 {
+        for idx in byRoute {
+            if route[idx] <= outletHeight {
                 settled[idx] = true
             } else if down[idx] >= 0 {
                 settled[idx] = settled[down[idx]]
             }
         }
-        var spillCell = [Bool](repeating: false, count: count)
         for idx in 0..<count where down[idx] < 0
-            && route[idx] > 0.004 {
+            && route[idx] > outletHeight {
             var cursor = idx
             while cursor >= 0 && !settled[cursor] && parent[cursor] >= 0 {
                 down[cursor] = parent[cursor]
-                spillCell[cursor] = true
                 settled[cursor] = true
                 cursor = parent[cursor]
             }
@@ -964,10 +958,13 @@ enum RiverNetwork {
             isRiver[idx] = true
             flow[idx] = finalArea[idx]
         }
-        var channel = isRiver
-        for idx in 0..<count where spillCell[idx] {
-            channel[idx] = true
-        }
+        // Spills route contributing area; they are not independent rivers.
+        // Only paths with the same catchment threshold as natural channels
+        // become visible. Accumulation is nondecreasing downstream.
+        let selection = RiverRouting.select(channel: isRiver, receivers: down,
+                                            area: finalArea, size: n, cellSize: terrain.cellSize)
+        let channel = selection.channel
+        let keptSources = Set(selection.sources)
 
         var channelIndegree = [Int](repeating: 0, count: count)
         for idx in 0..<count where down[idx] >= 0 && channel[idx] {
@@ -1023,23 +1020,6 @@ enum RiverNetwork {
             && channelIndegree[idx] != 1 {
             starts.append(idx)
         }
-        // Thin first-order sources: on a smooth slope the D8 tree makes
-        // many near-parallel headwaters. Keep the strongest source in each
-        // 80 m neighbourhood so the rendered network has a few trunks
-        // instead of a sheet of channels.
-        let sourceStarts = starts.filter { channelIndegree[$0] == 0 }
-        let junctionStarts = starts.filter { channelIndegree[$0] != 0 }
-        var keptSources: [Int] = []
-        for s in sourceStarts.sorted(by: { flow[$0] > flow[$1] }) {
-            let p = SIMD2<Float>(terrain.worldX(s % n), terrain.worldZ(s / n))
-            let clear = keptSources.allSatisfy {
-                let q = SIMD2<Float>(terrain.worldX($0 % n),
-                                     terrain.worldZ($0 / n))
-                return simd_distance(p, q) > 180 / metresPerUnit
-            }
-            if clear { keptSources.append(s) }
-        }
-        starts = keptSources + junctionStarts
         for start in starts {
             guard let cells = trace(from: start) else { continue }
             reaches.append(makeReach(id: nextID, cells: cells, n: n,
@@ -1096,13 +1076,7 @@ enum RiverNetwork {
                 if pendingUp[d] == 0 { reachQueue.append(d) }
             }
         }
-        if upstreamFirst.count < reaches.count {
-            var seenReach = [Bool](repeating: false, count: reaches.count)
-            for i in upstreamFirst { seenReach[i] = true }
-            for i in reaches.indices where !seenReach[i] {
-                upstreamFirst.append(i)
-            }
-        }
+        precondition(upstreamFirst.count == reaches.count, "River reach graph contains a cycle")
 
         // Centreline bed. A cross-section low depends on the sample's
         // tangent, so the two reaches at a shared junction cell could differ
@@ -1201,15 +1175,18 @@ enum RiverNetwork {
 
         var diagnostics = RiverDiagnostics()
         diagnostics.reaches = reaches.count
-        diagnostics.maxParallelChannels = maxParallel
-        diagnostics.sources = reaches.filter { $0.upstream.isEmpty }.count
+        diagnostics.routingRowRuns = maxParallel
+        let drawnSources = reaches.filter { $0.upstream.isEmpty }
+        diagnostics.sources = drawnSources.count
+        diagnostics.unsupportedSources = drawnSources.filter { !keptSources.contains($0.firstCell) || !$0.isSource }.count
+        diagnostics.minSourceArea = drawnSources.map { finalArea[$0.firstCell] }.min() ?? 0
         diagnostics.mouths = reaches.filter { $0.isMouth }.count
         diagnostics.junctions = reaches.filter { $0.upstream.count >= 2 }.count
         for a in reaches.indices {
             guard let end = reaches[a].samples.last else { continue }
             if reaches[a].downstream == nil,
                terrain.interpolatedHeight(x: end.position.x,
-                                          z: end.position.y) > 0.004 {
+                                          z: end.position.y) > outletHeight {
                 let i = terrain.cellX(end.position.x)
                 let j = terrain.cellZ(end.position.y)
                 let onEdge = i <= 0 || i >= n - 1 || j <= 0 || j >= n - 1
@@ -1260,7 +1237,7 @@ enum RiverNetwork {
             for i in 1..<reach.samples.count {
                 let a = reach.samples[i - 1]
                 let b = reach.samples[i]
-                diagnostics.maxUphill = max(diagnostics.maxUphill, b.bed - a.bed)
+                diagnostics.maxGroundRiseMetres = max(diagnostics.maxGroundRiseMetres, (b.bed - a.bed) * metresPerUnit)
                 diagnostics.maxSampleSpacing = max(
                     diagnostics.maxSampleSpacing,
                     simd_distance(a.position, b.position) * metresPerUnit)
@@ -1277,7 +1254,8 @@ enum RiverNetwork {
                     let dot = min(max(simd_dot(simd_normalize(v0),
                                                simd_normalize(v1)), -1), 1)
                     let angle = acos(dot)
-                    let radius = (0.5 * (ab + bc)) / max(sin(angle * 0.5), 1e-5)
+                    let radius = simd_distance(reach.samples[i - 1].position, reach.samples[i + 1].position)
+                        / max(2 * sin(angle), 1e-5)
                     diagnostics.minCurvatureRadius = min(
                         diagnostics.minCurvatureRadius,
                         radius * metresPerUnit)
@@ -1544,7 +1522,11 @@ enum RiverNetwork {
                 let dot = min(max(simd_dot(simd_normalize(v0),
                                            simd_normalize(v1)), -1), 1)
                 let angle = acos(dot)
-                radii[i] = (0.5 * (ab + bc)) / max(sin(angle * 0.5), 1e-5)
+                // Circumradius of these three centreline points. The old
+                // half-angle expression was twice the real radius, allowing
+                // an inside ribbon edge past the bend centre and inverting
+                // submitted triangles.
+                radii[i] = simd_distance(a, c) / max(2 * sin(angle), 1e-5)
                 // sideVector points left of the tangent, so a left turn puts
                 // the centre of curvature on the +1 side.
                 let cross = v0.x * v1.y - v0.y * v1.x
@@ -1563,7 +1545,7 @@ enum RiverNetwork {
             // cross itself, and leave room for the wet margin behind it.
             let radius = radii[i]
             if radius < .greatestFiniteMagnitude {
-                let cap = max(radius * 1.20, minChannel)
+                let cap = max(radius * 1.80, minChannel) // half-width <= 0.90 × true radius
                 width = min(width, cap)
             }
             samples[i].channelWidth = width
@@ -1584,15 +1566,17 @@ enum RiverNetwork {
             }
         }
         // Headwater taper: a source should begin as a spring, not a sawn-off
-        // canal. Ramp the rendered width from a couple of metres at the first
-        // sample to the full channel over the first 55 m.
+        // canal. Ramp the submitted width from 30 cm at the first sample to
+        // the full channel over the first 55 m.
         if isSource, let first = samples.first?.along {
             let taperLengthMetres: Float = 55
             for i in samples.indices {
                 let d = samples[i].along - first
                 let t = min(max(d / taperLengthMetres, 0), 1)
                 let f = t * t * (3 - 2 * t)
-                samples[i].channelWidth *= max(f, 0.16)
+                let fullHalf = max(samples[i].channelWidth * 0.5, RiverChannel.minHalfWidth)
+                let springHalf = 0.15 / metresPerUnit // 30 cm spring, widening over 55 m
+                samples[i].sourceWidthFactor = (springHalf + (fullHalf - springHalf) * f) / fullHalf
             }
         }
 

@@ -34,6 +34,8 @@ func usage() -> Never {
       civheadless plan [year] [seed]
       civheadless river [seed] [year]
       civheadless riverfixtures
+      civheadless riverroutingfixtures
+      civheadless rivertrace <json> [seed]
       civheadless riverterrainfixtures
       civheadless riverdebug <directory> [seed]
       civheadless info
@@ -200,6 +202,30 @@ case "riverdebug":
         try RiverDebugImage.write(terrain: terrain, network: network, field: field,
                                   directory: URL(fileURLWithPath: arguments[2]))
     } catch { fail("riverdebug failed — \(error)") }
+
+case "riverroutingfixtures":
+    if !RiverRoutingFixtures.run() { exit(1) }
+
+case "rivertrace":
+    guard arguments.count >= 3 else { usage() }
+    let seed = arguments.count >= 4 ? UInt64(arguments[3]) ?? 1 : 1
+    let terrain = WorldGen.generate(seed: seed)
+    let result = RiverNetwork.build(terrain)
+    let paths: [[String: Any]] = result.reaches.map { reach in
+        ["id": reach.id, "upstream": reach.upstream, "downstream": reach.downstream ?? -1,
+         "source": reach.isSource, "mouth": reach.isMouth,
+         "firstCell": reach.firstCell, "lastCell": reach.lastCell,
+         "sourceWidthFactors": reach.samples.map { $0.sourceWidthFactor },
+         "samples": reach.samples.map { sample in
+             [sample.position.x, sample.position.y, sample.bed, sample.width,
+              sample.channelWidth, sample.waterOverride]
+         }]
+    }
+    do {
+        let data = try JSONSerialization.data(withJSONObject: paths, options: [.sortedKeys])
+        try data.write(to: URL(fileURLWithPath: arguments[2]))
+        print(result.diagnostics.summary)
+    } catch { fail("rivertrace failed — \(error)") }
 
 case "riverterrainfixtures":
     if !RiverTerrainFixtures.run() { exit(1) }

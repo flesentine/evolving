@@ -1,0 +1,48 @@
+seed 7, year 2336.0
+reaches: 12  sources: 7  junctions: 5  mouths: 2
+width: 5.7–23.8 m
+original ground rise: 1.108 m
+min curvature radius: 24.2 m
+max adjacent turn: 6.3°
+self-intersections: 0
+max junction angle: 26.6°
+max sample spacing: 3.00 m
+linked reaches: 10  max link gap: 0.00 m
+inland terminal ends: 0  junction water step: 0.000 m
+routing-cell runs in a row (not mesh): 4
+unsupported source starts: 0; minimum source area: 1201 cells
+water surface rise: 0.000 m  graph identity: OK
+PASS
+-- channel --
+channel cross-sections: 1170  vertices across: 5
+bank lip above water: 0.33–2.00 m (mean 0.40)
+channel depth (lip to bed): 0.93–2.60 m (mean 1.00)
+water depth: 0.60–0.60 m (mean 0.60)
+wet margin: 1.30–1.80 m
+waterline welds: 2340/2340
+bed above water: 0 probes  (max 0.000 m)
+outer freeboard: 0.10–5.94 m
+submerged: trees 0  buildings 0  road crossings 0
+nearest object clearance: 0.20 m
+PASS
+sample -0.3280,-0.5247 ground 0.01646 water 0.01706 width 23.5 m
+sample -0.1593,-0.4491 ground 0.02431 water 0.02491 width 5.8 m
+sample -0.2301,-0.4334 ground 0.02418 water 0.02478 width 5.7 m
+sample +0.1008,-0.2689 ground 0.02191 water 0.02251 width 5.8 m
+sample -0.6341,+0.0058 ground 0.02644 water 0.02704 width 6.6 m
+sample -0.1760,-0.2002 ground 0.01969 water 0.02029 width 15.0 m
+sample -0.1805,+0.0724 ground 0.02375 water 0.02435 width 12.4 m
+-- final junction mesh --
+actual ribbon width 0.30–23.81 m
+junctions 4, triangles 162, invalid winding/area 0
+footprint probes wet 7388, dry 7084, mismatches 0
+boundary topology failures 0
+outside swept union 0.000173 m²; beyond 0.1 mm boundary band 0.000000000 m²
+rendered terrain clearance min 0.450 m, failures 0
+whole river triangles 9122, terrain probes 36488, failures 0
+submitted water channel runs: 5 in 250 m, both scan axes
+unbounded terrain reference 32 probes, max error 0.000000 m
+max adjacent-vertex carve change 11.355 m
+above-water bank intrusions 0
+cut seam failures 0, max height error 0.000011 m
+PASS final junction mesh

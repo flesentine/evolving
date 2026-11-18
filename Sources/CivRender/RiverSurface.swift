@@ -29,9 +29,11 @@ enum RiverSurface {
             let tangent = first.tangent == last.tangent ? first.tangent
                 : (simd_length_squared(sum) > 1e-12 ? simd_normalize(sum) : first.tangent)
             network[d].samples[0].channelWidth = half * 2
+            network[d].samples[0].sourceWidthFactor = 1
             network[d].samples[0].tangent = tangent
             let index = network[a].samples.count - 1
             network[a].samples[index].channelWidth = half * 2
+            network[a].samples[index].sourceWidthFactor = 1
             network[a].samples[index].tangent = tangent
         }
         return network
