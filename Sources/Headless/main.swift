@@ -28,6 +28,7 @@ func usage() -> Never {
       civheadless sheet <out.png>
       civheadless map <out.png> [seed]
       civheadless sim <out.png> [year] [hour] [seed] [cameraTime]
+      civheadless cameracheck <directory>
       civheadless bench [year] [width] [height] [frames]
       civheadless resources [seed]
       civheadless determinism [year] [seed]
@@ -517,6 +518,11 @@ case "sim":
     } catch {
         fail("sim failed — \(error)")
     }
+
+case "cameracheck":
+    guard arguments.count >= 3 else { usage() }
+    do { try CameraCheck.run(directory: URL(fileURLWithPath: arguments[2])) }
+    catch { fail("cameracheck failed — \(error)") }
 
 case "bench":
     let simYear = arguments.count >= 3 ? Float(arguments[2]) ?? 3000 : 3000

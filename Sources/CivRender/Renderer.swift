@@ -152,16 +152,29 @@ final class Renderer: NSObject, MTKViewDelegate {
         var pitch: Float
         var distance: Float
         var target: SIMD3<Float>
+        var fov: Float = 48 // degrees
     }
     private var freeOrbit: FreeOrbit?
+    private var lastRenderedCamera: Camera?
 
-    /// Starts an interactive orbit around the focused town. Idempotent, so a
-    /// drag does not reset the view on every mouse-down.
+    /// Take over the visible shot without jumping to a different town or FOV.
+    /// Idempotent, so later gestures preserve the user's current view.
     func beginFreeCamera() {
         if freeOrbit != nil { return }
+        if let current = cameraOverride ?? lastRenderedCamera {
+            let offset = current.eye - current.target
+            let distance = simd_length(offset)
+            if distance > 0 {
+                freeOrbit = FreeOrbit(yaw: atan2(offset.z, offset.x),
+                    pitch: asin(min(max(offset.y / distance, -1), 1)),
+                    distance: distance, target: current.target, fov: current.fov)
+                applyFreeCamera()
+                return
+            }
+        }
         let ground = scene.terrain.interpolatedHeight(x: focusPoint.x, z: focusPoint.z)
-        let target = SIMD3<Float>(focusPoint.x, ground + 0.006, focusPoint.z)
-        let distance = max(focusRadius * 5.0, 0.055)
+        let target = SIMD3<Float>(focusPoint.x, ground + 6 / RiverNetwork.metresPerUnit, focusPoint.z)
+        let distance = max(focusRadius * 5.0, 55 / RiverNetwork.metresPerUnit)
         freeOrbit = FreeOrbit(yaw: squareAngle + 0.6, pitch: 0.55,
                               distance: distance, target: target)
         applyFreeCamera()
@@ -179,7 +192,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     func zoomCamera(_ factor: Float) {
         if freeOrbit == nil { beginFreeCamera() }
         guard var orbit = freeOrbit else { return }
-        orbit.distance = min(max(orbit.distance * factor, 0.008), 0.45)
+        orbit.distance = min(max(orbit.distance * factor, 8 / RiverNetwork.metresPerUnit), 4000 / RiverNetwork.metresPerUnit)
         freeOrbit = orbit
         applyFreeCamera()
     }
@@ -187,11 +200,15 @@ final class Renderer: NSObject, MTKViewDelegate {
     func panCamera(dx: Float, dy: Float) {
         if freeOrbit == nil { beginFreeCamera() }
         guard var orbit = freeOrbit else { return }
-        let right = SIMD3<Float>(cos(orbit.yaw + .pi / 2), 0,
-                                 sin(orbit.yaw + .pi / 2))
-        let forward = SIMD3<Float>(cos(orbit.yaw), 0, sin(orbit.yaw))
-        orbit.target += right * (dx * orbit.distance)
-            + forward * (-dy * orbit.distance)
+        // dx/dy are fractions of viewport height. Grab the ground plane:
+        // right/up pointer motion moves the world right/up on screen.
+        let right = SIMD3<Float>(sin(orbit.yaw), 0, -cos(orbit.yaw))
+        let backward = SIMD3<Float>(cos(orbit.yaw), 0, sin(orbit.yaw))
+        let span = 2 * tan(degreesToRadians(orbit.fov) * 0.5) * orbit.distance
+        let sine = sin(orbit.pitch)
+        let groundProjection = abs(sine) < 0.1 ? (sine < 0 ? Float(-0.1) : 0.1) : sine
+        orbit.target += -right * (dx * span)
+            + backward * (dy * span / groundProjection)
         freeOrbit = orbit
         applyFreeCamera()
     }
@@ -207,7 +224,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         let eye = orbit.target + SIMD3<Float>(cos(orbit.yaw) * horizontal,
                                               sin(orbit.pitch) * orbit.distance,
                                               sin(orbit.yaw) * horizontal)
-        cameraOverride = Camera(eye: eye, target: orbit.target, fov: 48)
+        cameraOverride = Camera(eye: eye, target: orbit.target, fov: orbit.fov)
     }
 
     /// Where the close-up shot looks, damped so it drifts rather than jumps.
@@ -2492,6 +2509,7 @@ final class Renderer: NSObject, MTKViewDelegate {
 
         let aspect = Float(size.width / size.height)
         let cam = cameraOverride ?? automaticCamera(time: time, aspect: aspect)
+        lastRenderedCamera = cam
         let view = lookAt(eye: cam.eye, center: cam.target, up: SIMD3(0, 1, 0))
         let projection = perspective(fovyRadians: degreesToRadians(cam.fov),
                                      aspect: aspect, near: 0.004, far: 30)
