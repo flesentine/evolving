@@ -1,0 +1,24 @@
+{
+  "animationTime" : 0,
+  "eye" : [
+    0.293,
+    0.1,
+    -0.189
+  ],
+  "fov" : 52,
+  "height" : 1200,
+  "hour" : 10,
+  "precipitation" : 0,
+  "provenance" : "seed 11 regression: short headwater beside main stem and junction bank closure; fixed reproducible overhead camera",
+  "schemaVersion" : 1,
+  "season" : 0.7,
+  "seed" : 11,
+  "snow" : false,
+  "target" : [
+    0.293,
+    0.0169,
+    -0.1891
+  ],
+  "width" : 1600,
+  "year" : 2336
+}

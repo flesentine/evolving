@@ -156,6 +156,16 @@ final class Renderer: NSObject, MTKViewDelegate {
     }
     private var freeOrbit: FreeOrbit?
     private var lastRenderedCamera: Camera?
+    private(set) var lastReviewView: RiverReviewView?
+    private var reviewSeed: UInt64 = 1
+    private var reviewYear: Float = 0
+    private var lastSunHour: Float = 12
+    var riverReviewMode: String?
+    /// Controlled shader-regression fixture only; normal rendering leaves both unset.
+    var validationWaterMesh: Mesh?
+    var validationLegacyWaterDepth = false
+    private var reviewViewport = (width: 1600, height: 1000)
+
 
     /// Take over the visible shot without jumping to a different town or FOV.
     /// Idempotent, so later gestures preserve the user's current view.
@@ -550,6 +560,7 @@ final class Renderer: NSObject, MTKViewDelegate {
 
     /// Rebuilds every derived mesh from the simulation. Called once per sim year.
     func updateScene(_ simulation: Simulation) {
+        reviewSeed = simulation.seed; reviewYear = simulation.year
         livingSettlements = simulation.settlements.filter { $0.isAlive }
         let geometry = CityBuilder.build(settlements: simulation.settlements,
                                          era: simulation.era,
@@ -1333,7 +1344,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             let p = SIMD2<Float>(cos(angle) * boat.radius, sin(angle) * boat.radius)
             let dir = SIMD2<Float>(-sin(angle), cos(angle))
             let heading = atan2(dir.x, dir.y)
-            let water: Float = 0.0042
+            let water = RiverGraph.seaLevel
             let scale: Float = 0.0062
             let model = translation(SIMD3(p.x, water - 0.0004, p.y))
                 * rotationY(heading)
@@ -2180,6 +2191,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             let comps = Calendar.current.dateComponents([.hour, .minute, .second], from: Date())
             hour = Float(comps.hour ?? 12) + Float(comps.minute ?? 0) / 60
         }
+        lastSunHour = hour
         let a = (hour / 24) * 2 * Float.pi - .pi / 2
         let elevation = sin(a)
         let dir = simd_normalize(SIMD3<Float>(cos(a) * 0.86, elevation, 0.38))
@@ -2263,13 +2275,14 @@ final class Renderer: NSObject, MTKViewDelegate {
         encoder.setFragmentTexture(rockNormal, index: 9)
         encoder.setFragmentTexture(groundFine, index: 12)
         encoder.setFragmentTexture(groundFineNormal, index: 13)
+        encoder.setFragmentTexture(scene.submittedHeightTexture, index: 14)
         draw(scene.terrainMesh, with: encoder, instances: 1)
 
         if let buffer = bankIdentityBuffer {
             encoder.setVertexBuffer(buffer, offset: 0, index: 2)
         }
         if ProcessInfo.processInfo.environment["EVOLVING_HIDE_BANKS"] != "1" {
-            draw(scene.riverBankMesh, with: encoder, instances: 1)
+            if let banks = scene.riverBankMesh { draw(banks, with:encoder,instances:1) }
         }
 
         for batch in [boxBatch, treeBatch, broadleafBatch, coneBatch] where batch.count > 0 {
@@ -2295,6 +2308,7 @@ final class Renderer: NSObject, MTKViewDelegate {
                      time: Float) {
         let width = target.width
         let height = target.height
+        reviewViewport = (width, height)
         guard width > 0, height > 0 else { return }
 
         // Very large displays render the scene below native resolution; the
@@ -2521,11 +2535,15 @@ final class Renderer: NSObject, MTKViewDelegate {
 
         // Still-frame debugging aids. They cost nothing in the normal path.
         let debug = ProcessInfo.processInfo.environment
-        let riverView = debug["EVOLVING_RIVER_VIEW"] ?? ""
+        let riverView = riverReviewMode ?? debug["EVOLVING_RIVER_VIEW"] ?? ""
         let hideRiver = debug["EVOLVING_HIDE_RIVER"] == "1" || ["banks", "terrain"].contains(riverView)
         let hideBanks = debug["EVOLVING_HIDE_BANKS"] == "1" || ["water", "wire", "terrain"].contains(riverView)
         let debugShadow: Float
-        if debug["EVOLVING_NO_SHADOW"] == "1" { debugShadow = 1 }
+        if validationWaterMesh != nil { debugShadow = 1 }
+        else if riverView == "flat" { debugShadow = 7 }
+        else if riverView == "height" { debugShadow = 6 }
+        else if riverView == "depth" { debugShadow = 5 }
+        else if debug["EVOLVING_NO_SHADOW"] == "1" { debugShadow = 1 }
         else if debug["EVOLVING_RIVER_MAGENTA"] == "1" { debugShadow = 2 }
         else if debug["EVOLVING_RIVER_UV"] == "1" { debugShadow = 3 }
         else if debug["EVOLVING_RIVER_FOAM"] == "1" { debugShadow = 4 }
@@ -2540,8 +2558,13 @@ final class Renderer: NSObject, MTKViewDelegate {
             night: SIMD4(night, season(), 1, weather.intensity),
             shadow: SIMD4(1.0 / Float(shadowSize), 0.0015, 0.00012, debugShadow),
             closeLightViewProjection: currentCloseLightVP,
-            closeShadow: SIMD4(1.0 / Float(closeShadowSize), 0.00070, 0.00010, 0)
+            closeShadow: SIMD4(1.0 / Float(closeShadowSize), 0.00070, 0.00010, validationLegacyWaterDepth ? 1 : 0)
         )
+        lastReviewView = RiverReviewView(seed: reviewSeed, year: reviewYear, hour: lastSunHour,
+            season: uniforms.night.y, precipitation: weather.intensity, snow: weather.snow,
+            animationTime: time, eye: [cam.eye.x, cam.eye.y, cam.eye.z],
+            target: [cam.target.x, cam.target.y, cam.target.z], fov: cam.fov,
+            width: reviewViewport.width, height: reviewViewport.height)
         currentNight = night
         currentElevation = sunElevation
 
@@ -2571,7 +2594,8 @@ final class Renderer: NSObject, MTKViewDelegate {
         encoder.setFragmentTexture(rockNormal, index: 9)
         encoder.setFragmentTexture(groundFine, index: 12)
         encoder.setFragmentTexture(groundFineNormal, index: 13)
-        if !["water", "wire"].contains(riverView) {
+        encoder.setFragmentTexture(scene.submittedHeightTexture, index: 14)
+        if !["water", "wire", "flat", "depth", "height"].contains(riverView) {
             draw(scene.terrainMesh, with: encoder, instances: 1)
         }
 
@@ -2579,7 +2603,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             encoder.setVertexBuffer(buffer, offset: 0, index: 2)
         }
         if !hideBanks {
-            draw(scene.riverBankMesh, with: encoder, instances: 1)
+            if let banks = scene.riverBankMesh { draw(banks, with:encoder,instances:1) }
         }
 
         if riverView.isEmpty {
@@ -2602,7 +2626,10 @@ final class Renderer: NSObject, MTKViewDelegate {
         }
         if !hideRiver {
             if riverView == "wire" { encoder.setTriangleFillMode(.lines) }
-            draw(scene.riverMesh, with: encoder, instances: 1)
+            if let river = validationWaterMesh ?? scene.riverMesh { draw(river,with:encoder,instances:1) }
+            // Material overrides inspect the same coastal faces once, using
+            // the river diagnostic pipeline instead of the ocean pipeline.
+            if !riverView.isEmpty, let coast = scene.coastalRiverMesh { draw(coast,with:encoder,instances:1) }
             encoder.setTriangleFillMode(.fill)
         }
         if riverView.isEmpty {
@@ -2660,6 +2687,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         encoder.setVertexBuffer(identityBatch.buffer, offset: 0, index: 2)
         encoder.setFragmentTexture(scene.heightTexture, index: 0)
         draw(scene.waterMesh, with: encoder, instances: 1)
+        if !hideRiver, let coast = scene.coastalRiverMesh { draw(coast,with:encoder,instances:1) }
 
         }
         // Weather particles sit in front of the finished scene.

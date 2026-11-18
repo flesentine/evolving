@@ -181,6 +181,89 @@ static inline float3 skyColour(float sunElevation)
     return mix(horizon, zenith, 0.55);
 }
 
+static float submittedGround(float2 world, texture2d<float> submittedHeights) {
+    uint2 dimensions(submittedHeights.get_width(), submittedHeights.get_height());
+    float2 grid = clamp((world + 1.0) * 0.5 * float2(dimensions - 1),
+                float2(0.0), float2(dimensions - 1) - 0.0001);
+    uint2 cell = uint2(floor(grid));
+    float2 fraction = grid - float2(cell);
+    float a = submittedHeights.read(cell).r;
+    float b = submittedHeights.read(cell + uint2(1, 0)).r;
+    float c = submittedHeights.read(cell + uint2(1, 1)).r;
+    float d = submittedHeights.read(cell + uint2(0, 1)).r;
+    return fraction.x >= fraction.y
+        ? a * (1.0 - fraction.x) + b * (fraction.x - fraction.y) + c * fraction.y
+        : a * (1.0 - fraction.y) + c * fraction.x + d * (fraction.y - fraction.x);
+}
+
+static float4 oceanSurface(MeshVaryings in, constant FrameUniforms &u,
+                           texture2d<float> submittedHeights)
+{
+    float t = u.cameraAndTime.w;
+    float3 n = normalize(in.normal);
+
+    // Two crossing ripple directions, cheap and stylised.
+    float2 p = in.world.xz;
+    float w1 = sin(p.x * 42.0 + t * 0.55) * cos(p.y * 37.0 - t * 0.40);
+    float w2 = sin((p.x + p.y) * 23.0 - t * 0.30);
+
+    // Damp ripples with distance; at grazing angles the high-frequency detail
+    // otherwise aliases into broad bands across the open ocean.
+    float distToCamera = length(u.cameraAndTime.xyz - in.world);
+    float ripple = saturate(1.0 - distToCamera * 0.34);
+    n = normalize(n + float3(w1 * 0.030, 0.0, w2 * 0.030) * ripple);
+
+    float3 viewDir = normalize(u.cameraAndTime.xyz - in.world);
+
+    float day = saturate(u.sunAndPad.w * 3.0);
+
+    // The same submitted terrain triangles drive river and ocean depth.
+    float ground = submittedGround(in.world.xz, submittedHeights);
+    float depth = saturate(-ground / 0.075); // 75 m ocean optical depth, in km
+
+    float3 shallow = mix(float3(0.04, 0.13, 0.17), float3(0.20, 0.50, 0.55), day);
+    float3 deep    = mix(float3(0.01, 0.03, 0.07), float3(0.02, 0.12, 0.26), day);
+
+    float3 base = mix(shallow, deep, smoothstep(0.0, 0.55, depth));
+
+    float3 reflected = reflect(-viewDir, n);
+    float3 sky = skyRadiance(reflected, u);
+    float schlick = 0.02 + 0.98 * pow(1.0 - saturate(dot(n, viewDir)), 5.0);
+    float3 col = mix(base, sky, schlick);
+
+    float3 sun = normalize(u.sunAndPad.xyz);
+    float3 hv  = normalize(sun + viewDir);
+    float cloud = cloudShadow(in.world.xz, t);
+    float weather = u.night.w;
+    float sunVis = (1.0 - cloud * 0.55 * day) * (1.0 - weather * 0.70);
+    float spec = pow(max(dot(n, hv), 0.0), 140.0) * day * sunVis;
+    col += spec * float3(1.0, 0.95, 0.85) * 1.4;
+    col *= mix(1.0, 0.90, cloud * day);
+    col *= mix(1.0, 0.82, weather);
+    col += lightningFlash(t, weather) * float3(0.30, 0.38, 0.55) * 0.45;
+
+    // Foam right at the shoreline, with a wave running up the sand.
+    float foamWave = 0.5 + 0.5 * sin(depth * 220.0 - t * 1.1 + w2 * 1.5);
+    float foam = smoothstep(0.09, 0.0, depth) * (0.42 + 0.30 * w1 + 0.28 * foamWave);
+    col = mix(col, float3(0.85, 0.90, 0.92) * (0.35 + 0.65 * day), foam * 0.45);
+
+    // Match the river surface opacity at a mouth; terrain depth already
+    // determines the body colour, without a second terrain blend at the seam.
+    float alpha = 1.0; // one opaque water body; depth is encoded by absorption
+
+    // Blend the far edge of the ocean into the sky.
+    // Fading *alpha* (rather than painting a flat sky colour) lets the real
+    // gradient sky show through, so the horizon dissolves instead of ending at
+    // a visible seam. Distance is measured from the camera so the haze band
+    // stays put whichever shot we are in.
+    float haze = smoothstep(4.5, 15.0, distToCamera);
+    float3 horizonSky = skyRadiance(normalize(float3(-viewDir.x, 0.06, -viewDir.z)), u);
+    col = mix(col, horizonSky, haze);
+    alpha *= 1.0 - haze;
+
+    return float4(tonemap(col), alpha);
+}
+
 fragment float4 meshFragment(MeshVaryings in [[stage_in]],
                              constant FrameUniforms &u [[buffer(1)]],
                              texture2d<float> shadowMap [[texture(1)]],
@@ -195,7 +278,8 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
                              texture2d<float> signAtlas [[texture(10)]],
                              texture2d<float> townSignAtlas [[texture(11)]],
                              texture2d<float> groundFineTexture [[texture(12)]],
-                             texture2d<float> groundFineNormalTexture [[texture(13)]])
+                             texture2d<float> groundFineNormalTexture [[texture(13)]],
+                             texture2d<float> submittedHeights [[texture(14)]])
 {
     constexpr sampler shadowSampler(coord::normalized,
                                     address::clamp_to_edge,
@@ -667,19 +751,23 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
                            + moonCol * moonLit * 0.55);
 
     if (in.material > 17.5 && in.material < 18.5) {
-        // River water: depth-shaded body, flow-aligned ripples, grazing sky
-        // reflection and a continuous shoreline foam lip. `in.extra` is the
-        // normalised depth written at the water mesh's vertices (zero at the
-        // waterline), so every effect follows the real channel.
+        // River water: submitted-terrain depth, continuous world-space ripples,
+        // grazing sky reflection and a depth-driven shoreline lip.
         float t = u.cameraAndTime.w;
-        float2 uv = in.uv;
-        float depth = saturate(in.extra);
+        // Reconstruct the exact a-c diagonal used by the submitted terrain,
+        // not a bilinear/coarse approximation or water-triangle interpolation.
+        float ground = submittedGround(in.world.xz, submittedHeights);
+        float depthMetres = max(in.world.y - ground, 0.0) * 1000.0;
+        float depth = saturate(depthMetres / 1.25); // 1.25 m debug/shoreline normalization
+        // Legacy is enabled only by the controlled triangulation regression.
+        if (u.closeShadow.w > 0.5) { depth = saturate(in.extra); depthMetres = depth * 1.25; }
+        // One world-space procedural domain across reaches, caps and joins.
+        float2 uv = u.closeShadow.w > 0.5 ? in.uv : in.world.xz * 125.0; // 8 m procedural wavelength, in km units
         float dist = length(u.cameraAndTime.xyz - in.world);
         float detail = saturate(1.0 - dist * 9.0);
 
-        // Ripple coordinates follow the channel: uv.y runs downstream, so the
-        // two noise layers streak with the flow instead of tiling in world
-        // space. The broad layer drifts slowly, the fine layer faster.
+        // One continuous domain crosses ribbon/junction boundaries. The broad
+        // layer drifts slowly, the fine layer faster.
         float2 flowUv = float2(uv.x * 5.0, uv.y * 0.45);
         float2 r1 = float2(
             valueNoise(flowUv * float2(3.2, 1.0) + float2(0.0, -t * 0.030)),
@@ -705,9 +793,13 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
         float3 shallow = float3(0.020, 0.090, 0.100);
         float3 mid = float3(0.009, 0.048, 0.078);
         float3 deep = float3(0.003, 0.020, 0.040);
-        float3 body = mix(deep, mid, smoothstep(0.16, 0.62, depth));
-        body = mix(body, shallow, smoothstep(0.42, 0.04, depth) * 0.85);
-        body = mix(body, shore, smoothstep(0.045, 0.0, depth) * 0.60);
+        // Monotone absorption: deeper water darkens over a 3 m optical path.
+        // The former narrow piecewise bands brightened deep junctions and
+        // exaggerated small, real terrain-depth changes into coloured patches.
+        float transmission = exp(-depthMetres / 3.0);
+        float3 body = mix(deep, mid, transmission);
+        body = mix(body, shallow, exp(-depthMetres / 0.15)); // 15 cm clear shallow transition
+        body = mix(body, shore, exp(-depthMetres / 0.06) * 0.60); // 6 cm silt lip
 
         float3 water = mix(body, sky, fres * 0.55);
 
@@ -733,7 +825,10 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
         water += foam * float3(0.62, 0.70, 0.70) * (0.13 + 0.10 * day);
 
         lit = water;
-        if (u.shadow.w > 2.5 && u.shadow.w < 3.5) {
+        if (u.shadow.w > 6.5) { lit = float3(0.0, 0.35, 0.75); }
+        else if (u.shadow.w > 5.5) { lit = float3(saturate(in.world.y * 10.0), 0.0, 0.5); }
+        else if (u.shadow.w > 4.5) { lit = float3(depth); }
+        else if (u.shadow.w > 2.5 && u.shadow.w < 3.5) {
             lit = float3(uv.x, fract(uv.y), 0.0);
         } else if (u.shadow.w > 3.5) {
             lit = float3(foam, foam, foam);
@@ -814,7 +909,15 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
     float radial = smoothstep(0.98, 1.24, length(in.world.xz));
     lit = mix(lit, horizonColour, saturate(max(fog * u.night.z, radial)));
 
-    return float4(tonemap(lit), 1.0);
+    float3 colour = tonemap(lit);
+    if (in.material > 17.5 && in.material < 18.5 && u.shadow.w < 0.5 && u.closeShadow.w < 0.5) {
+        // An optical estuary transition over 1 m of surface elevation. This
+        // changes colour only: geometry and sea-level checks are independent.
+        // At sea level both pipelines evaluate the identical ocean material.
+        float estuary = exp(-max(in.world.y, 0.0) * 1000.0 / 1.0);
+        colour = mix(colour, oceanSurface(in, u, submittedHeights).rgb, estuary);
+    }
+    return float4(colour, 1.0);
 }
 
 // Smoke: reuses the mesh vertex stage, with the instance alpha as opacity.
@@ -850,74 +953,9 @@ fragment float4 weatherFragment(MeshVaryings in [[stage_in]],
 
 fragment float4 waterFragment(MeshVaryings in [[stage_in]],
                               constant FrameUniforms &u [[buffer(1)]],
-                              texture2d<float> heightMap [[texture(0)]])
+                              texture2d<float> submittedHeights [[texture(14)]])
 {
-    float t = u.cameraAndTime.w;
-    float3 n = normalize(in.normal);
-
-    // Two crossing ripple directions, cheap and stylised.
-    float2 p = in.world.xz;
-    float w1 = sin(p.x * 42.0 + t * 0.55) * cos(p.y * 37.0 - t * 0.40);
-    float w2 = sin((p.x + p.y) * 23.0 - t * 0.30);
-
-    // Damp ripples with distance; at grazing angles the high-frequency detail
-    // otherwise aliases into broad bands across the open ocean.
-    float distToCamera = length(u.cameraAndTime.xyz - in.world);
-    float ripple = saturate(1.0 - distToCamera * 0.34);
-    n = normalize(n + float3(w1 * 0.030, 0.0, w2 * 0.030) * ripple);
-
-    float3 viewDir = normalize(u.cameraAndTime.xyz - in.world);
-
-    float day = saturate(u.sunAndPad.w * 3.0);
-
-    // Sample the height field per pixel: the shallow band and foam follow the
-    // smooth sea-level contour instead of the coarse water mesh.
-    constexpr sampler hmap(coord::normalized, address::clamp_to_edge, filter::linear);
-    float2 huv = (in.world.xz + 1.0) * 0.5;
-    float ground = heightMap.sample(hmap, huv).r;
-    float depth = saturate(-ground / 0.075);
-
-    float3 shallow = mix(float3(0.04, 0.13, 0.17), float3(0.20, 0.50, 0.55), day);
-    float3 deep    = mix(float3(0.01, 0.03, 0.07), float3(0.02, 0.12, 0.26), day);
-
-    float3 base = mix(shallow, deep, smoothstep(0.0, 0.55, depth));
-
-    float3 reflected = reflect(-viewDir, n);
-    float3 sky = skyRadiance(reflected, u);
-    float schlick = 0.02 + 0.98 * pow(1.0 - saturate(dot(n, viewDir)), 5.0);
-    float3 col = mix(base, sky, schlick);
-
-    float3 sun = normalize(u.sunAndPad.xyz);
-    float3 hv  = normalize(sun + viewDir);
-    float cloud = cloudShadow(in.world.xz, t);
-    float weather = u.night.w;
-    float sunVis = (1.0 - cloud * 0.55 * day) * (1.0 - weather * 0.70);
-    float spec = pow(max(dot(n, hv), 0.0), 140.0) * day * sunVis;
-    col += spec * float3(1.0, 0.95, 0.85) * 1.4;
-    col *= mix(1.0, 0.90, cloud * day);
-    col *= mix(1.0, 0.82, weather);
-    col += lightningFlash(t, weather) * float3(0.30, 0.38, 0.55) * 0.45;
-
-    // Foam right at the shoreline, with a wave running up the sand.
-    float foamWave = 0.5 + 0.5 * sin(depth * 220.0 - t * 1.1 + w2 * 1.5);
-    float foam = smoothstep(0.09, 0.0, depth) * (0.42 + 0.30 * w1 + 0.28 * foamWave);
-    col = mix(col, float3(0.85, 0.90, 0.92) * (0.35 + 0.65 * day), foam * 0.45);
-
-    // Opaque-ish right at the shore so the jagged submerged sand is hidden,
-    // clear in the shallows, fully opaque offshore.
-    float alpha = mix(0.72, 0.98, smoothstep(0.0, 0.26, depth));
-
-    // Blend the far edge of the ocean into the sky.
-    // Fading *alpha* (rather than painting a flat sky colour) lets the real
-    // gradient sky show through, so the horizon dissolves instead of ending at
-    // a visible seam. Distance is measured from the camera so the haze band
-    // stays put whichever shot we are in.
-    float haze = smoothstep(4.5, 15.0, distToCamera);
-    float3 horizonSky = skyRadiance(normalize(float3(-viewDir.x, 0.06, -viewDir.z)), u);
-    col = mix(col, horizonSky, haze);
-    alpha *= 1.0 - haze;
-
-    return float4(tonemap(col), alpha);
+    return oceanSurface(in, u, submittedHeights);
 }
 
 // ---------------------------------------------------------------------------

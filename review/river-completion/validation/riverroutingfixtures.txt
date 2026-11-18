@@ -1,0 +1,7 @@
+covered-source fixture: hidden spring/exclusive loop removed, complete main path retained: PASS
+7 m spring stub fixture: removed; downstream catchment and complete main path retained: PASS
+obsolete junction fixture: one continuous reach, full source-to-outlet path and provenance retained: PASS
+submitted water grade fixture: 0.7411301 -> 0.11116989 m/m (>4× reduction); 1:10 profile, fixed source/lake controls, no raising, connected seam: PASS
+routing fixtures: area conservation, cycle detection, complete-path thinning, source tie: PASS
+submitted spring tips: 7 sources, 0.30 m cap width: PASS
+submitted wet-run fixture: two 0.30 m ribbons plus duplicate face: PASS

@@ -1,0 +1,48 @@
+seed 4, year 2336.0
+reaches: 12  sources: 7  junctions: 5  mouths: 2
+width: 5.7–22.6 m
+original ground rise: 1.175 m
+min curvature radius: 27.7 m
+max adjacent turn: 5.6°
+self-intersections: 0
+max junction angle: 26.6°
+max sample spacing: 3.00 m
+linked reaches: 10  max link gap: 0.00 m
+inland terminal ends: 0  junction water step: 0.000 m
+routing-cell runs in a row (not mesh): 3
+unsupported source starts: 0; minimum source area: 1209 cells
+water surface rise: 0.000 m  graph identity: OK
+PASS
+-- channel --
+channel cross-sections: 888  vertices across: 5
+bank lip above water: 0.33–2.00 m (mean 0.38)
+channel depth (lip to bed): 0.93–2.60 m (mean 0.98)
+water depth: 0.60–0.60 m (mean 0.60)
+wet margin: 1.30–1.80 m
+waterline welds: 1776/1776
+bed above water: 0 probes  (max 0.000 m)
+outer freeboard: 0.10–7.01 m
+submerged: trees 0  buildings 0  road crossings 0
+nearest object clearance: 0.08 m
+PASS
+sample -0.3462,-0.5443 ground 0.01940 water 0.02000 width 19.5 m
+sample +0.4566,-0.4622 ground 0.01558 water 0.01618 width 5.3 m
+sample -0.1367,-0.3881 ground 0.02937 water 0.02997 width 4.3 m
+sample -0.2934,-0.3925 ground 0.03337 water 0.03397 width 4.7 m
+sample -0.2610,-0.2411 ground 0.03433 water 0.03493 width 4.0 m
+sample -0.1869,-0.2299 ground 0.01807 water 0.01867 width 5.8 m
+sample -0.2449,-0.0960 ground 0.01958 water 0.02018 width 14.3 m
+-- final junction mesh --
+actual ribbon width 0.30–19.49 m
+junctions 5, triangles 145, invalid winding/area 0
+footprint probes wet 5068, dry 3039, mismatches 0
+boundary topology failures 0
+outside swept union 0.000248 m²; beyond 0.1 mm boundary band 0.000000000 m²
+rendered terrain clearance min 0.450 m, failures 0
+whole river triangles 7025, terrain probes 28100, failures 0
+submitted water channel runs: 5 in 250 m, both scan axes
+unbounded terrain reference 32 probes, max error 0.000000 m
+max adjacent-vertex carve change 11.326 m
+above-water bank intrusions 0
+cut seam failures 0, max height error 0.000007 m
+PASS final junction mesh

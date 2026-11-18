@@ -1,5 +1,6 @@
 import Cocoa
 import ScreenSaver
+import UniformTypeIdentifiers
 
 enum CameraInput: Equatable {
     case begin, automatic, toggleMove
@@ -171,6 +172,12 @@ final class TimelineApp: NSObject, NSApplicationDelegate {
         input.toolTip = "Drag to orbit · Shift/right/middle-drag or two-finger scroll to move · pinch or Option-scroll to zoom · WASD to move (Shift faster) · M toggles Move · double-click for auto camera"
         content.addSubview(input)
 
+        let review = NSButton(title: "Save Review View…", target: self, action: #selector(saveReviewView))
+        review.bezelStyle = .rounded
+        review.frame = NSRect(x: size.width - 178, y: size.height - 42, width: 162, height: 30)
+        review.autoresizingMask = [.minXMargin, .minYMargin]
+        review.toolTip = "Save this exact view for reproducible river inspection"
+        content.addSubview(review)
         buildControls(in: content, width: size.width)
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -290,6 +297,25 @@ final class TimelineApp: NSObject, NSApplicationDelegate {
     @objc private func togglePlay() {
         playing.toggle()
         playButton.title = playing ? "Pause" : "Play"
+    }
+
+    @objc private func saveReviewView() {
+        let captured = saver.perform(Selector(("riverReviewViewData")))?.takeUnretainedValue() as? Data
+        let panel = NSSavePanel()
+        panel.title = "Save Review View"
+        panel.nameFieldStringValue = "river-view-\(Int(currentYear)).json"
+        panel.allowedContentTypes = [.json]
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard let self, response == .OK, let url = panel.url else { return }
+            do {
+                guard let captured else { throw NSError(domain: "RiverReview", code: 1) }
+                try captured.write(to: url, options: .atomic)
+            } catch {
+                let alert = NSAlert(); alert.messageText = "The view could not be saved"
+                alert.informativeText = "Wait for the world to finish loading and try again."
+                alert.beginSheetModal(for: self.window)
+            }
+        }
     }
 
     @objc private func toggleMoveMode() {

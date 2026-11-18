@@ -7,19 +7,33 @@ enum RiverMeshValidation {
     struct Result {
         var junctions = 0, triangles = 0, invalid = 0, footprintMisses = 0
         var wetProbes = 0, dryProbes = 0, clearanceFailures = 0, bankIntrusions = 0
+        var bankSkirtArea: Double = 0
+        var bankRawOverlapArea: Double = 0
+        var maxBankBoundaryHeight: Float = 0
         var seamFailures = 0, topologyFailures = 0
+        var junctionSpikes = 0
+        var dryToeFailures = 0
+        var springBankFailures = 0
+        var junctionBankFailures = 0
+        var coastalBankIntrusionArea: Double = 0
+        var maxDryToeError: Float = 0
         var outsideArea: Double = 0, outsideToleranceArea: Double = 0
         var minClearance: Float = .greatestFiniteMagnitude
+        var maxWaterEdgeGrade: Float = 0
         var maxSeamStep: Float = 0
         var minRenderedWidth: Float = 0, maxRenderedWidth: Float = 0
         var wholeWaterTriangles = 0, wholeWaterProbes = 0, wholeWaterFailures = 0
+        var exact = RiverGeometryChecks.Result()
+        var collapsedBoundaryFaces = 0
+        var collapsedBoundaryArea: Double = 0
         var meshChannelRuns = 0
         var referenceProbes = 0
         var maxReferenceError: Float = 0
         var maxWholeCarveEdgeChange: Float = 0
         var passes: Bool {
-            meshChannelRuns <= 14 && wholeWaterFailures == 0 && maxReferenceError <= 0.001 && topologyFailures == 0 && invalid == 0 && footprintMisses == 0 && clearanceFailures == 0
-                && bankIntrusions == 0 && seamFailures == 0 && outsideToleranceArea < 0.000001 // 1 mm² residual beyond the 0.1 mm boundary band
+            exact.interiorOverlapArea <= 0.000001 && exact.overlapHeightError <= 0.001
+                && exact.minExactClearance >= 0.01 && meshChannelRuns <= 14 && wholeWaterFailures == 0 && maxReferenceError <= 0.001 && topologyFailures == 0 && invalid == 0 && footprintMisses == 0 && clearanceFailures == 0
+                && coastalBankIntrusionArea <= 0.000001 && junctionBankFailures == 0 && springBankFailures == 0 && dryToeFailures == 0 && junctionSpikes == 0 && bankIntrusions == 0 && seamFailures == 0 && outsideToleranceArea < 0.000001 // 1 mm² residual beyond the 0.1 mm boundary band
         }
         var summary: String {
             """
@@ -28,13 +42,22 @@ enum RiverMeshValidation {
             junctions \(junctions), triangles \(triangles), invalid winding/area \(invalid)
             footprint probes wet \(wetProbes), dry \(dryProbes), mismatches \(footprintMisses)
             boundary topology failures \(topologyFailures)
+            convex junction water needles \(junctionSpikes)
+            numerical boundary collapses \(collapsedBoundaryFaces), area \(String(format: "%.9f", collapsedBoundaryArea)) m² (within 0.1 mm only)
             outside swept union \(String(format: "%.6f", outsideArea)) m²; beyond 0.1 mm boundary band \(String(format: "%.9f", outsideToleranceArea)) m²
             rendered terrain clearance min \(String(format: "%.3f", minClearance)) m, failures \(clearanceFailures)
             whole river triangles \(wholeWaterTriangles), terrain probes \(wholeWaterProbes), failures \(wholeWaterFailures)
+            maximum submitted water edge grade \(String(format: "%.6f", maxWaterEdgeGrade)) m/m
+            water overlap raw \(String(format: "%.6f", exact.rawOverlapArea)) m²; interior \(String(format: "%.9f", exact.interiorOverlapArea)) m²; height error \(String(format: "%.6f", exact.overlapHeightError)) m
+            exact terrain intersections \(exact.exactTerrainPieces); min clearance \(String(format: "%.6f", exact.minExactClearance)) m
             submitted water channel runs: \(meshChannelRuns) in 250 m, both scan axes
             unbounded terrain reference \(referenceProbes) probes, max error \(String(format: "%.6f", maxReferenceError)) m
             max adjacent-vertex carve change \(String(format: "%.3f", maxWholeCarveEdgeChange)) m
-            above-water bank intrusions \(bankIntrusions)
+            bank interior intrusions \(bankIntrusions); raw overlap \(String(format: "%.9f", bankRawOverlapArea)) m²; within 0.1 mm band \(String(format: "%.9f", bankSkirtArea)) m², max boundary height \(String(format: "%.6f", maxBankBoundaryHeight)) m
+            above-sea coastal bank intrusion \(String(format: "%.9f", coastalBankIntrusionArea)) m²
+            dry bank toe closure failures \(dryToeFailures), max error \(String(format: "%.6f", maxDryToeError)) m
+            exposed spring bank closure failures \(springBankFailures)
+            junction shoreline bank closure failures \(junctionBankFailures)
             cut seam failures \(seamFailures), max height error \(String(format: "%.6f", maxSeamStep)) m
             \(passes ? "PASS final junction mesh" : "FAIL final junction mesh")
             """
@@ -44,26 +67,47 @@ enum RiverMeshValidation {
     static func run(_ terrain: Terrain, network: [RiverReach], field: RiverChannel.Field) -> Result {
         var result = Result()
         let mesh = field.mesh
+        result.maxWaterEdgeGrade = RiverGeometryChecks.maximumEdgeGrade(mesh)
+        result.junctionSpikes = RiverBankSpikes.count(mesh, report: true)
+        result.collapsedBoundaryFaces = mesh.collapsedBoundaryFaces
+        result.collapsedBoundaryArea = mesh.collapsedBoundaryArea
+        // A local junction list may include only a spatial subset of lake
+        // faces. Its artificial selection boundary is not a mesh seam. Check
+        // topology on the complete submitted water instead.
+        let allWater = stride(from: 0, to: mesh.indices.count, by: 3).map { i in
+            (0..<3).map { mesh.vertices[Int(mesh.indices[i + $0])] }
+        }
+        result.topologyFailures = RiverPolygon.boundaryFailures(allWater.filter { RiverPolygon.area($0) < 0 }, report: true)
         result.meshChannelRuns = RiverMeshCrossings.maximum(mesh, terrain: terrain)
         result.minRenderedWidth = mesh.ribbonWidths.min() ?? 0
         result.maxRenderedWidth = mesh.ribbonWidths.max() ?? 0
         let carved = RiverChannel.carvedTerrain(terrain, field: field)
         let support = RiverChannel.supportedTerrain(carved, field: field, radius: RiverChannel.terrainSupportRadius(terrain))
         let vertices = WorldScene.terrainVertices(carved, detail: 2, riverField: field, coarseSupport: support)
-        let banks = WorldScene.riverBankGeometry(carved, network: network, field: field)
+        result.exact = RiverGeometryChecks.run(mesh, terrain: terrain, submitted: vertices, report: true)
+        let banks = WorldScene.riverBankGeometry(carved, network: network, field: field, terrainVertices: vertices)
+        result.coastalBankIntrusionArea = RiverCoastalBanks.intrusionArea(banks,terrain:field.originalTerrain)
+        result.springBankFailures = RiverSpringBanks.closureFailures(field: field, banks: banks)
+        result.junctionBankFailures = RiverJunctionShore.closureFailures(field: field, banks: banks)
         func terrainHeight(_ p: SIMD2<Float>) -> Float {
             WorldScene.renderedTerrainHeight(p, terrain: terrain, vertices: vertices)
+        }
+        for id in Set(banks.indices).sorted() {
+            let v = banks.vertices[Int(id)]
+            guard v.uv.y >= 1 - 1e-6 else { continue }
+            let p = SIMD2(v.position.x, v.position.z)
+            guard let distance = field.signedDistance(at: p), distance > RiverChannel.wetShelf else { continue }
+            let error = abs(v.position.y - terrainHeight(p) - RiverChannel.seam) * RiverChannel.metresPerUnit
+            result.maxDryToeError = max(result.maxDryToeError, error)
+            if error > 0.001 { result.dryToeFailures += 1 }
         }
         for junction in mesh.junctions {
             let before = result
             result.junctions += 1
-            let final = stride(from: junction.indexRange.lowerBound, to: junction.indexRange.upperBound, by: 3).map { i in
+            let final = ([junction.indexRange] + junction.additionalIndices).flatMap { Array(stride(from: $0.lowerBound, to: $0.upperBound, by: 3)) }.map { i in
                 (0..<3).map { mesh.vertices[Int(mesh.indices[i + $0])] }
             }
             guard !final.isEmpty else { result.invalid += 1; continue }
-            let topology = RiverPolygon.boundaryFailures(final)
-            result.topologyFailures += topology
-            if topology > 0 { print("J\(junction.id): boundary topology failures \(topology)") }
             for triangle in final {
                 result.triangles += 1
                 if RiverPolygon.area(triangle) >= 0 { result.invalid += 1 }
@@ -92,8 +136,8 @@ enum RiverMeshValidation {
                 }
             }
             let points = junction.input.flatMap { $0.map { SIMD2($0.position.x, $0.position.z) } }
-            let lo = points.reduce(SIMD2<Float>(repeating: .greatestFiniteMagnitude), simd_min)
-            let hi = points.reduce(SIMD2<Float>(repeating: -.greatestFiniteMagnitude), simd_max)
+            let lo = junction.reviewBounds?.0 ?? points.reduce(SIMD2<Float>(repeating: .greatestFiniteMagnitude), simd_min)
+            let hi = junction.reviewBounds?.1 ?? points.reduce(SIMD2<Float>(repeating: -.greatestFiniteMagnitude), simd_max)
             let step: Float = 0.5 / RiverChannel.metresPerUnit // 0.5 m subcell probes
             for ix in 0...Int(ceil((hi.x - lo.x) / step)) {
                 for iz in 0...Int(ceil((hi.y - lo.y) / step)) {
@@ -144,7 +188,10 @@ enum RiverMeshValidation {
             let triangle = (0..<3).map { mesh.vertices[Int(mesh.indices[i + $0])] }
             result.wholeWaterTriangles += 1
             let area = RiverPolygon.area(triangle)
-            if area == 0 || (area > 0 && !upward.contains(face(triangle))) { result.invalid += 1 }
+            if area == 0 || (area > 0 && !upward.contains(face(triangle))) {
+                result.invalid += 1
+                if result.invalid <= 20 { print("invalid submitted water face \(i / 3), area \(area): \(triangle.map { $0.position })") }
+            }
             let centre = triangle.reduce(SIMD3<Float>.zero) { $0 + $1.position } / 3
             for p in triangle.map({ $0.position }) + [centre] {
                 let clearance = (p.y - terrainHeight(SIMD2(p.x, p.z))) * RiverChannel.metresPerUnit
@@ -157,14 +204,27 @@ enum RiverMeshValidation {
         for i in stride(from: 0, to: banks.indices.count, by: 3) {
             let bank = (0..<3).map { banks.vertices[Int(banks.indices[i + $0])] }
             let centre = bank.reduce(SIMD2<Float>.zero) { $0 + SIMD2($1.position.x, $1.position.z) } / 3
-            for water in field.nearbyTriangles(centre) where RiverPolygon.overlaps(bank, water) {
+            for water in field.nearbyTriangles(bank) where RiverPolygon.overlaps(bank, water) {
                 var overlap = bank
                 let boundary = RiverPolygon.area(water) > 0 ? water : Array(water.reversed())
                 for k in 0..<3 {
                     overlap = RiverPolygon.clip(overlap, a: RiverPolygon.point(boundary[k]),
                                                 b: RiverPolygon.point(boundary[(k + 1) % 3]), inside: true)
                 }
-                if abs(RiverPolygon.area(overlap)) * 1_000_000 > 0.000001 { result.bankIntrusions += 1 }
+                let area = abs(RiverPolygon.area(overlap)) * 1_000_000
+                result.bankRawOverlapArea += area
+                // Same robust interior predicate as the water-sheet test.
+                // Collinear Float edges can form micron-wide raw triangles;
+                // report those rather than classifying them as wet interiors.
+                let interior = RiverGeometryChecks.intersection(bank,water,inset:RiverPolygon.epsilon)
+                if abs(RiverPolygon.area(interior))*1_000_000 > 0.000001 { result.bankIntrusions += 1 }
+                else {
+                    result.bankSkirtArea += area
+                    for v in overlap {
+                        let level = RiverChannel.Field.probe(water,SIMD2(v.position.x,v.position.z)).water
+                        result.maxBankBoundaryHeight = max(result.maxBankBoundaryHeight,(v.position.y-level)*RiverGraph.metresPerUnit)
+                    }
+                }
             }
         }
         // Reference the submitted dry terrain too. Select the strongest carve
@@ -241,7 +301,10 @@ enum RiverMeshValidation {
             [(SIMD2(-15, 0), 5), (SIMD2(0, -15), 5), (SIMD2(15, 0), 5), (SIMD2(0, 18), 10)],
             [(SIMD2(-12, -12), 4), (SIMD2(12, -12), 4), (SIMD2(0, 15), 6)]
         ]
-        var failures = 0
+        var failures = RiverGeometryChecks.fixtures() ? 0 : 1
+        if !RiverCoastalBanks.fixture() { failures += 1 }
+        if !RiverEndpointValidation.fixtures() { failures += 1 }
+        if !RiverBankSpikes.fixture() { failures += 1 }
         for (id, arms) in cases.enumerated() {
             var triangles: [[Vertex]] = []
             for (armIndex, arm) in arms.enumerated() {
@@ -345,6 +408,33 @@ enum RiverMeshValidation {
                     }
                     let reach = RiverReach(id: 0, samples: samples, isSource: true, isMouth: true)
                     let field = RiverChannel.Field(terrain: terrain, network: [reach])
+                    let roadA = centre - side * (20 / RiverChannel.metresPerUnit)
+                    let roadB = centre + side * (20 / RiverChannel.metresPerUnit)
+                    let intervals = field.wetIntervals(from: roadA, to: roadB)
+                    let length = intervals.reduce(Float(0)) { $0 + ($1.upperBound - $1.lowerBound) * simd_distance(roadA, roadB) }
+                    let road = RoadBuilder.Segment(from: 0, to: 1, points: [roadA, roadB], built: 0)
+                    let drawnRoad = WorldScene.roadPath(road, field: field)
+                    let plot = centre - side * ((width * 0.5 + 1) / RiverChannel.metresPerUnit)
+                    let extent = max(width * 2 + 4, 12) / RiverChannel.metresPerUnit
+                    let crossing = [plot - tangent * (2 / RiverChannel.metresPerUnit) - side * extent,
+                                    plot + tangent * (2 / RiverChannel.metresPerUnit) - side * extent,
+                                    plot + tangent * (2 / RiverChannel.metresPerUnit) + side * extent,
+                                    plot - tangent * (2 / RiverChannel.metresPerUnit) + side * extent]
+                    var oldProbes: [SIMD2<Float>] = []
+                    for a: Float in [-1, 0, 1] { for b: Float in [-1, 0, 1] {
+                        let along = tangent * (a * 2 / RiverChannel.metresPerUnit)
+                        let across = side * (b * extent)
+                        oldProbes.append(plot + along + across)
+                    }}
+                    if abs(length * RiverChannel.metresPerUnit - width) > 0.001
+                        || !drawnRoad.contains(where: { field.waterLevel(at: $0) != nil })
+                        || oldProbes.contains(where: { field.waterLevel(at: $0) != nil })
+                        || !field.intersectsFootprint(crossing) { failures += 1 }
+                    let carved = RiverChannel.carvedTerrain(terrain, field: field)
+                    let support = RiverChannel.supportedTerrain(carved, field: field, radius: RiverChannel.terrainSupportRadius(terrain))
+                    let submitted = WorldScene.terrainVertices(carved, detail: 2, riverField: field, coarseSupport: support)
+                    let exact = RiverGeometryChecks.run(field.mesh, terrain: terrain, submitted: submitted)
+                    if exact.minExactClearance < 0.01 { failures += 1 }
                     let wet = centre + side * (width * 0.49 / 1000)
                     let dry = centre + side * ((width * 0.5 + 0.05) / 1000)
                     if field.waterLevel(at: wet) == nil || field.waterLevel(at: dry) != nil

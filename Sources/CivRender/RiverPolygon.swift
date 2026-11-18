@@ -93,7 +93,7 @@ enum RiverPolygon {
         return ax.min()! < bx.max()! && bx.min()! < ax.max()!
             && az.min()! < bz.max()! && bz.min()! < az.max()!
     }
-    static func union(_ triangles: [[Vertex]]) -> [[Vertex]] {
+    static func union(_ triangles: [[Vertex]], flatAttributes: Bool = false) -> [[Vertex]] {
         guard let first = triangles.first?.first else { return [] }
         // CoreGraphics' macOS 13 path Boolean engine returns the actual
         // exterior/holes, rather than exposing an arrangement of overlapping
@@ -116,6 +116,11 @@ enum RiverPolygon {
                 var v = first
                 v.position.x = Float(Double(p.x) / scale + origin.x)
                 v.position.z = Float(Double(p.y) / scale + origin.y)
+                if flatAttributes {
+                    v.position.x = Float((Double(v.position.x) / epsilon).rounded() * epsilon)
+                    v.position.z = Float((Double(v.position.z) / epsilon).rounded() * epsilon)
+                }
+                if flatAttributes { return v }
                 let p = point(v)
                 var best = Double.greatestFiniteMagnitude, attributes = first
                 for triangle in triangles {
@@ -171,7 +176,7 @@ enum RiverPolygon {
         loops = simple
         // Restore collinear cut-row vertices removed by path normalization.
         // They are seam constraints, never perimeter candidates sorted by angle.
-        let candidates = triangles.flatMap { $0 }
+        let candidates = flatAttributes ? [] : triangles.flatMap { $0 }
         loops = loops.compactMap { loop in
             var split: [Vertex] = []
             for i in loop.indices {
@@ -262,6 +267,7 @@ enum RiverPolygon {
         }
         // Split vertical slab seams at neighbouring interval endpoints.
         let points = pieces.flatMap { $0 }
+        let verticalPoints = Dictionary(grouping: points, by: { $0.position.x })
         return pieces.map { polygon in
             var split: [Vertex] = []
             for i in polygon.indices {
@@ -270,7 +276,7 @@ enum RiverPolygon {
                 if length2 <= epsilon * epsilon { continue }
                 var stops: [Double] = [0]
                 if ab.x == 0 {
-                    for v in points where v.position.x == a.position.x {
+                    for v in verticalPoints[a.position.x] ?? [] {
                         let t = simd_dot(point(v) - point(a), ab) / length2
                         if t > 0 && t < 1 { stops.append(t) }
                     }
@@ -284,7 +290,51 @@ enum RiverPolygon {
         }
     }
     static func append(_ polygon: [Vertex], vertices: inout [Vertex], indices: inout [UInt32]) {
+        var polygon = polygon.reduce(into: [Vertex]()) { result, vertex in
+            if result.last.map({ simd_distance(point($0), point(vertex)) > epsilon }) ?? true { result.append(vertex) }
+        }
+        if polygon.count > 1, simd_distance(point(polygon[0]), point(polygon.last!)) <= epsilon { polygon.removeLast() }
         guard polygon.count >= 3, abs(area(polygon)) > areaEpsilon else { return }
+        // Weakly-simple contours can carry zero-area out-and-back walks
+        // after Boolean/slab clipping. Split repeated geometric identities
+        // into actual loops; retain every nonzero loop with the same winding.
+        var active: [Vertex] = [], loops: [[Vertex]] = []
+        for vertex in polygon + [polygon[0]] {
+            if let start = active.firstIndex(where: {
+                simd_distance(point($0), point(vertex)) <= epsilon
+                    && abs(Double($0.position.y - vertex.position.y)) <= epsilon
+            }) {
+                let loop = Array(active[start...])
+                if abs(area(loop)) > areaEpsilon { loops.append(loop) }
+                active.removeSubrange((start + 1)...)
+            } else { active.append(vertex) }
+        }
+        if loops.count != 1 || loops[0].count != polygon.count {
+            // Boolean clipping can leave a long sliver narrower than the
+            // declared 0.1 mm numerical boundary band. Confirm its entire
+            // interior is in that band before collapsing the contour.
+            if loops.isEmpty || !loops.allSatisfy({ (area($0) < 0) == (area(polygon) < 0) }) {
+                let path = CGMutablePath(), origin = point(polygon[0])
+                let scale = Double(RiverChannel.metresPerUnit) * 1000 // local millimetres
+                for (i, vertex) in polygon.enumerated() {
+                    let p = (point(vertex) - origin) * scale
+                    if i == 0 { path.move(to: CGPoint(x: p.x, y: p.y)) }
+                    else { path.addLine(to: CGPoint(x: p.x, y: p.y)) }
+                }
+                path.closeSubpath()
+                let band = path.copy(strokingWithWidth: 2 * epsilon * scale,
+                    lineCap: .butt, lineJoin: .miter, miterLimit: 10)
+                if path.subtracting(band).isEmpty { return }
+            }
+            if loops.isEmpty || !loops.allSatisfy({ (area($0) < 0) == (area(polygon) < 0) }) {
+                FileHandle.standardError.write(Data(("Weak contour decomposition failed: " + polygon.map { String(describing: $0.position) }.joined(separator: ", ") + "\n").utf8))
+            }
+            precondition(!loops.isEmpty, "Nonzero water contour lost during weak-loop decomposition")
+            let sign = area(polygon) < 0
+            precondition(loops.allSatisfy { (area($0) < 0) == sign }, "Water holes require explicit contour decomposition")
+            for loop in loops { append(loop, vertices: &vertices, indices: &indices) }
+            return
+        }
         // Ear clipping retains every collinear seam stop. It also works when
         // a slab is only one Float ULP wide and has no representable interior
         // centre point. No junction-centre or convex-piece centre fans.
@@ -292,15 +342,34 @@ enum RiverPolygon {
         let base = UInt32(vertices.count)
         vertices.append(contentsOf: ordered)
         var remaining = Array(ordered.indices)
+        func collapsedBoundary(_ ids: [Int]) -> Bool {
+            let points = ids.map { point(ordered[$0]) }
+            let low = points.reduce(SIMD2<Double>(repeating: .greatestFiniteMagnitude), simd_min)
+            let high = points.reduce(SIMD2<Double>(repeating: -.greatestFiniteMagnitude), simd_max)
+            let axis = high.x - low.x >= high.y - low.y ? 0 : 1
+            let a = points.min { $0[axis] < $1[axis] }!, b = points.max { $0[axis] < $1[axis] }!
+            let ab = b - a, length2 = simd_length_squared(ab)
+            if length2 == 0 { return true }
+            return points.allSatisfy {
+                let t = min(max(simd_dot($0 - a, ab) / length2, 0), 1)
+                return simd_distance($0, a + ab * t) <= epsilon
+            }
+        }
+        if collapsedBoundary(remaining) {
+            // Entire Boolean residue is within the declared numerical band;
+            // there is no representable wet interior beyond that band.
+            vertices.removeSubrange(Int(base)..<vertices.count)
+            return
+        }
         while remaining.count > 3 {
-            var found = false
+            var best: Int?, bestQuality: Double = -1
             for i in remaining.indices {
                 let a = remaining[(i + remaining.count - 1) % remaining.count]
                 let b = remaining[i], c = remaining[(i + 1) % remaining.count]
                 let triangle = [ordered[a], ordered[b], ordered[c]]
                 if area(triangle) >= 0 { continue }
                 var rest = remaining; rest.remove(at: i)
-                if abs(area(rest.map { ordered[$0] })) == 0 { continue }
+                if collapsedBoundary(rest) { continue }
                 let aa = point(ordered[a]), bb = point(ordered[b]), cc = point(ordered[c])
                 let contains = rest.contains { id in
                     if id == a || id == c { return false }
@@ -309,10 +378,16 @@ enum RiverPolygon {
                         && cross(cc - bb, p - bb) <= 0 && cross(aa - cc, p - cc) <= 0
                 }
                 if contains { continue }
-                indices.append(contentsOf: [base + UInt32(a), base + UInt32(b), base + UInt32(c)])
-                remaining = rest; found = true; break
+                let longest2 = max(simd_length_squared(bb-aa), simd_length_squared(cc-bb), simd_length_squared(aa-cc))
+                let quality = abs(area(triangle)) / longest2
+                if quality > bestQuality { bestQuality = quality; best = i }
             }
-            if !found {
+            if let i = best {
+                let a = remaining[(i + remaining.count - 1) % remaining.count]
+                let b = remaining[i], c = remaining[(i + 1) % remaining.count]
+                indices.append(contentsOf: [base + UInt32(a), base + UInt32(b), base + UInt32(c)])
+                remaining.remove(at: i)
+            } else {
                 let text = "Non-simple river polygon: " + remaining.map { String(describing: ordered[$0].position) }.joined(separator: ", ") + "\n"
                 FileHandle.standardError.write(Data(text.utf8))
                 preconditionFailure("River footprint contains a non-simple or collapsed polygon")
@@ -330,7 +405,7 @@ enum RiverPolygon {
     /// Checks the submitted triangulation's boundary graph using a 1 µm
     /// positional weld tolerance. Every perimeter vertex must have degree two;
     /// incidence > 2, loose interior edges, and crossed loops fail the gate.
-    static func boundaryFailures(_ triangles: [[Vertex]]) -> Int {
+    static func boundaryFailures(_ triangles: [[Vertex]], report: Bool = false) -> Int {
         let tolerance: Double = 0.000001 / Double(RiverChannel.metresPerUnit)
         struct Cell: Hashable { var x: Int; var z: Int }
         struct Edge: Hashable { var a: Int; var b: Int }
@@ -360,12 +435,20 @@ enum RiverPolygon {
         var degree: [Int: Int] = [:], failures = 0
         for edge in edges.keys.sorted(by: { ($0.a, $0.b) < ($1.a, $1.b) }) {
             let count = edges[edge]!
-            if count > 2 { failures += 1 }
+            if count > 2 {
+                failures += 1
+                if report && failures <= 20 { print("water edge incidence \(count): \(points[edge.a]), \(points[edge.b])") }
+            }
             if count == 1 {
                 degree[edge.a, default: 0] += 1; degree[edge.b, default: 0] += 1
             }
         }
         failures += degree.values.filter { $0 != 2 }.count
+        if report {
+            for id in degree.keys.sorted().filter({ degree[$0] != 2 }).prefix(20) {
+                print("water boundary degree \(degree[id]!): \(points[id])")
+            }
+        }
         let boundary = edges.keys.filter { edges[$0] == 1 }.sorted { ($0.a, $0.b) < ($1.a, $1.b) }
         for i in boundary.indices {
             let a = boundary[i], p = points[a.a], r = points[a.b] - p

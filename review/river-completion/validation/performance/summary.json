@@ -1,0 +1,49 @@
+{
+  "runs": [
+    {
+      "label": "before",
+      "run": 0,
+      "mean_ms": 12.93,
+      "wall_s": 7.864150542009156,
+      "nonframe_wall_s": 4.760950542009157
+    },
+    {
+      "label": "after",
+      "run": 0,
+      "mean_ms": 13.39,
+      "wall_s": 14.204383208008949,
+      "nonframe_wall_s": 10.99078320800895
+    },
+    {
+      "label": "before",
+      "run": 1,
+      "mean_ms": 12.72,
+      "wall_s": 7.610950957983732,
+      "nonframe_wall_s": 4.558150957983732
+    },
+    {
+      "label": "after",
+      "run": 1,
+      "mean_ms": 13.83,
+      "wall_s": 14.311564000003273,
+      "nonframe_wall_s": 10.992364000003272
+    },
+    {
+      "label": "before",
+      "run": 2,
+      "mean_ms": 12.67,
+      "wall_s": 7.620425875007641,
+      "nonframe_wall_s": 4.57962587500764
+    },
+    {
+      "label": "after",
+      "run": 2,
+      "mean_ms": 13.8,
+      "wall_s": 14.351751541980775,
+      "nonframe_wall_s": 11.039751541980776
+    }
+  ],
+  "median_before_ms": 12.72,
+  "median_after_ms": 13.8,
+  "change_percent": 8.490566037735858
+}

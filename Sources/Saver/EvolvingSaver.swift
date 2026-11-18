@@ -675,6 +675,11 @@ final class EvolvingSaver: ScreenSaverView {
 
     // MARK: - Free camera (Timeline app)
 
+    @objc func riverReviewViewData() -> NSData? {
+        guard let record = renderer?.lastReviewView else { return nil }
+        return try? record.encoded() as NSData
+    }
+
     @objc func beginFreeCamera() {
         renderer?.beginFreeCamera()
     }

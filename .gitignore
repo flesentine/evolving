@@ -25,6 +25,8 @@ __pycache__/
 
 # Generated review captures and root stills. Source and review notes stay.
 /review/*.png
+/review/river-completion/work/
+/review/river-completion/matrix/
 /*.png
 
 # Credentials and secrets
@@ -50,3 +52,8 @@ id_ed25519*
 # Blender backups
 *.blend1
 *.blend2
+
+# Raw review inputs are preserved in the downloadable review-inputs.zip.
+/review/river-completion/matrix-records/
+/review/river-completion/ids/**/*.json
+/review/river-completion/provenance/

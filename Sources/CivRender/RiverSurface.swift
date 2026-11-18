@@ -9,34 +9,24 @@ enum RiverSurface {
         var input: [[Vertex]]
         var indexRange: Range<Int>
         var cuts: [(SIMD2<Float>, SIMD2<Float>, Float)]
+        var additionalIndices: [Range<Int>] = []
+        var reviewBounds: (SIMD2<Float>, SIMD2<Float>)? = nil
     }
     struct Geometry {
         var vertices: [Vertex]
         var indices: [UInt32]
         var junctions: [Junction]
         var ribbonWidths: [Float]
+        var lakeTriangles: [[Vertex]] = []
+        var collapsedBoundaryFaces = 0
+        var collapsedBoundaryArea: Double = 0 // physical m², 0.1 mm band only
+        var endpointSeams: [(SIMD2<Float>, SIMD2<Float>)] = []
     }
     /// A degree-two continuation has one geometric cross-section, even when
     /// its two reach-local width/tangent estimates differ. Keep every other
     /// sample and every graph identity unchanged.
     static func prepared(_ input: [RiverReach]) -> [RiverReach] {
-        var network = input
-        for d in network.indices where network[d].upstream.count == 1 {
-            let a = network[d].upstream[0]
-            guard let first = network[d].samples.first, let last = network[a].samples.last else { continue }
-            let half = max(RiverChannel.halfWidth(first), RiverChannel.halfWidth(last))
-            let sum = first.tangent + last.tangent
-            let tangent = first.tangent == last.tangent ? first.tangent
-                : (simd_length_squared(sum) > 1e-12 ? simd_normalize(sum) : first.tangent)
-            network[d].samples[0].channelWidth = half * 2
-            network[d].samples[0].sourceWidthFactor = 1
-            network[d].samples[0].tangent = tangent
-            let index = network[a].samples.count - 1
-            network[a].samples[index].channelWidth = half * 2
-            network[a].samples[index].sourceWidthFactor = 1
-            network[a].samples[index].tangent = tangent
-        }
-        return network
+        RiverGraph.prepareJunctions(input)
     }
 
     /// Shared row trims for banks and water. The merged 1.05 factor is a
@@ -110,8 +100,65 @@ enum RiverSurface {
             }
             return false
         }
+        struct Segment {
+            var triangles: [[SIMD2<Double>]]
+            var low: SIMD2<Double>
+            var high: SIMD2<Double>
+        }
+        let segments: [[Segment]] = network.map { reach in
+            let rows = reach.samples.map { sample -> [SIMD2<Double>] in
+                let (a,b) = ends(sample)
+                return [SIMD2(Double(a.x),Double(a.y)), SIMD2(Double(b.x),Double(b.y))]
+            }
+            return (1..<rows.count).map { i in
+                let points = rows[i-1]+rows[i]
+                return Segment(triangles:[[points[0],points[1],points[2]],[points[1],points[3],points[2]]],
+                    low:points.reduce(points[0],simd_min),high:points.reduce(points[0],simd_max))
+            }
+        }
+        func triangleOverlap(_ a:[SIMD2<Double>],_ b:[SIMD2<Double>]) -> Bool {
+            for triangle in [a,b] { for i in 0..<3 {
+                let edge = triangle[(i+1)%3]-triangle[i], axis = SIMD2(-edge.y,edge.x)
+                let pa = a.map { simd_dot($0,axis) }, pb = b.map { simd_dot($0,axis) }
+                let tolerance = RiverPolygon.epsilon*simd_length(edge)
+                if min(pa.max()!,pb.max()!)-max(pa.min()!,pb.min()!) <= tolerance { return false }
+            }}
+            return true
+        }
+        // A cut can be outside the next arm and still leave an overlap farther
+        // along a curved approach. Own the complete overlapping interval, not
+        // merely the first consecutive rows next to the graph node.
+        var overlapCache: [Int:[Int]] = [:]
+        func overlappingIntervals(_ aa:Int,_ bb:Int) -> [Int] {
+            let a = min(aa,bb), b = max(aa,bb), key = a*network.count+b
+            if let cached = overlapCache[key] { return cached }
+            var bounds = [Int.max,-1,Int.max,-1]
+            for (i,x) in segments[a].enumerated() { for (j,y) in segments[b].enumerated() {
+                if x.high.x <= y.low.x || y.high.x <= x.low.x || x.high.y <= y.low.y || y.high.y <= x.low.y { continue }
+                if x.triangles.contains(where: { u in y.triangles.contains(where: { triangleOverlap(u,$0) }) }) {
+                    bounds[0] = min(bounds[0],i); bounds[1] = max(bounds[1],i)
+                    bounds[2] = min(bounds[2],j); bounds[3] = max(bounds[3],j)
+                }
+            }}
+            overlapCache[key] = bounds
+            return bounds
+        }
+        func extendCuts(_ members:[Int],_ arms:[Int]) {
+            for node in members { for arm in [node]+network[node].upstream {
+                var low = Int.max, high = -1
+                for other in arms where other != arm {
+                    let bounds = overlappingIntervals(arm,other), offset = arm < other ? 0 : 2
+                    low = min(low,bounds[offset]); high = max(high,bounds[offset+1])
+                }
+                if high >= 0 {
+                    if arm == node { firstKept[arm] = max(firstKept[arm],min(high+2,network[arm].samples.count-1)) }
+                    else { lastKept[arm] = min(lastKept[arm],max(low-1,0)) }
+                }
+            }}
+        }
         for d in network.indices where network[d].upstream.count >= 2 {
             let arms = [d] + network[d].upstream
+            extendCuts([d],arms)
             for arm in arms {
                 let samples = network[arm].samples
                 guard samples.count >= 2 else { continue }
@@ -153,6 +200,7 @@ enum RiverSurface {
             for id in groups.keys.sorted() {
                 let members = groups[id]!
                 let arms = Set(members + members.flatMap { network[$0].upstream }).sorted()
+                extendCuts(members,arms)
                 for node in members {
                     for arm in [node] + network[node].upstream {
                         guard firstKept[arm] < lastKept[arm] else { continue }
@@ -177,8 +225,14 @@ enum RiverSurface {
     }
 
     static func build(_ t: Terrain,
-                      network input: [RiverReach]) -> Geometry {
+                      network input: [RiverReach], lakes explicitLakes: [RiverLake]? = nil) -> Geometry {
         let network = prepared(input)
+        let canonical = t.riverGraph.map { graph in
+            graph.reaches.count == input.count && zip(graph.reaches, input).allSatisfy {
+                $0.id == $1.id && $0.firstCell == $1.firstCell && $0.lastCell == $1.lastCell
+            }
+        } ?? false
+        let lakes = explicitLakes ?? (canonical ? t.riverGraph!.lakes : [])
         var verts: [Vertex] = []
         var indices: [UInt32] = []
         var junctions: [Junction] = []
@@ -277,11 +331,14 @@ enum RiverSurface {
                                         uv: SIMD2(0.5, along)))
                 }
                 for k in 0..<segments {
-                    indices.append(contentsOf: [centre, ring[k], ring[k + 1]])
-                    indices.append(contentsOf: [centre, ring[k + 1], ring[k]])
+                    let triangle = [centre, ring[k], ring[k + 1]]
+                    let face = triangle.map { verts[Int($0)] }
+                    if face.contains(where: { $0.position.y > 0 }) {
+                        indices.append(contentsOf: RiverPolygon.area(face) < 0 ? triangle : [centre, ring[k + 1], ring[k]])
+                    }
                 }
                 if le <= fs {
-                    for i in stride(from: capIndexStart, to: indices.count, by: 6) {
+                    for i in stride(from: capIndexStart, to: indices.count, by: 3) {
                         consumedCaps[reach.id, default: []].append((0..<3).map { verts[Int(indices[i + $0])] })
                     }
                     indices.removeSubrange(capIndexStart...)
@@ -358,8 +415,19 @@ enum RiverSurface {
             let pieces = RiverPolygon.union(input)
             // The cuts are outside incident-strip overlap and are exact
             // boundary constraints. Junction cells anchor the local grade.
-            let controls = members.compactMap { network[$0].samples.first }.map {
+            var controls = members.compactMap { network[$0].samples.first }.map {
                 ($0.position, $0.position, RiverChannel.waterLine(t, $0).y)
+            }
+            // A fully consumed short spring still owns its emitted cap grade.
+            // Include its actual cap edges as boundary constraints, otherwise
+            // the junction interpolation silently changes the source level.
+            for arm in includedCaps.sorted() {
+                for triangle in consumedCaps[arm] ?? [] {
+                    for i in 0..<3 {
+                        let a = triangle[i].position, b = triangle[(i + 1) % 3].position
+                        controls.append((SIMD2(a.x, a.z), SIMD2(b.x, b.z), a.y))
+                    }
+                }
             }
             func level(_ p: SIMD2<Float>) -> Float {
                 var sum: Double = 0, weight: Double = 0
@@ -383,41 +451,87 @@ enum RiverSurface {
                                       indexRange: startIndex..<indices.count, cuts: cuts))
         }
 
-        // Closed-basin tarn: a round pond at the terminal sample.
-        for reach in network where reach.downstream == nil && !reach.isMouth {
-            guard let last = reach.samples.last else { continue }
-            let centre = last.position
-            let lineY = RiverChannel.waterLine(t, last).y
-            let radius = RiverChannel.halfWidth(last) * 2.5
-            let colour = tint(last)
-            let centreDepth = depthValue(centre, lineY, edge: false) * 0.9
-            let centreIndex = UInt32(verts.count)
-            verts.append(Vertex(position: SIMD3(centre.x, lineY + 0.000002,
-                                               centre.y),
-                                normal: up,
-                                color: SIMD4(colour, centreDepth),
-                                uv: SIMD2(0.5, 0.5)))
-            let segments = 24
-            var ringIndices: [UInt32] = []
-            ringIndices.reserveCapacity(segments)
-            for k in 0..<segments {
-                let a = Float(k) / Float(segments) * 2 * Float.pi
-                let p = centre + SIMD2<Float>(cos(a), sin(a)) * radius
-                ringIndices.append(UInt32(verts.count))
-                verts.append(Vertex(position: SIMD3(p.x, lineY + 0.000002, p.y),
-                                    normal: up,
-                                    color: SIMD4(colour, 0),
-                                    uv: SIMD2(0.5, 0.5)))
+        // Lake triangles are the canonical bounded basin footprint. Carve
+        // and bank exclusion see exactly these same faces. Subtract them from
+        // ribbons/joins so two upward sheets are never submitted over a lake.
+        let lakeTriangles = lakes.flatMap { RiverLakeSurface.triangles($0, terrain: t) }
+        if !lakeTriangles.isEmpty {
+            let lakeIndex = RiverTriangleBuckets(lakeTriangles)
+            let oldVerts = verts, oldIndices = indices, oldJunctions = junctions
+            verts = []; indices = []; junctions = []
+            var newRanges: [Int: Range<Int>] = [:]
+            var currentJunction: Int?
+            var junctionStart = 0
+            for i in stride(from: 0, to: oldIndices.count, by: 3) {
+                let owner = oldJunctions.firstIndex { $0.indexRange.contains(i) }
+                if owner != currentJunction {
+                    if let previous = currentJunction { newRanges[previous] = junctionStart..<indices.count }
+                    currentJunction = owner; junctionStart = indices.count
+                }
+                let tri = (0..<3).map { oldVerts[Int(oldIndices[i + $0])] }
+                if RiverPolygon.area(tri) >= 0 {
+                    // Preserve an invalid source face so validation exposes it;
+                    // normalizing or dropping it here would conceal a defect.
+                    let base = UInt32(verts.count); verts.append(contentsOf: tri)
+                    indices.append(contentsOf: [base, base + 1, base + 2]); continue
+                }
+                var pieces = [tri]
+                let nearbyLakes = lakeIndex.near(tri)
+                for lake in nearbyLakes where RiverPolygon.overlaps(tri, lake) {
+                    pieces = pieces.flatMap { RiverPolygon.subtract($0, lake) }
+                }
+                for polygon in pieces {
+                    let adjusted = polygon.map { vertex -> Vertex in
+                        var v = vertex
+                        let p = SIMD2(v.position.x, v.position.z)
+                        for lake in nearbyLakes {
+                            if RiverChannel.Field.probe(lake, p).distance <= 0.0001 / metres {
+                                v.position.y = lake[0].position.y; break
+                            }
+                        }
+                        return v
+                    }
+                    RiverPolygon.append(adjusted, vertices: &verts, indices: &indices)
+                }
             }
-            for k in 0..<segments {
-                let n = (k + 1) % segments
-                indices.append(contentsOf: [centreIndex, ringIndices[k],
-                                            ringIndices[n]])
-                indices.append(contentsOf: [centreIndex, ringIndices[n],
-                                            ringIndices[k]])
+            if let previous = currentJunction { newRanges[previous] = junctionStart..<indices.count }
+            for (id, var junction) in oldJunctions.enumerated() {
+                junction.indexRange = newRanges[id] ?? indices.count..<indices.count
+                junctions.append(junction)
             }
         }
-        return Geometry(vertices: verts, indices: indices, junctions: junctions, ribbonWidths: ribbonWidths)
+        let junctionBounds = junctions.map { j -> (SIMD2<Float>, SIMD2<Float>) in
+            let p = j.input.flatMap { $0.map { SIMD2($0.position.x, $0.position.z) } }
+            return (p.reduce(SIMD2(repeating: .greatestFiniteMagnitude), simd_min),
+                    p.reduce(SIMD2(repeating: -.greatestFiniteMagnitude), simd_max))
+        }
+        for j in junctions.indices { junctions[j].reviewBounds = junctionBounds[j] }
+        for tri in lakeTriangles {
+            let start = indices.count
+            RiverPolygon.append(tri, vertices: &verts, indices: &indices)
+            let low = tri.map { SIMD2($0.position.x, $0.position.z) }.reduce(SIMD2<Float>(repeating: .greatestFiniteMagnitude), simd_min)
+            let high = tri.map { SIMD2($0.position.x, $0.position.z) }.reduce(SIMD2<Float>(repeating: -.greatestFiniteMagnitude), simd_max)
+            for j in junctions.indices where low.x <= junctionBounds[j].1.x && high.x >= junctionBounds[j].0.x
+                && low.y <= junctionBounds[j].1.y && high.y >= junctionBounds[j].0.y {
+                junctions[j].additionalIndices.append(start..<indices.count)
+                junctions[j].input.append(tri)
+            }
+        }
+        // A coplanar mouth cap would duplicate the ocean at y=0. The last
+        // sloped ribbon ends at zero and the ocean owns the seaward area.
+        // Keep only the actual upward face, including endpoint caps.
+        var endpointSeams: [(SIMD2<Float>, SIMD2<Float>)] = []
+        for reach in network {
+            for (sample, unlinked) in [(reach.samples.first, reach.upstream.isEmpty),
+                                       (reach.samples.last, reach.downstream == nil)] {
+                guard unlinked, let sample else { continue }
+                let side = RiverChannel.sideVector(sample) * RiverChannel.halfWidth(sample)
+                endpointSeams.append((sample.position-side, sample.position+side))
+            }
+        }
+        return RiverSurfaceWeld.apply(Geometry(vertices: verts, indices: indices, junctions: junctions,
+                                               ribbonWidths: ribbonWidths, lakeTriangles: lakeTriangles,
+                                               endpointSeams: endpointSeams))
     }
 
 }

@@ -121,48 +121,7 @@ enum CityBuilder {
 
         appendOutposts(terrain: terrain, era: era, seed: seed, into: &geometry)
 
-        // A smoothed channel can reach a few metres outside the rasterised
-        // river cells. Drop any house whose base would sit under that water;
-        // the simulation is unchanged, only the visual placement is corrected.
-        if let field = riverField {
-            for key in Array(geometry.buildings.keys) {
-                geometry.buildings[key] = geometry.buildings[key]?.filter {
-                    instance in
-                    let p = instance.model.columns.3
-                    guard let water = field.waterLevel(at: SIMD2(p.x, p.z)) else {
-                        return true
-                    }
-                    if p.y < water { return false }
-                    // A small dry setback keeps loggias and foundations from
-                    // overhanging the wet margin.
-                    if let d = field.signedDistance(at: SIMD2(p.x, p.z)),
-                       d < 0.002 {
-                        return false
-                    }
-                    return true
-                }
-            }
-            // Crops are flat meshes too: drop any field whose footprint
-            // reaches the water, so a paddock never paints over the channel.
-            geometry.fields = geometry.fields.filter { instance in
-                let m = instance.model
-                let centre = SIMD3<Float>(m.columns.3.x, 0, m.columns.3.z)
-                let axisX = SIMD3<Float>(m.columns.0.x, 0, m.columns.0.z)
-                let axisZ = SIMD3<Float>(m.columns.2.x, 0, m.columns.2.z)
-                for u in [-0.5, 0, 0.5] as [Float] {
-                    for v in [-0.5, 0, 0.5] as [Float] {
-                        let q = SIMD2<Float>(
-                            centre.x + axisX.x * u + axisZ.x * v,
-                            centre.z + axisX.z * u + axisZ.z * v)
-                        if let s = field.surface(at: q),
-                           s.distance < 1.5 / RiverChannel.metresPerUnit {
-                            return false
-                        }
-                    }
-                }
-                return true
-            }
-        }
+        if let field = riverField { RiverPlacement.filter(&geometry,field:field) }
         return geometry
     }
 
@@ -226,7 +185,14 @@ enum CityBuilder {
         // A settlement centre can land on a distributary. Paving is not a
         // building, so it is not caught by the house filter; skip civic
         // paving when the centre square itself is wet.
-        let centreDry = river?.waterLevel(at: SIMD2(s.x, s.z)) == nil
+        let civicHalf = cell * (era == .renaissance ? 1.8 : era == .classical ? 1.45 : 1.5)
+        let civicAngle: Float = era == .information || era == .future ? 0 : plan.axis
+        let civicX = SIMD2<Float>(cos(civicAngle),sin(civicAngle)) * civicHalf
+        let civicZ = SIMD2<Float>(-sin(civicAngle),cos(civicAngle)) * civicHalf
+        let civicCentre = SIMD2(s.x,s.z)
+        let civicFootprint = [civicCentre-civicX-civicZ, civicCentre+civicX-civicZ,
+                              civicCentre+civicX+civicZ, civicCentre-civicX+civicZ]
+        let centreDry = river?.intersectsFootprint(civicFootprint, margin: 1.5 / RiverChannel.metresPerUnit) != true
 
         if era != .neolithic {
             geometry.streets.append(StreetGrid(x: s.x, z: s.z, angle: plan.axis,
@@ -1325,13 +1291,7 @@ enum CityBuilder {
                                   to centre: SIMD2<Float>,
                                   river: RiverChannel.Field?) -> Bool {
         guard let river else { return true }
-        let steps = 20
-        for i in 0...steps {
-            let t = Float(i) / Float(steps)
-            let q = centre + (p - centre) * t
-            if river.waterLevel(at: q) != nil { return false }
-        }
-        return true
+        return river.wetIntervals(from: centre, to: p).isEmpty
     }
 
     private static func appendRoadLines(_ plan: SettlementPlan,
@@ -1354,6 +1314,11 @@ enum CityBuilder {
                     }
                     current.removeAll(keepingCapacity: true)
                 } else {
+                    if let previous = current.last, let river,
+                       !river.wetIntervals(from: previous, to: p).isEmpty {
+                        if current.count >= 2 { lines.append(StreetLine(points: current, width: road.width)) }
+                        current.removeAll(keepingCapacity: true)
+                    }
                     current.append(p)
                 }
             }
@@ -1904,7 +1869,7 @@ enum CityBuilder {
         let end = shore + dir * 0.020
         let mid = (shore + end) * 0.5
         let length = simd_distance(shore, end)
-        let deckY: Float = 0.0042 + 0.0014
+        let deckY = RiverGraph.seaLevel + 1.4 / RiverGraph.metresPerUnit
         let deck = translation(SIMD3(mid.x, deckY, mid.y))
             * rotationY(heading)
             * scaleMatrix(SIMD3(0.0028, 0.0005, length))
@@ -1915,13 +1880,13 @@ enum CityBuilder {
         let bx = end.x + side.x * 0.004
         let bz = end.y + side.y * 0.004
 
-        let hull = translation(SIMD3(bx, 0.0042 + 0.0006, bz))
+        let hull = translation(SIMD3(bx, RiverGraph.seaLevel + 0.6 / RiverGraph.metresPerUnit, bz))
             * rotationY(heading)
             * scaleMatrix(SIMD3(0.0020, 0.0012, 0.0055))
         geometry.boxes.append(InstanceData(model: hull,
                                            color: SIMD4(SIMD3(0.32, 0.24, 0.16), 0)))
 
-        let sail = translation(SIMD3(bx, 0.0042 + 0.0045, bz))
+        let sail = translation(SIMD3(bx, RiverGraph.seaLevel + 4.5 / RiverGraph.metresPerUnit, bz))
             * rotationY(heading)
             * scaleMatrix(SIMD3(0.0028, 0.0070, 0.0028))
         geometry.cones.append(InstanceData(model: sail,

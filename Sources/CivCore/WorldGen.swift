@@ -32,6 +32,9 @@ struct Terrain {
     var ao: [Float] = []
 
     var maxHeight: Float = 0
+    /// Immutable selected drainage authority, reused by simulation and renderer.
+    var riverGraph: RiverGraph? = nil
+    var lakeWater: [Float] = []
 
     // MARK: - Sampling
 
@@ -95,6 +98,18 @@ struct Terrain {
         return fertility[index(i, j)]
     }
 
+    /// The original a-c terrain triangle plane used to bound basin polygons.
+    /// This intentionally differs from the smooth bilinear placement estimate.
+    func originalTriangleHeight(at p: SIMD2<Float>) -> Float {
+        let f = (p + SIMD2(repeating: 1)) / cellSize
+        let i = min(max(Int(floor(f.x)), 0), size - 2), j = min(max(Int(floor(f.y)), 0), size - 2)
+        let u = min(max((Double(p.x) - Double(worldX(i))) / Double(worldX(i + 1) - worldX(i)), 0), 1)
+        let v = min(max((Double(p.y) - Double(worldZ(j))) / Double(worldZ(j + 1) - worldZ(j)), 0), 1)
+        let a = Double(height[index(i, j)]), b = Double(height[index(i + 1, j)])
+        let c = Double(height[index(i + 1, j + 1)]), d = Double(height[index(i, j + 1)])
+        return Float(u >= v ? a + (b - a) * u + (c - b) * v : a + (c - d) * u + (d - a) * v)
+    }
+
     var cellSize: Float { 2 / Float(size - 1) }
 
     func gradientAt(x: Float, z: Float) -> SIMD2<Float> {
@@ -105,7 +120,12 @@ struct Terrain {
     }
 
     func isWater(x: Float, z: Float) -> Bool {
-        heightAt(x: x, z: z) <= 0
+        if heightAt(x: x, z: z) <= 0 { return true }
+        guard !lakeWater.isEmpty else { return false }
+        let i = min(max(Int(floor((x + 1) / cellSize)), 0), size - 2)
+        let j = min(max(Int(floor((z + 1) / cellSize)), 0), size - 2)
+        let level = [index(i, j), index(i + 1, j), index(i + 1, j + 1), index(i, j + 1)].map { lakeWater[$0] }.max()!
+        return level > 0 && level > originalTriangleHeight(at: SIMD2(x, z))
     }
 }
 
@@ -344,7 +364,7 @@ enum WorldGen {
             }
         }
 
-        return Terrain(size: size,
+        var terrain = Terrain(size: size,
                        seed: seed,
                        height: height,
                        flow: flow,
@@ -356,5 +376,9 @@ enum WorldGen {
                        waterDistance: waterDistance,
                        ao: ao,
                        maxHeight: maxHeight)
+        let built = RiverGraph.build(terrain)
+        terrain.riverGraph = built
+        terrain.applyRiverGraph()
+        return terrain
     }
 }

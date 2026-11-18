@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "seed": 3,
+  "year": 2336,
+  "hour": 10,
+  "season": 0.7,
+  "precipitation": 0,
+  "snow": false,
+  "animationTime": 0,
+  "fov": 52,
+  "width": 1600,
+  "height": 1200,
+  "provenance": "seed 3: actual submitted shoreline cut-end regression; previous unbounded plane expansion left >1 mm bank gap",
+  "eye": [
+    -0.14151151,
+    0.022011525,
+    0.24000402
+  ],
+  "target": [
+    -0.14151151,
+    0.018011525,
+    0.23999402
+  ]
+}

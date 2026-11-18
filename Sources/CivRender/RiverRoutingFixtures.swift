@@ -35,6 +35,79 @@ enum RiverRoutingFixtures {
         guard tied.sources == [c, a], !tied.channel[b], !tied.channel[42] else {
             print("FAIL deterministic source tie"); return false
         }
+        func samples(_ points: [SIMD2<Float>], width: Float) -> [RiverSample] {
+            points.enumerated().map { i, p in
+                let tangent = simd_normalize(points[min(i + 1, points.count - 1)] - points[max(i - 1, 0)])
+                return RiverSample(position: p / RiverGraph.metresPerUnit, bed: 0.0994,
+                    width: width / RiverGraph.metresPerUnit, tangent: tangent,
+                    channelWidth: width / RiverGraph.metresPerUnit,
+                    sourceWidthFactor: i == 0 ? 0.3 / width : 1)
+            }
+        }
+        let covered = [
+            RiverReach(id: 0, samples: samples([SIMD2(0,0), SIMD2(10,10), SIMD2(20,0)], width: 4),
+                downstream: 2, isSource: true, firstCell: 0, lastCell: 2),
+            RiverReach(id: 1, samples: samples([SIMD2(0,-50), SIMD2(0,0), SIMD2(20,0)], width: 10),
+                downstream: 2, isSource: true, firstCell: 1, lastCell: 2),
+            RiverReach(id: 2, samples: samples([SIMD2(20,0), SIMD2(40,0)], width: 12),
+                upstream: [0,1], isMouth: true, firstCell: 2, lastCell: 3)]
+        let pruned = RiverRouting.pruneCoveredSources(covered, area: [1300,2500,3800,3800])
+        guard pruned.cells == [0], pruned.reaches.count == 2,
+              pruned.reaches[0].firstCell == 1, pruned.reaches[0].downstream == 1,
+              pruned.reaches[1].upstream == [0], pruned.reaches[1].downstream == nil else {
+            print("FAIL covered-source thinning: exclusive loop or outlet path lost"); return false
+        }
+        print("covered-source fixture: hidden spring/exclusive loop removed, complete main path retained: PASS")
+        var short = covered
+        short[0].samples = samples([SIMD2(18,7), SIMD2(20,0)], width: 4)
+        let shortResult = RiverRouting.pruneCoveredSources(short, area: [1300,2500,3800,3800])
+        guard shortResult.cells == [0], shortResult.reaches.count == 2,
+              shortResult.reaches[1].upstream == [0], shortResult.reaches[0].firstCell == 1 else {
+            print("FAIL short spring: insufficient taper length or complete outlet path lost"); return false
+        }
+        print("7 m spring stub fixture: removed; downstream catchment and complete main path retained: PASS")
+        let continued = RiverGraph.mergeContinuations(shortResult.reaches)
+        guard continued.count == 1, continued[0].upstream.isEmpty, continued[0].downstream == nil,
+              continued[0].firstCell == 1, continued[0].lastCell == 3,
+              continued[0].samples.count == shortResult.reaches.reduce(0,{ $0+$1.samples.count })-1 else {
+            print("FAIL obsolete junction collapse: complete path or endpoint provenance lost"); return false
+        }
+        print("obsolete junction fixture: one continuous reach, full source-to-outlet path and provenance retained: PASS")
+        // A one-metre endpoint stamp formerly held a two-metre fall.
+        // Verify the submitted row levels after grading, including fixed
+        // spring and lake controls and the shared receiving endpoint.
+        var graded = [RiverReach(id:0,samples:(0...100).map { i in
+            RiverSample(position:SIMD2(Float(i)/RiverGraph.metresPerUnit,0),
+                bed:99.4/RiverGraph.metresPerUnit,width:4/RiverGraph.metresPerUnit,
+                tangent:SIMD2(1,0),channelWidth:4/RiverGraph.metresPerUnit,along:Float(i),
+                waterOverride:Float(i == 100 ? 100 : 102)/RiverGraph.metresPerUnit)
+        },downstream:1,isSource:true),
+        RiverReach(id:1,samples:(0...10).map { i in
+            RiverSample(position:SIMD2(Float(100+i)/RiverGraph.metresPerUnit,0),
+                bed:99.4/RiverGraph.metresPerUnit,width:4/RiverGraph.metresPerUnit,
+                tangent:SIMD2(1,0),channelWidth:4/RiverGraph.metresPerUnit,along:Float(i),
+                waterOverride:100/RiverGraph.metresPerUnit)
+        },upstream:[0],isMouth:true)]
+        let ground = RiverEndpointValidation.fixtureTerrain()
+        let originalLevels = graded.map { $0.samples.map { $0.waterOverride } }
+        let beforeGrade = RiverGeometryChecks.maximumEdgeGrade(RiverSurface.build(ground,network:graded))
+        RiverGraph.smoothWaterGrades(&graded,upstreamFirst:[0,1],fixed:[Set([0]),Set([10])])
+        let afterGrade = RiverGeometryChecks.maximumEdgeGrade(RiverSurface.build(ground,network:graded))
+        var profileGrade: Float = 0
+        for r in graded.indices { for i in graded[r].samples.indices {
+            guard graded[r].samples[i].waterOverride <= originalLevels[r][i] else { return false }
+            if i > 0 {
+                let a = graded[r].samples[i-1], b = graded[r].samples[i]
+                profileGrade = max(profileGrade,abs(a.waterOverride-b.waterOverride)*RiverGraph.metresPerUnit/(b.along-a.along))
+            }
+        }}
+        guard graded[0].samples[0].waterOverride == 102/RiverGraph.metresPerUnit,
+              graded[1].samples.last!.waterOverride == 100/RiverGraph.metresPerUnit,
+              graded[0].samples.last!.waterOverride == graded[1].samples[0].waterOverride,
+              profileGrade <= 0.101, afterGrade < beforeGrade*0.25 else {
+            print("FAIL approach grade: submitted \(beforeGrade) -> \(afterGrade), profile \(profileGrade)"); return false
+        }
+        print("submitted water grade fixture: \(beforeGrade) -> \(afterGrade) m/m (>4× reduction); 1:10 profile, fixed source/lake controls, no raising, connected seam: PASS")
         let terrain = WorldGen.generate(seed: 6393821808673518700)
         let network = RiverNetwork.build(terrain).reaches
         let mesh = RiverSurface.build(terrain, network: network)
