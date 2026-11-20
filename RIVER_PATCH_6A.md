@@ -100,3 +100,16 @@ GPU triangulation comparisons, the 108-view visual matrix and performance logs.
 Generation/layout and geometry hashes intentionally change; identical inputs
 within this source version remain deterministic. Required current-head CI and a
 clean current-head review remain release gates. This agent does not merge PRs.
+
+## Coastal junction follow-up (November 20)
+
+Preserve the incoming sea-level footprint when grading a mixed coastal junction.
+Partition it geometrically from inland water, conform internal edges in XZ before
+assigning heights, and carry explicit grade seams through the final canonical
+weld. This prevents inland interpolation from lifting receiving water or making
+internal T-junctions grow banks. Coastal controls also inspect linked reaches and
+propagate real ocean constraints downstream. Shore validation accepts water-to-
+water edges only when the actual submitted ocean covers them within 1 mm XY/Y.
+
+The expanded seed-14 failure now passes, alongside seeds 1–17 and the saved world.
+See [current validation and diagnostic changes](review/river-completion/coastal-junction-fix/README.md).

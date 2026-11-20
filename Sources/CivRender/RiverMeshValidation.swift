@@ -302,6 +302,7 @@ enum RiverMeshValidation {
             [(SIMD2(-12, -12), 4), (SIMD2(12, -12), 4), (SIMD2(0, 15), 6)]
         ]
         var failures = RiverGeometryChecks.fixtures() ? 0 : 1
+        if !RiverSurface.coastalGradeFixture() { failures += 1 }
         if !RiverCoastalBanks.fixture() { failures += 1 }
         if !RiverEndpointValidation.fixtures() { failures += 1 }
         if !RiverBankSpikes.fixture() { failures += 1 }

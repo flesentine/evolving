@@ -1,0 +1,27 @@
+82/108 byte-identical to the prior reviewed matrix
+1/island-day/normal.png
+1/overhead-night/normal.png
+1/town-day/normal.png
+10/overhead-day/normal.png
+11/island-day/normal.png
+11/island-rain/normal.png
+11/overhead-night/normal.png
+2/town-rain/normal.png
+3/island-rain/normal.png
+3/overhead-day/normal.png
+4/island-rain/normal.png
+4/overhead-day/normal.png
+4/town-rain/normal.png
+5/island-rain/normal.png
+6/island-day/normal.png
+6/island-night/normal.png
+6393821808673518700/island-day/normal.png
+7/island-day/normal.png
+7/island-rain/normal.png
+7/town-rain/normal.png
+8/town-day/normal.png
+9/island-day/normal.png
+9/island-night/normal.png
+9/island-rain/normal.png
+9/overhead-rain/normal.png
+9/town-rain/normal.png

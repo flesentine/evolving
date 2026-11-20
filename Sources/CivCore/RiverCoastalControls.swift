@@ -7,7 +7,7 @@ extension RiverGraph {
     /// The first intersecting interval starts the sea-level boundary control;
     /// the grade solver lowers its upstream approach without raising terrain.
     static func coastalWaterControls(_ network: inout [RiverReach], terrain: Terrain) {
-        for r in network.indices where network[r].endpoint == .coastalMouth {
+        for r in network.indices {
             let samples = network[r].samples
             guard samples.count > 1 else { continue }
             func section(_ s:RiverSample) -> (SIMD2<Float>,SIMD2<Float>) {
@@ -20,6 +20,13 @@ extension RiverGraph {
                 if originalSeaIntersects([a.0,b.0,a.1],terrain:terrain)
                     || originalSeaIntersects([a.1,b.0,b.1],terrain:terrain) {
                     for k in (i-1)..<samples.count { network[r].samples[k].waterOverride = seaLevel }
+                    // A coastal tributary is already receiving sea water.
+                    // Its downstream junction and path cannot rise above it.
+                    var receiving = network[r].downstream
+                    while let d = receiving {
+                        for k in network[d].samples.indices { network[d].samples[k].waterOverride = seaLevel }
+                        receiving = network[d].downstream
+                    }
                     break
                 }
             }

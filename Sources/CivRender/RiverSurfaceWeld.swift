@@ -9,6 +9,7 @@ enum RiverSurfaceWeld {
         struct Key: Hashable { let x: Int64; let y: Int64; let z: Int64 }
         let tolerance = 0.0001 / RiverGraph.metresPerUnit // 0.1 mm
         let bucketSize = 20 / RiverGraph.metresPerUnit // 20 m
+        let declaredSeams = input.endpointSeams+input.gradeSeams
         func key(_ v: Vertex) -> Key {
             Key(x: Int64((Double(v.position.x) / Double(tolerance)).rounded()),
                 y: Int64((Double(v.position.y) / Double(tolerance)).rounded()), z: Int64((Double(v.position.z) / Double(tolerance)).rounded()))
@@ -19,7 +20,7 @@ enum RiverSurfaceWeld {
             let onCut = input.junctions.contains { j in j.cuts.contains {
                 RiverPolygon.segmentDistance(a, $0.0, $0.1) <= tolerance
                     && RiverPolygon.segmentDistance(b, $0.0, $0.1) <= tolerance
-            }} || input.endpointSeams.contains {
+            }} || declaredSeams.contains {
                 RiverPolygon.segmentDistance(a, $0.0, $0.1) <= tolerance
                     && RiverPolygon.segmentDistance(b, $0.0, $0.1) <= tolerance
             }
@@ -122,6 +123,6 @@ enum RiverSurfaceWeld {
         return RiverSurface.Geometry(vertices: packed, indices: packedIndices, junctions: junctions,
                                      ribbonWidths: input.ribbonWidths, lakeTriangles: input.lakeTriangles,
                                      collapsedBoundaryFaces: collapsedFaces, collapsedBoundaryArea: collapsedArea,
-                                     endpointSeams: input.endpointSeams)
+                                     endpointSeams: input.endpointSeams,gradeSeams:input.gradeSeams)
     }
 }

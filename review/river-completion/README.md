@@ -1,4 +1,4 @@
-**RELEASE BLOCKED (November 19 expanded audit):** seed 14 fails elevated-water/ocean overlap (9.534342 m²) and four coastal-junction bank-closure checks. PR #15 is draft again. The original twelve-world results below remain historical evidence, not complete release acceptance. Reproduction: `build/bin/civheadless river 14 2336`; see [expanded audit](nov19-audit/).
+**November 20 update:** the expanded seed-14 coastal failure is repaired. Seeds 1–17 plus the saved world pass, and the rebuilt saver, Player and Timeline are installed and exercised. See the [current report](coastal-junction-fix/README.md) and [current comparison gallery](coastal-junction-fix/index.html). Fresh exact-head review and required CI remain release gates. The original results below are historical evidence.
 
 # River completion acceptance
 

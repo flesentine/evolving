@@ -21,6 +21,7 @@ enum RiverSurface {
         var collapsedBoundaryFaces = 0
         var collapsedBoundaryArea: Double = 0 // physical m², 0.1 mm band only
         var endpointSeams: [(SIMD2<Float>, SIMD2<Float>)] = []
+        var gradeSeams: [(SIMD2<Float>, SIMD2<Float>)] = []
     }
     /// A degree-two continuation has one geometric cross-section, even when
     /// its two reach-local width/tangent estimates differ. Keep every other
@@ -237,6 +238,7 @@ enum RiverSurface {
         var indices: [UInt32] = []
         var junctions: [Junction] = []
         var ribbonWidths: [Float] = []
+        var gradeSeams: [(SIMD2<Float>, SIMD2<Float>)] = []
         var consumedCaps: [Int: [[Vertex]]] = [:]
         let up = SIMD3<Float>(0, 1, 0)
         let acrossCount = RiverChannel.across.count
@@ -412,7 +414,6 @@ enum RiverSurface {
             }
             }
             let startIndex = indices.count
-            let pieces = RiverPolygon.union(input)
             // The cuts are outside incident-strip overlap and are exact
             // boundary constraints. Junction cells anchor the local grade.
             var controls = members.compactMap { network[$0].samples.first }.map {
@@ -429,24 +430,7 @@ enum RiverSurface {
                     }
                 }
             }
-            func level(_ p: SIMD2<Float>) -> Float {
-                var sum: Double = 0, weight: Double = 0
-                for (a, b, y) in cuts + controls {
-                    let distance = RiverPolygon.segmentDistance(p, a, b)
-                    if distance < 0.0001 / metres { return y } // 0.1 mm
-                    let w = 1 / Double(distance * distance)
-                    sum += Double(y) * w; weight += w
-                }
-                return Float(sum / max(weight, 1))
-            }
-            for piece in pieces {
-                let polygon = piece.map { v -> Vertex in
-                    var v = v
-                    v.position.y = level(SIMD2(v.position.x, v.position.z))
-                    return v
-                }
-                RiverPolygon.append(polygon, vertices: &verts, indices: &indices)
-            }
+            gradeSeams.append(contentsOf:appendGradedJunction(input:input,cuts:cuts,controls:controls,vertices:&verts,indices:&indices))
             junctions.append(Junction(id: d, input: input,
                                       indexRange: startIndex..<indices.count, cuts: cuts))
         }
@@ -531,7 +515,7 @@ enum RiverSurface {
         }
         return RiverSurfaceWeld.apply(Geometry(vertices: verts, indices: indices, junctions: junctions,
                                                ribbonWidths: ribbonWidths, lakeTriangles: lakeTriangles,
-                                               endpointSeams: endpointSeams))
+                                               endpointSeams: endpointSeams,gradeSeams:gradeSeams))
     }
 
 }

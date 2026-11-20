@@ -1,0 +1,24 @@
+{
+  "animationTime" : 0,
+  "eye" : [
+    0.32171196,
+    0.021612214,
+    0.10791332
+  ],
+  "fov" : 52,
+  "height" : 1200,
+  "hour" : 10,
+  "precipitation" : 0,
+  "provenance" : "seed 6: actual submitted shoreline cut-end regression; previous unbounded plane expansion left >1 mm bank gap",
+  "schemaVersion" : 1,
+  "season" : 0.7,
+  "seed" : 6,
+  "snow" : false,
+  "target" : [
+    0.32171196,
+    0.017612213,
+    0.107903324
+  ],
+  "width" : 1600,
+  "year" : 2336
+}

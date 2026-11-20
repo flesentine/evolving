@@ -135,11 +135,38 @@ enum RiverJunctionShore {
             (0..<3).map { banks.vertices[Int(banks.indices[i+$0])] }
         }
         let index = RiverTriangleBuckets(triangles), metres = RiverGraph.metresPerUnit
-        var failures = 0
+        var failures = 0, marineConnections = 0
+        var oceanIndex: RiverTriangleBuckets?
         for edge in boundary(field) {
             for t: Float in [0,0.5,1] {
                 let p = edge.a.position+(edge.b.position-edge.a.position)*t
                 let v = Vertex(position:p,normal:SIMD3(0,1,0),rgb:.zero)
+                // A boundary in the original sea joins water to water. Require
+                // actual submitted ocean coverage, not an invented soil bank.
+                if abs(p.y-RiverGraph.seaLevel) <= 0.001/metres {
+                    let originalSea = RiverCoastalBanks.wetPolygons(near:[v],terrain:field.originalTerrain)
+                    let inSea = originalSea.contains { polygon in
+                        (1..<(polygon.count-1)).contains { k in
+                            RiverChannel.Field.probe([polygon[0],polygon[k],polygon[k+1]],SIMD2(p.x,p.z)).distance <= 0.0001/metres
+                        }
+                    }
+                    if inSea {
+                        if oceanIndex == nil {
+                            let carved = RiverChannel.carvedTerrain(field.originalTerrain,field:field)
+                            let ocean = WorldScene.waterGeometry(carved,excludingRiver:field.mesh)
+                            oceanIndex = RiverTriangleBuckets(stride(from:0,to:ocean.indices.count,by:3).compactMap { i -> [Vertex]? in
+                                let triangle = (0..<3).map { ocean.vertices[Int(ocean.indices[i+$0])] }
+                                // Only island-grid faces can meet a junction;
+                                // the 40 km horizon frame must not fill buckets.
+                                return triangle.allSatisfy { abs($0.position.x) <= 1 && abs($0.position.z) <= 1 } ? triangle : nil // world-unit island bounds
+                            })
+                        }
+                        if oceanIndex!.near([v]).contains(where: {
+                            let probe = RiverChannel.Field.probe($0,SIMD2(p.x,p.z))
+                            return probe.distance <= 0.001/metres && abs(probe.water-p.y) <= 0.001/metres
+                        }) { marineConnections += 1; continue }
+                    }
+                }
                 if !index.near([v]).contains(where: {
                     let probe = RiverChannel.Field.probe($0,SIMD2(p.x,p.z))
                     return probe.distance <= 0.001/metres && abs(probe.water-p.y) <= 0.01/metres
@@ -155,6 +182,7 @@ enum RiverJunctionShore {
                 }
             }
         }
+        print("junction shoreline ocean connections \(marineConnections) (submitted ocean, <=1 mm XY/Y)")
         return failures
     }
 }

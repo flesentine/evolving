@@ -44,6 +44,21 @@ enum RiverRoutingFixtures {
                     sourceWidthFactor: i == 0 ? 0.3 / width : 1)
             }
         }
+        var coastTerrain = RiverEndpointValidation.fixtureTerrain()
+        for j in 0..<coastTerrain.size { for i in 0..<coastTerrain.size {
+            coastTerrain.height[coastTerrain.index(i,j)] = -coastTerrain.worldX(i)*0.2 // 1:5 coast, sea at x=0 world units
+        }}
+        var coastal = [
+            RiverReach(id:0,samples:samples([SIMD2(-20,0),SIMD2(-10,0),SIMD2(10,0)],width:4),downstream:1,isSource:true),
+            RiverReach(id:1,samples:samples([SIMD2(10,0),SIMD2(20,0)],width:4),upstream:[0],isMouth:true,endpoint:.coastalMouth)]
+        for r in coastal.indices { for i in coastal[r].samples.indices { coastal[r].samples[i].waterOverride = 1/RiverGraph.metresPerUnit }}
+        RiverGraph.coastalWaterControls(&coastal,terrain:coastTerrain)
+        guard coastal[0].samples[0].waterOverride == 1/RiverGraph.metresPerUnit,
+              coastal[0].samples[1...].allSatisfy({ $0.waterOverride == 0 }),
+              coastal[1].samples.allSatisfy({ $0.waterOverride == 0 }) else {
+            print("FAIL linked coastal reach: elevated tributary or downstream rise"); return false
+        }
+        print("linked coastal reach fixture: inland source retained, coastal interval and receiving path at sea level: PASS")
         let covered = [
             RiverReach(id: 0, samples: samples([SIMD2(0,0), SIMD2(10,10), SIMD2(20,0)], width: 4),
                 downstream: 2, isSource: true, firstCell: 0, lastCell: 2),
