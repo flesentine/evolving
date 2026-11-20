@@ -1,0 +1,47 @@
+seed 2, year 2336.0
+reaches: 69  sources: 24  junctions: 13  mouths: 4
+width: 3.0–22.2 m
+max uphill: 0.002 m
+min curvature radius: 35.2 m
+max adjacent turn: 7.3°
+self-intersections: 0
+max junction angle: 71.6°
+max sample spacing: 3.00 m
+linked reaches: 58  max link gap: 0.00 m
+inland terminal ends: 7  junction water step: 0.000 m
+max parallel channels in a row: 7
+water surface rise: 0.000 m  graph identity: OK
+PASS
+-- channel --
+channel cross-sections: 1875  vertices across: 5
+bank lip above water: 0.33–2.00 m (mean 0.40)
+channel depth (lip to bed): 0.93–2.60 m (mean 1.00)
+water depth: 0.60–0.60 m (mean 0.60)
+wet margin: 1.30–1.80 m
+waterline welds: 3750/3750
+bed above water: 0 probes  (max 0.000 m)
+outer freeboard: 0.10–11.70 m
+submerged: trees 0  buildings 0  road crossings 0
+nearest object clearance: 0.06 m
+PASS
+sample -0.0312,-0.0838 ground 0.02710 water 0.02770 width 7.7 m
+sample +0.2196,-0.1397 ground 0.01666 water 0.01726 width 5.1 m
+sample -0.5416,-0.3068 ground 0.02157 water 0.02217 width 4.9 m
+sample +0.0344,-0.5245 ground 0.04580 water 0.04640 width 2.8 m
+sample -0.2862,-0.5096 ground 0.04331 water 0.04391 width 2.8 m
+sample +0.2946,-0.4819 ground 0.02824 water 0.02884 width 3.9 m
+sample -0.0088,-0.3039 ground 0.02048 water 0.02108 width 3.9 m
+sample +0.5065,-0.2581 ground 0.02493 water 0.02553 width 4.0 m
+-- final junction mesh --
+actual ribbon width 2.80–21.57 m
+junctions 35, triangles 807, invalid winding/area 0
+footprint probes wet 20290, dry 12713, mismatches 0
+boundary topology failures 0
+outside swept union 0.000482 m²; beyond 0.1 mm boundary band 0.000000000 m²
+rendered terrain clearance min 0.450 m, failures 0
+whole river triangles 14855, terrain probes 59420, failures 0
+unbounded terrain reference 32 probes, max error 0.000032 m
+max adjacent-vertex carve change 10.871 m
+above-water bank intrusions 0
+cut seam failures 0, max height error 0.000056 m
+PASS final junction mesh

@@ -1,0 +1,8 @@
+  scene build/update 5368.7 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/before/seed6-mouth-10.png
+  year 2336 · Classical
+  population 3781 in 17 settlements
+  boxes 873 · roofs/trees 37
+  replay took 0.7 ms
+  largest: Karoford (667) at -0.6188, 0.0496
+  latest: year 2134 — Isenfell is founded

@@ -1,0 +1,64 @@
+seed 10, year 2336.0
+reaches: 11  sources: 7  junctions: 4  mouths: 3
+width: 5.7–22.9 m
+original ground rise: 1.019 m
+min curvature radius: 6.6 m
+max adjacent routing-tangent turn: 10.1°
+self-intersections: 0
+max junction angle: 26.6°
+max sample spacing: 2.00 m
+linked reaches: 8  max link gap: 0.00 m
+inland terminal ends: 0  junction water step: 0.000 m
+routing-cell runs in a row (not mesh): 4
+unsupported source starts: 0; minimum source area: 1203 cells
+covered/short source starts: 0 thinned, catchment area retained
+water surface rise: 0.000 m  graph identity: OK
+PASS
+-- channel --
+channel cross-sections: 1670  vertices across: 5
+bank lip above water: 0.33–0.96 m (mean 0.36)
+channel depth (lip to bed): 0.93–1.56 m (mean 0.96)
+water depth: 0.45–37.48 m (mean 0.66)
+wet margin: 1.30–1.80 m
+profile self-consistency (not GPU seam welds): 3340/3340
+bed above water: 0 probes  (max 0.000 m)
+outer freeboard: 0.10–4.34 m
+submerged: trees 0  buildings 0  road crossings 0
+nearest object clearance: 5.99 m
+PASS
+sample -0.3068,-0.5785 ground 0.01676 water 0.00935 width 7.1 m
+sample +0.3420,-0.5432 ground 0.02732 water 0.01743 width 5.8 m
+sample +0.1058,-0.1031 ground 0.01660 water 0.01551 width 6.2 m
+sample +0.1270,-0.0052 ground 0.01712 water 0.01697 width 9.4 m
+sample +0.2943,-0.0214 ground 0.01541 water 0.01526 width 9.1 m
+sample +0.3564,+0.1794 ground 0.01852 water 0.01436 width 13.8 m
+sample -0.1799,+0.2381 ground 0.01629 water 0.01327 width 8.1 m
+sample +0.1996,+0.2358 ground 0.01858 water 0.01327 width 8.2 m
+submitted static placement footprint violations 0: PASS
+junction shoreline ocean connections 0 (submitted ocean, <=1 mm XY/Y)
+-- final junction mesh --
+actual ribbon width 0.30–22.90 m
+junctions 3, triangles 132, invalid winding/area 0
+footprint probes wet 5222, dry 3355, mismatches 0
+boundary topology failures 0
+convex junction water needles 0
+numerical boundary collapses 0, area 0.000000000 m² (within 0.1 mm only)
+outside swept union 0.000313 m²; beyond 0.1 mm boundary band 0.000000000 m²
+rendered terrain clearance min 0.450 m, failures 0
+whole river triangles 12938, terrain probes 51752, failures 0
+maximum submitted water edge grade 0.280627 m/m
+water overlap raw 0.000000 m²; interior 0.000000000 m²; height error 0.000000 m
+exact terrain intersections 59638; min clearance 0.449998 m
+submitted water channel runs: 4 in 250 m, both scan axes
+unbounded terrain reference 32 probes, max error 0.000000 m
+max adjacent-vertex carve change 12.075 m
+bank interior intrusions 0; raw overlap 0.000111756 m²; within 0.1 mm band 0.000111756 m², max boundary height 0.002717 m
+above-sea coastal bank intrusion 0.000000000 m²
+dry bank toe closure failures 0, max error 0.000002 m
+exposed spring bank closure failures 0
+junction shoreline bank closure failures 0
+cut seam failures 0, max height error 0.000001 m
+PASS final junction mesh
+raw river over original ocean (including <= 1 mm height band): 0.0 m²
+elevated river over original ocean: 0.0 m², expected <= 0.000001 m²
+endpoint geometry: 7 springs, 0 lake origins, 3 coastal mouths, 0 basin ends; 0 terrain-bounded lake faces; 0 failures: PASS

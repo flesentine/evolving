@@ -1,0 +1,49 @@
+seed 10, year 2336.0
+reaches: 11  sources: 7  junctions: 4  mouths: 3
+width: 5.7–22.9 m
+original ground rise: 1.428 m
+min curvature radius: 30.5 m
+max adjacent turn: 5.1°
+self-intersections: 0
+max junction angle: 26.6°
+max sample spacing: 3.00 m
+linked reaches: 8  max link gap: 0.00 m
+inland terminal ends: 0  junction water step: 0.000 m
+routing-cell runs in a row (not mesh): 4
+unsupported source starts: 0; minimum source area: 1203 cells
+water surface rise: 0.000 m  graph identity: OK
+PASS
+-- channel --
+channel cross-sections: 1130  vertices across: 5
+bank lip above water: 0.33–2.00 m (mean 0.37)
+channel depth (lip to bed): 0.93–2.60 m (mean 0.97)
+water depth: 0.60–0.60 m (mean 0.60)
+wet margin: 1.30–1.80 m
+waterline welds: 2260/2260
+bed above water: 0 probes  (max 0.000 m)
+outer freeboard: 0.10–4.72 m
+submerged: trees 0  buildings 0  road crossings 0
+nearest object clearance: 0.19 m
+PASS
+sample -0.3000,-0.5725 ground 0.01829 water 0.01889 width 7.1 m
+sample +0.3413,-0.5425 ground 0.02757 water 0.02817 width 5.8 m
+sample +0.1228,-0.0927 ground 0.01644 water 0.01704 width 6.2 m
+sample +0.1279,+0.0003 ground 0.01707 water 0.01767 width 9.4 m
+sample +0.2921,-0.0321 ground 0.01550 water 0.01610 width 9.2 m
+sample +0.3574,+0.1770 ground 0.01871 water 0.01931 width 13.8 m
+sample -0.1759,+0.2373 ground 0.01627 water 0.01687 width 8.1 m
+sample +0.1932,+0.2331 ground 0.01791 water 0.01851 width 11.0 m
+-- final junction mesh --
+actual ribbon width 0.30–22.85 m
+junctions 3, triangles 101, invalid winding/area 0
+footprint probes wet 4715, dry 3474, mismatches 0
+boundary topology failures 0
+outside swept union 0.000123 m²; beyond 0.1 mm boundary band 0.000000000 m²
+rendered terrain clearance min 0.450 m, failures 0
+whole river triangles 9005, terrain probes 36020, failures 0
+submitted water channel runs: 4 in 250 m, both scan axes
+unbounded terrain reference 32 probes, max error 0.000000 m
+max adjacent-vertex carve change 12.066 m
+above-water bank intrusions 0
+cut seam failures 0, max height error 0.000006 m
+PASS final junction mesh

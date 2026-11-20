@@ -1,0 +1,5 @@
+year 2336.0, seed 1, era Classical
+settlements 19, buildings 237
+geometry hash ec2a356a8a94f289 / ec2a356a8a94f289
+river mesh hash b77dde9d9b7809d8 / b77dde9d9b7809d8
+deterministic: OK

@@ -1,0 +1,8 @@
+# Keep additional diagnostic captures local.
+*.png
+!before-user-world.png
+!after-user-world.png
+!after-seed-4-wide.png
+!after-overhead-35.png
+!after-overhead-28.png
+!seed-4-raw-terrain.png

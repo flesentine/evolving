@@ -24,8 +24,9 @@ final class WorldScene {
 
     let terrainMesh: Mesh
     let waterMesh: Mesh
-    let riverMesh: Mesh
-    let riverBankMesh: Mesh
+    let riverMesh: Mesh?
+    let coastalRiverMesh: Mesh?
+    let riverBankMesh: Mesh?
     /// Water polygons used to keep trees and houses out of the channel.
     let riverField: RiverChannel.Field
     let cubeMesh: Mesh
@@ -53,6 +54,7 @@ final class WorldScene {
     /// Height field uploaded for the water shader, so shallow water and foam
     /// can be evaluated per pixel instead of per coarse water vertex.
     let heightTexture: MTLTexture
+    let submittedHeightTexture: MTLTexture
 
     /// Rebuilt whenever the road network changes; nil until then.
     private(set) var roadMesh: Mesh?
@@ -83,46 +85,58 @@ final class WorldScene {
         let field = RiverChannel.Field(terrain: terrain, network: network)
         riverField = field
 
-        // One carved copy of the terrain is used for every visible surface
-        // and every placement. Otherwise props still use the sim height and
-        // float above the valley the renderer cut.
-        var carved = terrain
-        for j in 0..<carved.size {
-            for i in 0..<carved.size {
-                let idx = carved.index(i, j)
-                carved.height[idx] = RiverChannel.carvedHeight(
-                    carved.height[idx], field: field,
-                    x: carved.worldX(i), z: carved.worldZ(j))
-            }
-        }
-        self.terrain = carved
+        // The displayed terrain, banks and water are carved without support.
+        // The render vertices add a supported carve so interpolated triangles
+        // stay under the water sheet between grid samples. Placements and the
+        // height texture must use that same supported surface, otherwise they
+        // sit above the terrain that is actually drawn near banks/junctions.
+        let carved = RiverChannel.carvedTerrain(terrain, field: field)
+        let supportRadius = RiverChannel.terrainSupportRadius(terrain, detail: 2)
+        let placementTerrain = RiverChannel.supportedTerrain(carved, field: field, radius: supportRadius)
+        self.terrain = placementTerrain
 
-        carved.height.withUnsafeBytes { raw in
-            heightTexture.replace(region: MTLRegionMake2D(0, 0, carved.size,
-                                                          carved.size),
+        placementTerrain.height.withUnsafeBytes { raw in
+            heightTexture.replace(region: MTLRegionMake2D(0, 0, placementTerrain.size,
+                                                          placementTerrain.size),
                                   mipmapLevel: 0,
                                   withBytes: raw.baseAddress!,
-                                  bytesPerRow: carved.size
+                                  bytesPerRow: placementTerrain.size
                                     * MemoryLayout<Float>.stride)
         }
 
-        terrainMesh = try Mesh(device: context.device,
-                               vertices: WorldScene.terrainVertices(carved,
-                                                                    detail: 2,
-                                                                    riverField: field),
-                               indices: WorldScene.terrainIndices(carved,
-                                                                  detail: 2))
+        let renderTerrain = WorldScene.terrainVertices(carved, detail: 2, riverField: field, coarseSupport: placementTerrain)
+        let submittedSize = (terrain.size - 1) * 2 + 1
+        let submittedDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float,
+            width: submittedSize, height: submittedSize, mipmapped: false)
+        submittedDesc.usage = [.shaderRead]; submittedDesc.storageMode = .shared
+        guard let submitted = context.device.makeTexture(descriptor: submittedDesc) else {
+            throw MetalSetupError.pipeline("submitted terrain heights")
+        }
+        submittedHeightTexture = submitted
+        renderTerrain.map { $0.position.y }.withUnsafeBytes { raw in
+            submitted.replace(region: MTLRegionMake2D(0, 0, submittedSize, submittedSize), mipmapLevel: 0,
+                withBytes: raw.baseAddress!, bytesPerRow: submittedSize * MemoryLayout<Float>.stride)
+        }
+        terrainMesh = try Mesh(device: context.device, vertices: renderTerrain,
+                               indices: WorldScene.terrainIndices(carved, detail: 2))
 
-        let water = WorldScene.waterGeometry(carved)
+        let water = WorldScene.waterGeometry(carved, excludingRiver: field.mesh)
         waterMesh = try Mesh(device: context.device, vertices: water.vertices, indices: water.indices)
-        let rivers = WorldScene.riverGeometry(carved, network: network,
-                                               field: field)
-        riverMesh = try Mesh(device: context.device,
-                             vertices: rivers.vertices, indices: rivers.indices)
+        let rivers = WorldScene.riverGeometry(carved, field: field, terrainVertices: renderTerrain)
+        var inland: [UInt32] = [], coastal: [UInt32] = []
+        for i in stride(from:0,to:rivers.indices.count,by:3) {
+            let face = Array(rivers.indices[i..<(i+3)])
+            if face.allSatisfy({ rivers.vertices[Int($0)].position.y == RiverGraph.seaLevel }) { coastal.append(contentsOf:face) }
+            else { inland.append(contentsOf:face) }
+        }
+        riverMesh = inland.isEmpty ? nil : try Mesh(device:context.device,vertices:rivers.vertices,indices:inland)
+        // Sea-level river faces are part of the ocean surface, not dark caps
+        // pasted over it. Keep their exact geometry and use the ocean pipeline.
+        coastalRiverMesh = coastal.isEmpty ? nil : try Mesh(device:context.device,vertices:rivers.vertices,indices:coastal)
         let banks = WorldScene.riverBankGeometry(carved, network: network,
-                                                     field: field)
-        riverBankMesh = try Mesh(device: context.device,
-                                 vertices: banks.vertices, indices: banks.indices)
+                                                     field: field, terrainVertices: renderTerrain)
+        riverBankMesh = banks.indices.isEmpty ? nil : try Mesh(device:context.device,
+            vertices:banks.vertices,indices:banks.indices)
 
         cubeMesh = try Mesh(device: context.device, vertices: Geometry.cube())
         coneMesh = try Mesh(device: context.device, vertices: Geometry.cone(radius: 0.5, height: 1, segments: 6))
@@ -191,7 +205,8 @@ final class WorldScene {
     /// bilinear height field on a finer grid gives the sea-level contour more
     /// segments to follow, which is what removes the visible stair-steps.
     static func terrainVertices(_ t: Terrain, detail: Int = 1,
-                                riverField: RiverChannel.Field? = nil) -> [Vertex] {
+                                riverField: RiverChannel.Field? = nil,
+                                coarseSupport: Terrain? = nil) -> [Vertex] {
         let n = t.size
         let step = max(detail, 1)
         let rn = (n - 1) * step + 1
@@ -199,26 +214,38 @@ final class WorldScene {
         verts.reserveCapacity(rn * rn)
 
         let cell = t.cellSize
-        let eps = cell / Float(step) * 0.5
-
+        let spacing = cell / Float(step)
+        // Compute each submitted height once. Normals follow neighbouring
+        // mesh vertices; re-querying the continuous carve four more times per
+        // vertex made complete global valley queries unnecessarily expensive.
+        var heights = [Float](repeating: 0, count: rn * rn)
+        for j in 0..<rn {
+            let z = -1 + Float(j) / Float(step) * cell
+            for i in 0..<rn {
+                let x = -1 + Float(i) / Float(step) * cell
+                if let coarseSupport, i % step == 0 && j % step == 0 {
+                    heights[j * rn + i] = coarseSupport.height[coarseSupport.index(i / step, j / step)]
+                    continue
+                }
+                let raw = t.interpolatedHeight(x: x, z: z)
+                heights[j * rn + i] = riverField.map {
+                    RiverChannel.carvedHeight(raw, field: $0, x: x, z: z,
+                                              supportRadius: RiverChannel.terrainSupportRadius(t, detail: step))
+                } ?? raw
+            }
+        }
         for rj in 0..<rn {
             let fj = Float(rj) / Float(step)
             let z = -1 + fj * cell
             for ri in 0..<rn {
                 let fi = Float(ri) / Float(step)
                 let x = -1 + fi * cell
-
-                func surfaceHeight(_ x: Float, _ z: Float) -> Float {
-                    let raw = t.interpolatedHeight(x: x, z: z)
-                    guard let riverField else { return raw }
-                    return RiverChannel.carvedHeight(raw, field: riverField,
-                                                     x: x, z: z)
-                }
-
-                let h = surfaceHeight(x, z)
-                let hx = surfaceHeight(x + eps, z) - surfaceHeight(x - eps, z)
-                let hz = surfaceHeight(x, z + eps) - surfaceHeight(x, z - eps)
-                let normal = simd_normalize(SIMD3<Float>(-hx / (2 * eps), 1, -hz / (2 * eps)))
+                let h = heights[rj * rn + ri]
+                let left = max(ri - 1, 0), right = min(ri + 1, rn - 1)
+                let bottomRow = max(rj - 1, 0), topRow = min(rj + 1, rn - 1)
+                let hx = (heights[rj * rn + right] - heights[rj * rn + left]) / (Float(right - left) * spacing)
+                let hz = (heights[topRow * rn + ri] - heights[bottomRow * rn + ri]) / (Float(topRow - bottomRow) * spacing)
+                let normal = simd_normalize(SIMD3<Float>(-hx, 1, -hz))
 
                 let i0 = min(max(Int(floor(fi)), 0), n - 2)
                 let j0 = min(max(Int(floor(fj)), 0), n - 2)
@@ -243,7 +270,9 @@ final class WorldScene {
 
                 // Alpha carries a "wet" flag so rivers can take a specular
                 // sheen in the shader without a separate water mesh.
-                let wet: Float = t.river[t.index(i0, j0)] > 0 ? 0.35 : 1.0
+                let onRiver = riverField?.waterLevel(at: SIMD2(x, z)) != nil
+                if onRiver { colour = simd_mix(colour, Palette.river, SIMD3(repeating: 0.20)) }
+                let wet: Float = onRiver ? 0.35 : 1.0
                 verts.append(Vertex(position: SIMD3(x, h, z),
                                     normal: normal,
                                     color: SIMD4(colour, wet)))
@@ -268,25 +297,6 @@ final class WorldScene {
         case .forest:              colour = Palette.forest
         case .rock:                colour = Palette.rock
         case .snow:                colour = Palette.snow
-        }
-
-        // Rivers are painted into the terrain colour; the water plane only
-        // covers the sea, so this is what makes the drainage network visible.
-        // One-cell dilation closes the gaps between thresholded river cells.
-        var riverStrength: Float = 0
-        if t.river[idx] > 0 {
-            riverStrength = t.river[idx] >= 3 ? 0.32 : (t.river[idx] == 2 ? 0.24 : 0.16)
-        } else {
-            let i = idx % t.size, j = idx / t.size
-            var neighbour: UInt8 = 0
-            if i > 0 { neighbour = max(neighbour, t.river[idx - 1]) }
-            if i < t.size - 1 { neighbour = max(neighbour, t.river[idx + 1]) }
-            if j > 0 { neighbour = max(neighbour, t.river[idx - t.size]) }
-            if j < t.size - 1 { neighbour = max(neighbour, t.river[idx + t.size]) }
-            if neighbour > 0 { riverStrength = 0.10 }
-        }
-        if riverStrength > 0 {
-            colour = simd_mix(colour, Palette.river, SIMD3(repeating: riverStrength))
         }
 
         // Wet sand just above the waterline: a darker rim keeps the beach from
@@ -331,285 +341,49 @@ final class WorldScene {
     /// A thin water surface following the Phase 1 river network. Five
     /// vertices across give the surface enough shape for depth shading and
     /// shoreline foam, and weld exactly to the bank waterline.
-    static func riverGeometry(_ t: Terrain,
-                              network: [RiverReach],
-                              field: RiverChannel.Field) -> (vertices: [Vertex], indices: [UInt32]) {
-        var verts: [Vertex] = []
-        var indices: [UInt32] = []
-        let up = SIMD3<Float>(0, 1, 0)
-        let acrossCount = RiverChannel.across.count
-        let metres = RiverChannel.metresPerUnit
+    /// Height of the submitted detail-2 terrain triangles, not a bilinear
+    /// approximation or a reconstructed nominal bed.
+    static func renderedTerrainHeight(_ p: SIMD2<Float>, terrain: Terrain, vertices: [Vertex]) -> Float {
+        let n = (terrain.size - 1) * 2 + 1, spacing = terrain.cellSize / 2
+        let x = min(max((p.x + 1) / spacing, 0), Float(n - 1) - 0.0001)
+        let z = min(max((p.y + 1) / spacing, 0), Float(n - 1) - 0.0001)
+        let i = Int(floor(x)), j = Int(floor(z)), u = x - Float(i), v = z - Float(j)
+        let a = vertices[j * n + i].position.y, b = vertices[j * n + i + 1].position.y
+        let c = vertices[(j + 1) * n + i + 1].position.y, d = vertices[(j + 1) * n + i].position.y
+        return u >= v ? a * (1 - u) + b * (u - v) + c * v
+            : a * (1 - v) + c * u + d * (v - u)
+    }
 
-        let depthScale = 1.25 / RiverChannel.metresPerUnit
-        func depthValue(_ p: SIMD2<Float>, _ lineY: Float,
-                        edge: Bool) -> Float {
-            if edge { return 0 }
-            let ground = t.interpolatedHeight(x: p.x, z: p.y)
-            let bed = RiverChannel.carvedHeight(ground, field: field,
-                                                x: p.x, z: p.y)
-            let water = field.waterLevel(at: p) ?? lineY
-            return min(max(water - bed, 0) / depthScale, 1)
+    static func riverGeometry(_ t: Terrain, field: RiverChannel.Field,
+                              terrainVertices: [Vertex]) -> (vertices: [Vertex], indices: [UInt32]) {
+        // Depth is a property of the submitted water and terrain. Assigning
+        // zero depth to all polygon perimeter vertices made a different
+        // triangulation appear as pale triangular water patches.
+        let vertices = field.mesh.vertices.map { vertex -> Vertex in
+            var vertex = vertex
+            let p = SIMD2(vertex.position.x, vertex.position.z)
+            let bed = renderedTerrainHeight(p, terrain: t, vertices: terrainVertices)
+            vertex.color.w = min(max((vertex.position.y - bed) / (1.25 / RiverChannel.metresPerUnit), 0), 1)
+            return vertex
         }
-
-        // Trim every reach back from a junction so the ribbons do not overlap.
-        // The gap is filled by one Y-shaped polygon built from the actual cut
-        // cross-sections. This replaces the round pool overlay.
-        var firstKept = [Int](repeating: 0, count: network.count)
-        var lastKept = [Int](repeating: 0, count: network.count)
-        for reach in network {
-            let samples = reach.samples
-            guard samples.count >= 2 else { continue }
-            let total = samples.last?.along ?? 0
-            var startTrim: Float = 0
-            if !reach.upstream.isEmpty, let first = samples.first {
-                var radius = RiverChannel.halfWidth(first)
-                for a in reach.upstream where a < network.count {
-                    if let end = network[a].samples.last {
-                        radius = max(radius, RiverChannel.halfWidth(end))
-                    }
-                }
-                startTrim = radius * RiverChannel.junctionTrimFactor * metres
-            }
-            var endTrim: Float = 0
-            if let d = reach.downstream, d < network.count,
-               let first = network[d].samples.first, let last = samples.last {
-                endTrim = max(RiverChannel.halfWidth(last),
-                              RiverChannel.halfWidth(first)) * RiverChannel.junctionTrimFactor * metres
-            }
-            var fs = 0
-            while fs < samples.count - 1 && samples[fs].along < startTrim {
-                fs += 1
-            }
-            var le = samples.count - 1
-            while le > fs && total - samples[le].along < endTrim {
-                le -= 1
-            }
-            firstKept[reach.id] = fs
-            lastKept[reach.id] = le
-        }
-
-        func tint(_ sample: RiverSample) -> SIMD3<Float> {
-            sample.width > 0.026
-                ? SIMD3<Float>(0.025, 0.09, 0.16)
-                : SIMD3<Float>(0.04, 0.14, 0.20)
-        }
-
-        for reach in network {
-            let samples = reach.samples
-            guard samples.count >= 2 else { continue }
-            let fs = firstKept[reach.id]
-            let le = lastKept[reach.id]
-            guard le > fs else { continue }
-            let base = UInt32(verts.count)
-
-            for i in fs...le {
-                let sample = samples[i]
-                let side = RiverChannel.sideVector(sample)
-                let half = RiverChannel.halfWidth(sample)
-                let line = RiverChannel.waterLine(t, sample)
-                let colour = tint(sample)
-                let along = sample.along / max(sample.width * 3.0, 1e-5)
-                for (k, f) in RiverChannel.across.enumerated() {
-                    let p = sample.position + side * (half * f)
-                    let u = Float(k) / Float(acrossCount - 1)
-                    let edge = k == 0 || k == acrossCount - 1
-                    let depth = depthValue(p, line.y, edge: edge)
-                    verts.append(Vertex(position: SIMD3(p.x, line.y, p.y),
-                                        normal: up,
-                                        color: SIMD4(colour, depth),
-                                        uv: SIMD2(u, along)))
-                }
-            }
-            for i in fs..<le {
-                let row = UInt32(i - fs)
-                for k in 0..<(acrossCount - 1) {
-                    let a = base + row * UInt32(acrossCount) + UInt32(k)
-                    let b = a + 1
-                    let c = a + UInt32(acrossCount)
-                    let d = c + 1
-                    indices.append(contentsOf: [a, b, c, b, d, c])
-                }
-            }
-
-            // Caps only at unlinked ends: a source or a tarn/mouth.
-            for end in [fs, le] {
-                let sample = samples[end]
-                let isStart = end == fs && reach.upstream.isEmpty
-                let isEnd = end == le && reach.downstream == nil
-                guard isStart || isEnd else { continue }
-                let side = RiverChannel.sideVector(sample)
-                let half = RiverChannel.halfWidth(sample)
-                let line = RiverChannel.waterLine(t, sample)
-                let colour = tint(sample)
-                let along = sample.along / max(sample.width * 3.0, 1e-5)
-                let capDepth = depthValue(sample.position, line.y,
-                                          edge: false) * 0.7
-                let centre = UInt32(verts.count)
-                verts.append(Vertex(position: SIMD3(sample.position.x, line.y,
-                                                   sample.position.y),
-                                    normal: up,
-                                    color: SIMD4(colour, capDepth),
-                                    uv: SIMD2(0.5, along)))
-                var ring: [UInt32] = []
-                ring.reserveCapacity(17)
-                let segments = 16
-                let outward = sample.tangent * (isStart ? -1 : 1)
-                for k in 0...segments {
-                    let a = Float(k) / Float(segments) * Float.pi
-                    let p = sample.position + side * (half * cos(a))
-                        + outward * (half * 0.62 * sin(a))
-                    ring.append(UInt32(verts.count))
-                    verts.append(Vertex(position: SIMD3(p.x, line.y, p.y),
-                                        normal: up,
-                                        color: SIMD4(colour, 0),
-                                        uv: SIMD2(0.5, along)))
-                }
-                for k in 0..<segments {
-                    indices.append(contentsOf: [centre, ring[k], ring[k + 1]])
-                    indices.append(contentsOf: [centre, ring[k + 1], ring[k]])
-                }
-            }
-        }
-
-        // One Y-shaped junction polygon, built from the five cut vertices of
-        // every incident reach. The footprint is star-shaped around the
-        // junction cell, so an angular fan is a valid triangulation.
-        for d in network.indices where !network[d].upstream.isEmpty {
-            let samples = network[d].samples
-            guard !samples.isEmpty else { continue }
-            let centre = samples[0].position
-            let centreLine = RiverChannel.waterLine(t, samples[0]).y
-            var ring: [(p: SIMD2<Float>, y: Float, depth: Float,
-                        angle: Float)] = []
-
-            func addCut(_ reachIndex: Int, _ sampleIndex: Int) {
-                guard reachIndex >= 0, reachIndex < network.count else {
-                    return
-                }
-                let reach = network[reachIndex]
-                guard sampleIndex >= 0, sampleIndex < reach.samples.count else {
-                    return
-                }
-                let sample = reach.samples[sampleIndex]
-                let side = RiverChannel.sideVector(sample)
-                let half = RiverChannel.halfWidth(sample)
-                let line = RiverChannel.waterLine(t, sample)
-                for (k, f) in RiverChannel.across.enumerated() {
-                    let p = sample.position + side * (half * f)
-                    if ring.contains(where: {
-                        simd_distance($0.p, p) < 0.002
-                    }) { continue }
-                    let edge = k == 0 || k == acrossCount - 1
-                    ring.append((p, line.y,
-                                 depthValue(p, line.y, edge: edge),
-                                 atan2(p.y - centre.y, p.x - centre.x)))
-                }
-            }
-            addCut(d, firstKept[d])
-            for a in network[d].upstream {
-                addCut(a, lastKept[a])
-            }
-            guard ring.count >= 3 else { continue }
-            ring.sort { $0.angle < $1.angle }
-
-            let centreDepth = depthValue(centre, centreLine, edge: false) * 0.9
-            let centreIndex = UInt32(verts.count)
-            verts.append(Vertex(position: SIMD3(centre.x, centreLine, centre.y),
-                                normal: up,
-                                color: SIMD4(tint(samples[0]), centreDepth),
-                                uv: SIMD2(0.5, 0.5)))
-            var ringIndices: [UInt32] = []
-            ringIndices.reserveCapacity(ring.count)
-            for point in ring {
-                ringIndices.append(UInt32(verts.count))
-                verts.append(Vertex(position: SIMD3(point.p.x, point.y,
-                                                   point.p.y),
-                                    normal: up,
-                                    color: SIMD4(tint(samples[0]), point.depth),
-                                    uv: SIMD2(0.5, 0.5)))
-            }
-            for i in 0..<ring.count {
-                let next = (i + 1) % ring.count
-                indices.append(contentsOf: [centreIndex, ringIndices[i],
-                                            ringIndices[next]])
-                indices.append(contentsOf: [centreIndex, ringIndices[next],
-                                            ringIndices[i]])
-            }
-        }
-
-        // Closed-basin tarn: a round pond at the terminal sample.
-        for reach in network where reach.downstream == nil && !reach.isMouth {
-            guard let last = reach.samples.last else { continue }
-            let centre = last.position
-            let lineY = RiverChannel.waterLine(t, last).y
-            let radius = RiverChannel.halfWidth(last) * 2.5
-            let colour = tint(last)
-            let centreDepth = depthValue(centre, lineY, edge: false) * 0.9
-            let centreIndex = UInt32(verts.count)
-            verts.append(Vertex(position: SIMD3(centre.x, lineY + 0.000002,
-                                               centre.y),
-                                normal: up,
-                                color: SIMD4(colour, centreDepth),
-                                uv: SIMD2(0.5, 0.5)))
-            let segments = 24
-            var ringIndices: [UInt32] = []
-            ringIndices.reserveCapacity(segments)
-            for k in 0..<segments {
-                let a = Float(k) / Float(segments) * 2 * Float.pi
-                let p = centre + SIMD2<Float>(cos(a), sin(a)) * radius
-                ringIndices.append(UInt32(verts.count))
-                verts.append(Vertex(position: SIMD3(p.x, lineY + 0.000002, p.y),
-                                    normal: up,
-                                    color: SIMD4(colour, 0),
-                                    uv: SIMD2(0.5, 0.5)))
-            }
-            for k in 0..<segments {
-                let n = (k + 1) % segments
-                indices.append(contentsOf: [centreIndex, ringIndices[k],
-                                            ringIndices[n]])
-                indices.append(contentsOf: [centreIndex, ringIndices[n],
-                                            ringIndices[k]])
-            }
-        }
-        return (verts, indices)
+        return (vertices, field.mesh.indices)
     }
 
     /// Sloped banks either side of the river    /// Sloped banks either side of the river: waterline, damp margin,
     /// mid-slope, crest and outer apron. The waterline vertices share the
     /// water mesh's position exactly, so there is no seam to see through.
     static func riverBankGeometry(_ t: Terrain,
-                                  network: [RiverReach],
-                                  field: RiverChannel.Field) -> (vertices: [Vertex], indices: [UInt32]) {
+                                  network input: [RiverReach],
+                                  field: RiverChannel.Field, terrainVertices: [Vertex]? = nil) -> (vertices: [Vertex], indices: [UInt32]) {
+        let network = field.network
         var verts: [Vertex] = []
         var indices: [UInt32] = []
         let acrossCount = 9
+        let trims = RiverSurface.ranges(network)
         for reach in network {
             let samples = reach.samples
             guard samples.count >= 2 else { continue }
             let lift: Float = 0
-
-            // Open the bank around a junction. The water sheets of the
-            // meeting reaches cover the gap; without this one stem's bank
-            // runs across the other's mouth and leaves a land wedge.
-            let metres = RiverChannel.metresPerUnit
-            var startTrim: Float = 0
-            if !reach.upstream.isEmpty, let first = samples.first {
-                var radius = RiverChannel.halfWidth(first)
-                for a in reach.upstream where a < network.count {
-                    if let end = network[a].samples.last {
-                        radius = max(radius, RiverChannel.halfWidth(end))
-                    }
-                }
-                startTrim = radius * RiverChannel.junctionTrimFactor * metres
-            }
-            var endTrim: Float = 0
-            if let d = reach.downstream, d < network.count,
-               let first = network[d].samples.first,
-               let last = samples.last {
-                endTrim = max(RiverChannel.halfWidth(last),
-                              RiverChannel.halfWidth(first)) * RiverChannel.junctionTrimFactor * metres
-            }
-            let totalLength = samples.last?.along ?? 0
 
             for sideSign in [Float(-1), Float(1)] {
                 let base = UInt32(verts.count)
@@ -625,21 +399,20 @@ final class WorldScene {
                         // the sheet. Coplanar bank and water edges z-fight,
                         // and the bank triangles win in alternating pixels,
                         // which reads as a sawtooth of land inside the water.
-                        let y = pointIndex == 0
+                        var y = pointIndex == 0
                             ? point.y - (0.004 / RiverChannel.metresPerUnit) : point.y
+                        if pointIndex == acrossCount - 1, let submitted = terrainVertices {
+                            y = renderedTerrainHeight(p, terrain: t, vertices: submitted) + RiverChannel.seam
+                        }
                         verts.append(Vertex(position: SIMD3(p.x, y, p.y),
                                             normal: point.normal,
                                             color: SIMD4(point.color,
-                                                         1 - point.wetness)))
+                                                         1 - point.wetness),
+                                            uv: SIMD2(0, pointIndex == acrossCount - 1 ? 1 : 0)))
                     }
                 }
                 for i in 0..<(samples.count - 1) {
-                    if samples[i].along < startTrim
-                        || samples[i + 1].along < startTrim { continue }
-                    if totalLength - samples[i].along < endTrim
-                        || totalLength - samples[i + 1].along < endTrim {
-                        continue
-                    }
+                    if i < trims.first[reach.id] || i + 1 > trims.last[reach.id] { continue }
                     for k in 0..<(acrossCount - 1) {
                         let a = base + UInt32(i * acrossCount + k)
                         let b = a + 1
@@ -652,15 +425,63 @@ final class WorldScene {
             }
         }
 
-        return (verts, indices)
+        RiverSpringBanks.append(field: field, terrain: t, submitted: terrainVertices,
+                                vertices: &verts, indices: &indices)
+        RiverJunctionShore.append(field: field, terrain: t, submitted: terrainVertices,
+                                  vertices: &verts, indices: &indices)
+        RiverLakeShore.append(field: field, terrain: t, submitted: terrainVertices,
+                              vertices: &verts, indices: &indices)
+        // Clip the actual bank triangles against the canonical wet union.
+        // Trimming rows alone cannot exclude the other arms of an acute Y.
+        // Clip the exact canonical footprint. Expanding triangle edge planes
+        // erodes pointed inner banks, leaving millimetre-long corner gaps.
+        var clippedVertices: [Vertex] = [], clippedIndices: [UInt32] = []
+        for i in stride(from: 0, to: indices.count, by: 3) {
+            let triangle = (0..<3).map { verts[Int(indices[i + $0])] }
+            // Existing banks have both windings. Clip and emit one upward
+            // winding here; duplicate reverse faces add no coverage.
+            guard RiverPolygon.area(triangle) < -RiverPolygon.areaEpsilon else { continue }
+            let centre = triangle.reduce(SIMD2<Float>.zero) {
+                $0 + SIMD2($1.position.x, $1.position.z)
+            } / 3
+            var pieces = [triangle]
+            for water in field.nearbyTriangles(triangle) where RiverPolygon.overlaps(triangle, water) {
+                pieces = pieces.flatMap { RiverPolygon.subtract($0, water) }
+                if pieces.isEmpty { break }
+            }
+            pieces = RiverCoastalBanks.clip(pieces,near:triangle,terrain:field.originalTerrain)
+            for piece in pieces {
+                RiverPolygon.append(piece, vertices: &clippedVertices, indices: &clippedIndices)
+            }
+        }
+        // Clipping creates new vertices along the outer toe. Interpolating the
+        // original edge height there does not reproduce the submitted terrain's
+        // triangle interpolation. Ground every tagged toe after clipping.
+        if let submitted = terrainVertices {
+            for i in clippedVertices.indices where clippedVertices[i].uv.y >= 1 - 1e-6 {
+                let p = clippedVertices[i].position
+                clippedVertices[i].position.y = renderedTerrainHeight(SIMD2(p.x, p.z), terrain: t, vertices: submitted) + RiverChannel.seam
+            }
+        }
+        // Clipping against another arm creates a new shoreline from a bank
+        // plane that may have a different grade. Its numerical boundary must
+        // use the actual water level, just like an original waterline row.
+        // This changes soil vertices only, within the existing 0.1 mm band;
+        // no water vertex, terrain height or shader offset is changed.
+        for i in clippedVertices.indices {
+            let p = clippedVertices[i].position
+            if let shore = field.shorelineReference(at:SIMD2(p.x,p.z)),
+               abs(shore.distance) <= Float(RiverPolygon.epsilon) {
+                clippedVertices[i].position.y = shore.water - 0.004 / RiverChannel.metresPerUnit // existing 4 mm submerged soil seam
+            }
+        }
+        return (clippedVertices, clippedIndices)
     }
 
-    static func waterGeometry(_ t: Terrain) -> (vertices: [Vertex], indices: [UInt32]) {
+    static func waterGeometry(_ t: Terrain, excludingRiver: RiverSurface.Geometry? = nil) -> (vertices: [Vertex], indices: [UInt32]) {
         let n = t.size
-        // The water plane sits a hair above sea level; cells must be emitted
-        // against this height, not 0, or a ring of barely-submerged beach is
-        // left uncovered and reads as a coarse staircase.
-        let waterLevel: Float = 0.0042
+        // Match coastal river boundary conditions at true sea level.
+        let waterLevel = RiverGraph.seaLevel
         var verts: [Vertex] = []
         var indices: [UInt32] = []
         var lookup = [Int: UInt32](minimumCapacity: n * n / 2)
@@ -693,6 +514,7 @@ final class WorldScene {
             }
         }
 
+        let coastalIndexCount = indices.count
         // Open ocean frame, out to the horizon. Depth 1 = fully deep water.
         let inner: Float = 1.0
         let outer: Float = 40.0
@@ -720,6 +542,29 @@ final class WorldScene {
         quad(-outer, -inner, -inner,  inner)
         quad( inner,  outer, -inner,  inner)
 
+        if let river = excludingRiver {
+            let zeroFaces = stride(from: 0, to: river.indices.count, by: 3).compactMap { i -> [Vertex]? in
+                let tri = (0..<3).map { river.vertices[Int(river.indices[i + $0])] }
+                return tri.allSatisfy { $0.position.y == waterLevel } ? tri : nil
+            }
+            if !zeroFaces.isEmpty {
+                // River mouths and sea share one footprint at zero elevation.
+                // Keep the river faces and cut their exact coverage out of the
+                // ocean, avoiding coplanar sheets and material z-fighting.
+                let cuts = RiverTriangleBuckets(zeroFaces), original = indices
+                indices = []
+                for i in stride(from: 0, to: original.count, by: 3) {
+                    let ids = Array(original[i..<(i + 3)])
+                    if i >= coastalIndexCount { indices.append(contentsOf: ids); continue }
+                    let tri = ids.map { verts[Int($0)] }
+                    let nearby = cuts.near(tri).filter { RiverPolygon.overlaps(tri, $0) }
+                    if nearby.isEmpty { indices.append(contentsOf: ids); continue }
+                    var polygons = [tri]
+                    for cut in nearby { polygons = polygons.flatMap { RiverPolygon.subtract($0, cut) } }
+                    for polygon in polygons { RiverPolygon.append(polygon, vertices: &verts, indices: &indices) }
+                }
+            }
+        }
         return (verts, indices)
     }
 
@@ -936,15 +781,26 @@ final class WorldScene {
     }
 
     private func resample(_ segment: RoadBuilder.Segment) -> [SIMD2<Float>] {
+        Self.roadPath(segment, field: riverField)
+    }
+
+    static func roadPath(_ segment: RoadBuilder.Segment, field: RiverChannel.Field) -> [SIMD2<Float>] {
         var path: [SIMD2<Float>] = []
         for i in 0..<(segment.points.count - 1) {
             let a = segment.points[i]
             let b = segment.points[i + 1]
             let d = simd_distance(a, b)
-            let steps = max(Int((d / 0.006).rounded(.up)), 1)
-            for s in 0..<steps {
-                let t = Float(s) / Float(steps)
+            let roadSpacing = 6 / RiverChannel.metresPerUnit // 6 m regular road rows
+            let steps = max(Int((d / roadSpacing).rounded(.up)), 1)
+            var stops = (0..<steps).map { Float($0) / Float(steps) }
+            for interval in field.wetIntervals(from: a, to: b) {
+                stops.append(contentsOf: [interval.lowerBound, (interval.lowerBound + interval.upperBound) * 0.5, interval.upperBound])
+            }
+            stops.sort()
+            var previous: Float = -.infinity
+            for t in stops where t < 1 && (t - previous) * d > 0.0001 / RiverChannel.metresPerUnit {
                 path.append(a + (b - a) * t)
+                previous = t
             }
         }
         if let last = segment.points.last { path.append(last) }
@@ -974,7 +830,7 @@ final class WorldScene {
         }
 
         func waterAt(_ p: SIMD2<Float>) -> Float {
-            riverField.waterLevel(at: p) ?? -Float.greatestFiniteMagnitude
+            riverField.nearbyLevel(at: p, margin: 2 / RiverChannel.metresPerUnit) ?? -Float.greatestFiniteMagnitude
         }
 
         func deckHeight(_ p: SIMD2<Float>, arch: Float) -> Float {

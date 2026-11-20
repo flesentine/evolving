@@ -1,0 +1,24 @@
+{
+  "animationTime" : 0,
+  "eye" : [
+    0.63,
+    0.09,
+    0.275
+  ],
+  "fov" : 52,
+  "height" : 1200,
+  "hour" : 22,
+  "precipitation" : 0,
+  "provenance" : "seed 6 coastal-bank regression; explicit overhead mouth view",
+  "schemaVersion" : 1,
+  "season" : 0.7,
+  "seed" : 6,
+  "snow" : false,
+  "target" : [
+    0.63,
+    0,
+    0.274
+  ],
+  "width" : 1600,
+  "year" : 2336
+}

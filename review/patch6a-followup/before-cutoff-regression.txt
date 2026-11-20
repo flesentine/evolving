@@ -1,0 +1,1 @@
+old 20 m bucket edge at 60 m: terrain 28.694090 -> 100.000000 m, jump 71.305916 m across 0.2 mm

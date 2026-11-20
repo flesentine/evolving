@@ -1,0 +1,262 @@
+▸ embedding shaders
+▸ compiling screen saver
+Sources/CivRender/BronzeLayout.swift:18:13: warning: variable 'rng' was never mutated; consider changing to 'let' constant
+ 16 |         let count = CityBuilder.buildingCount(population)
+ 17 |
+ 18 |         var rng = SplitMix64(seed: seed
+    |             `- warning: variable 'rng' was never mutated; consider changing to 'let' constant
+ 19 |                              ^ (UInt64(bitPattern: Int64(s.id)) &* 0x9E37_79B9_7F4A_7C15)
+ 20 |                              ^ 0xB20F_1E5A)
+
+Sources/CivRender/CityBuilder.swift:871:13: warning: initialization of variable 'rng' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+ 869 |         }
+ 870 |
+ 871 |         var rng = SplitMix64(seed: seed
+     |             `- warning: initialization of variable 'rng' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+ 872 |                              ^ (UInt64(bitPattern: Int64(s.id)) &* 0xD6E8_FEB8_6659_FD93)
+ 873 |                              ^ 0x71A2_9C4D)
+
+Sources/CivRender/Geometry.swift:323:13: warning: variable 'n' was never mutated; consider changing to 'let' constant
+ 321 |         face(b0, b1, b2, b3, SIMD3(0, -1, 0), plank * 0.8)
+ 322 |         // Bow triangle of the bottom.
+ 323 |         var n = SIMD3<Float>(0, -1, 0)
+     |             `- warning: variable 'n' was never mutated; consider changing to 'let' constant
+ 324 |         v.append(Vertex(position: b3, normal: n, rgb: plank * 0.8))
+ 325 |         v.append(Vertex(position: b2, normal: n, rgb: plank * 0.8))
+
+Sources/CivRender/MedievalLayout.swift:99:13: warning: immutable value 'side' was never used; consider replacing with '_' or removing it [#no-usage]
+ 97 |
+ 98 |         // Suburban ribbons outside the wall, strung along the approach roads.
+ 99 |         for side in [Float(-1), Float(1)] {
+    |             `- warning: immutable value 'side' was never used; consider replacing with '_' or removing it [#no-usage]
+100 |             var along = radius * 1.32
+101 |             while along < radius * 1.72 && plots.count < target {
+
+Sources/CivRender/ModernLayout.swift:257:13: warning: initialization of immutable value 'count' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+255 |         let population = max(s.population, 1)
+256 |         let radius = CityBuilder.plannedRadius(population, era: .future)
+257 |         let count = CityBuilder.buildingCount(population)
+    |             `- warning: initialization of immutable value 'count' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+258 |
+259 |         var rng = SplitMix64(seed: seed
+
+Sources/CivRender/ModernLayout.swift:264:13: warning: initialization of immutable value 'perp' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+262 |         let axis = rng.nextFloat(in: 0...(Float.pi))
+263 |         let dir = SIMD2<Float>(cos(axis), sin(axis))
+264 |         let perp = SIMD2<Float>(-sin(axis), cos(axis))
+    |             `- warning: initialization of immutable value 'perp' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+265 |         let cell = max(0.0128, radius * 0.17)
+266 |
+
+Sources/CivRender/RiverNetwork.swift:377:13: warning: initialization of immutable value 'soil' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+ 375 |
+ 376 |         let grass = SIMD3<Float>(0.315, 0.395, 0.185)
+ 377 |         let soil = SIMD3<Float>(0.26, 0.22, 0.15)
+     |             `- warning: initialization of immutable value 'soil' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+ 378 |         let silt = SIMD3<Float>(0.30, 0.255, 0.175)
+ 379 |         let colors: [SIMD3<Float>] = [
+
+Sources/CivRender/RiverNetwork.swift:1443:13: warning: variable 'previousBed' was never used; consider replacing with '_' or removing it [#no-usage]
+1441 |         var samples: [RiverSample] = []
+1442 |         samples.reserveCapacity(points.count)
+1443 |         var previousBed: Float = .greatestFiniteMagnitude
+     |             `- warning: variable 'previousBed' was never used; consider replacing with '_' or removing it [#no-usage]
+1444 |         var previousWidth: Float = 0
+1445 |         var travelled: Float = 0
+
+Sources/CivRender/RiverNetwork.swift:1480:21: warning: variable 't' was never mutated; consider changing to 'let' constant
+1478 |         if samples.count > 2 {
+1479 |             for i in 1..<(samples.count - 1) {
+1480 |                 var t = samples[i - 1].tangent + samples[i].tangent * 2
+     |                     `- warning: variable 't' was never mutated; consider changing to 'let' constant
+1481 |                     + samples[i + 1].tangent
+1482 |                 let len = simd_length(t)
+
+Sources/CivRender/WorldScene.swift:959:17: warning: variable 'dir' was never mutated; consider changing to 'let' constant
+ 957 |             let prev = path[max(i - 1, 0)]
+ 958 |             let next = path[min(i + 1, path.count - 1)]
+ 959 |             var dir = next - prev
+     |                 `- warning: variable 'dir' was never mutated; consider changing to 'let' constant
+ 960 |             let len = simd_length(dir)
+ 961 |             return len < 1e-6 ? SIMD2(1, 0) : dir / len
+
+Sources/Saver/EvolvingSaver.swift:579:19: warning: 'endSheet(_:returnCode:)' was deprecated in macOS 10.10: Use -[NSWindow endSheet:returnCode:] instead [#DeprecatedDeclaration]
+577 |             parent.endSheet(window, returnCode: response)
+578 |         } else {
+579 |             NSApp.endSheet(window, returnCode: response.rawValue)
+    |                   `- warning: 'endSheet(_:returnCode:)' was deprecated in macOS 10.10: Use -[NSWindow endSheet:returnCode:] instead [#DeprecatedDeclaration]
+580 |         }
+581 |     }
+
+Sources/Saver/EvolvingSaver.swift:652:19: warning: immutable value 'config' was never used; consider replacing with '_' or removing it [#no-usage]
+650 |         let year = min(max(value.floatValue, 0), 12000)
+651 |         timelineYearOverride = year
+652 |         guard let config, let renderer, let sim = simulation else { return }
+    |                   `- warning: immutable value 'config' was never used; consider replacing with '_' or removing it [#no-usage]
+653 |         if year < sim.year - 0.5 || year < 0 {
+654 |             rebuildSimulation(to: year)
+
+Sources/CivRender/CityBuilder.swift:190:9: warning: default will never be executed
+ 188 |         case .future:
+ 189 |             return FutureLayout.self
+ 190 |         default:
+     |         `- warning: default will never be executed
+ 191 |             return GridLayout.self
+ 192 |         }
+
+Sources/CivRender/CityBuilder.swift:982:9: warning: default will never be executed
+ 980 |                 SIMD3(0.30, 0.40, 0.48))
+ 981 |
+ 982 |         default:
+     |         `- warning: default will never be executed
+ 983 |             break
+ 984 |         }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+▸ linking bundle
+▸ bundling assets
+▸ signing
+  identity: Developer ID Application: CHRISTOPHER G MCCULLOUGH (6Q7GY6V5LX)
+  saver signed
+▸ compiling headless tool
+Sources/CivRender/BronzeLayout.swift:18:13: warning: variable 'rng' was never mutated; consider changing to 'let' constant
+ 16 |         let count = CityBuilder.buildingCount(population)
+ 17 |
+ 18 |         var rng = SplitMix64(seed: seed
+    |             `- warning: variable 'rng' was never mutated; consider changing to 'let' constant
+ 19 |                              ^ (UInt64(bitPattern: Int64(s.id)) &* 0x9E37_79B9_7F4A_7C15)
+ 20 |                              ^ 0xB20F_1E5A)
+Sources/CivRender/CityBuilder.swift:871:13: warning: initialization of variable 'rng' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+ 869 |         }
+ 870 |
+ 871 |         var rng = SplitMix64(seed: seed
+     |             `- warning: initialization of variable 'rng' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+ 872 |                              ^ (UInt64(bitPattern: Int64(s.id)) &* 0xD6E8_FEB8_6659_FD93)
+ 873 |                              ^ 0x71A2_9C4D)
+
+Sources/CivRender/CityBuilder.swift:190:9: warning: default will never be executed
+ 188 |         case .future:
+ 189 |             return FutureLayout.self
+ 190 |         default:
+     |         `- warning: default will never be executed
+ 191 |             return GridLayout.self
+ 192 |         }
+
+Sources/CivRender/CityBuilder.swift:982:9: warning: default will never be executed
+ 980 |                 SIMD3(0.30, 0.40, 0.48))
+ 981 |
+ 982 |         default:
+     |         `- warning: default will never be executed
+ 983 |             break
+ 984 |         }
+Sources/CivRender/Geometry.swift:323:13: warning: variable 'n' was never mutated; consider changing to 'let' constant
+ 321 |         face(b0, b1, b2, b3, SIMD3(0, -1, 0), plank * 0.8)
+ 322 |         // Bow triangle of the bottom.
+ 323 |         var n = SIMD3<Float>(0, -1, 0)
+     |             `- warning: variable 'n' was never mutated; consider changing to 'let' constant
+ 324 |         v.append(Vertex(position: b3, normal: n, rgb: plank * 0.8))
+ 325 |         v.append(Vertex(position: b2, normal: n, rgb: plank * 0.8))
+Sources/CivRender/MedievalLayout.swift:99:13: warning: immutable value 'side' was never used; consider replacing with '_' or removing it [#no-usage]
+ 97 |
+ 98 |         // Suburban ribbons outside the wall, strung along the approach roads.
+ 99 |         for side in [Float(-1), Float(1)] {
+    |             `- warning: immutable value 'side' was never used; consider replacing with '_' or removing it [#no-usage]
+100 |             var along = radius * 1.32
+101 |             while along < radius * 1.72 && plots.count < target {
+Sources/CivRender/ModernLayout.swift:257:13: warning: initialization of immutable value 'count' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+255 |         let population = max(s.population, 1)
+256 |         let radius = CityBuilder.plannedRadius(population, era: .future)
+257 |         let count = CityBuilder.buildingCount(population)
+    |             `- warning: initialization of immutable value 'count' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+258 |
+259 |         var rng = SplitMix64(seed: seed
+
+Sources/CivRender/ModernLayout.swift:264:13: warning: initialization of immutable value 'perp' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+262 |         let axis = rng.nextFloat(in: 0...(Float.pi))
+263 |         let dir = SIMD2<Float>(cos(axis), sin(axis))
+264 |         let perp = SIMD2<Float>(-sin(axis), cos(axis))
+    |             `- warning: initialization of immutable value 'perp' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+265 |         let cell = max(0.0128, radius * 0.17)
+266 |
+Sources/CivRender/RiverNetwork.swift:377:13: warning: initialization of immutable value 'soil' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+ 375 |
+ 376 |         let grass = SIMD3<Float>(0.315, 0.395, 0.185)
+ 377 |         let soil = SIMD3<Float>(0.26, 0.22, 0.15)
+     |             `- warning: initialization of immutable value 'soil' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+ 378 |         let silt = SIMD3<Float>(0.30, 0.255, 0.175)
+ 379 |         let colors: [SIMD3<Float>] = [
+
+Sources/CivRender/RiverNetwork.swift:1443:13: warning: variable 'previousBed' was never used; consider replacing with '_' or removing it [#no-usage]
+1441 |         var samples: [RiverSample] = []
+1442 |         samples.reserveCapacity(points.count)
+1443 |         var previousBed: Float = .greatestFiniteMagnitude
+     |             `- warning: variable 'previousBed' was never used; consider replacing with '_' or removing it [#no-usage]
+1444 |         var previousWidth: Float = 0
+1445 |         var travelled: Float = 0
+
+Sources/CivRender/RiverNetwork.swift:1480:21: warning: variable 't' was never mutated; consider changing to 'let' constant
+1478 |         if samples.count > 2 {
+1479 |             for i in 1..<(samples.count - 1) {
+1480 |                 var t = samples[i - 1].tangent + samples[i].tangent * 2
+     |                     `- warning: variable 't' was never mutated; consider changing to 'let' constant
+1481 |                     + samples[i + 1].tangent
+1482 |                 let len = simd_length(t)
+Sources/CivRender/WorldScene.swift:959:17: warning: variable 'dir' was never mutated; consider changing to 'let' constant
+ 957 |             let prev = path[max(i - 1, 0)]
+ 958 |             let next = path[min(i + 1, path.count - 1)]
+ 959 |             var dir = next - prev
+     |                 `- warning: variable 'dir' was never mutated; consider changing to 'let' constant
+ 960 |             let len = simd_length(dir)
+ 961 |             return len < 1e-6 ? SIMD2(1, 0) : dir / len
+▸ compiling companion app
+  companion signed
+▸ compiling player app
+  player signed
+▸ compiling timeline app
+  timeline signed
+▸ done
+  bundle: /Users/mcculloughc1/Documents/opencode/evolving/build/Evolving.saver
+  tool:   /Users/mcculloughc1/Documents/opencode/evolving/build/bin/civheadless
+  app:    /Users/mcculloughc1/Documents/opencode/evolving/build/Evolving Companion.app
+  player: /Users/mcculloughc1/Documents/opencode/evolving/build/Evolving Player.app
+  timeline: /Users/mcculloughc1/Documents/opencode/evolving/build/Evolving Timeline.app
+
+▸ checking bundle
+2026-11-17 16:14:55.288 civheadless[28245:4237275] Evolving: terrain 384² in 33 ms
+2026-11-17 16:15:00.711 civheadless[28245:4237275] Evolving: replayed 4586 years in 2 ms
+2026-11-17 16:15:00.856 civheadless[28245:4237275] Evolving: Metal up on Apple M3 Pro, preview=false, year 4586, 30 settlements
+loaded bundle: com.mccullough.evolving
+principal class: EvolvingSaver
+view created: EvolvingSaver
+frames presented in 1.5s: 49
+OK
+
+▸ rendering the arc
+  scene build/update 4674.4 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/build/verify-500.png
+  year 500 · Neolithic
+  population 1023 in 8 settlements
+  boxes 72 · roofs/trees 0
+  replay took 0.3 ms
+  largest: Fenoston (383) at -0.1436, -0.1175
+  latest: year 474 — Fire destroys much of Lorenton
+
+  scene build/update 4902.2 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/build/verify-5000.png
+  year 5000 · Renaissance
+  population 29441 in 29 settlements
+  boxes 1788 · roofs/trees 59
+  replay took 3.2 ms
+  largest: Fenoston (3745) at -0.1436, -0.1175
+  latest: year 5000 — Aelfell is founded
+
+  scene build/update 4588.5 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/build/verify-10000.png
+  year 10000 · Near Future
+  population 1164513 in 32 settlements
+  boxes 2664 · roofs/trees 133
+  replay took 13.0 ms
+  largest: Fenoston (135057) at -0.1436, -0.1175
+  latest: year 10000 — The Near Future begins
+
+verified: build/Evolving.saver

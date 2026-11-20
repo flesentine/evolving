@@ -1,0 +1,8 @@
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-bank-cut-10/normal.png
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-bank-cut-10/flat.png
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-bank-cut-10/wire.png
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-bank-cut-10/height.png
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-bank-cut-10/depth.png
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-bank-cut-10/terrain.png
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-bank-cut-10/banks.png
+review view: seed 6: actual submitted shoreline cut-end regression; previous unbounded plane expansion left >1 mm bank gap, seed 6, year 2336.0

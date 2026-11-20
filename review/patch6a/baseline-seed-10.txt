@@ -1,0 +1,32 @@
+seed 10, year 2336.0
+reaches: 83  sources: 23  junctions: 17  mouths: 3
+width: 3.0–22.9 m
+max uphill: 0.002 m
+min curvature radius: 32.0 m
+max adjacent turn: 8.1°
+self-intersections: 0
+max junction angle: 26.6°
+max sample spacing: 3.00 m
+linked reaches: 77  max link gap: 0.00 m
+inland terminal ends: 3  junction water step: 0.000 m
+max parallel channels in a row: 6
+water surface rise: 0.000 m  graph identity: OK
+PASS
+-- channel --
+channel cross-sections: 2357  vertices across: 5
+bank lip above water: 0.33–2.00 m (mean 0.38)
+channel depth (lip to bed): 0.93–2.60 m (mean 0.98)
+water depth: 0.60–0.60 m (mean 0.60)
+wet margin: 1.30–1.80 m
+waterline welds: 4714/4714
+bed above water: 0 probes  (max 0.000 m)
+outer freeboard: 0.10–4.85 m
+submerged: trees 0  buildings 0  road crossings 0
+nearest object clearance: 0.19 m
+PASS
+sample -0.1928,+0.3703 ground 0.02396 water 0.02456 width 5.7 m
+sample -0.1878,-0.4824 ground 0.02092 water 0.02152 width 4.0 m
+sample +0.1472,-0.5422 ground 0.11428 water 0.11488 width 4.0 m
+sample -0.2768,-0.4666 ground 0.02331 water 0.02391 width 4.0 m
+sample +0.1469,-0.1096 ground 0.01591 water 0.01651 width 4.0 m
+sample +0.4166,-0.2258 ground 0.03596 water 0.03656 width 4.0 m

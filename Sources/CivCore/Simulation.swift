@@ -217,7 +217,8 @@ struct Simulation {
             let i = rng.nextInt(n)
             let j = rng.nextInt(n)
             let idx = terrain.index(i, j)
-            guard terrain.height[idx] > 0.012,
+            guard terrain.height[idx] > 0.012, terrain.river[idx] == 0,
+                  !terrain.isWater(x: terrain.worldX(i), z: terrain.worldZ(j)),
                   terrain.biome[idx] != Terrain.Biome.snow.rawValue else { continue }
 
             let x = terrain.worldX(i)
@@ -251,7 +252,9 @@ struct Simulation {
             // Fall back to any land cell near the centre.
             for _ in 0..<400 {
                 let i = rng.nextInt(n), j = rng.nextInt(n)
-                if terrain.height[terrain.index(i, j)] > 0.012 {
+                let idx = terrain.index(i,j)
+                if terrain.height[idx] > 0.012 && terrain.river[idx] == 0
+                    && !terrain.isWater(x: terrain.worldX(i), z: terrain.worldZ(j)) {
                     return SIMD2(terrain.worldX(i), terrain.worldZ(j))
                 }
             }

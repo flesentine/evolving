@@ -1,0 +1,48 @@
+seed 6, year 2336.0
+reaches: 7  sources: 5  junctions: 2  mouths: 3
+width: 5.6–20.6 m
+original ground rise: 0.926 m
+min curvature radius: 17.8 m
+max adjacent turn: 6.4°
+self-intersections: 0
+max junction angle: 18.4°
+max sample spacing: 3.00 m
+linked reaches: 4  max link gap: 0.00 m
+inland terminal ends: 0  junction water step: 0.000 m
+routing-cell runs in a row (not mesh): 3
+unsupported source starts: 0; minimum source area: 1221 cells
+water surface rise: 0.000 m  graph identity: OK
+PASS
+-- channel --
+channel cross-sections: 804  vertices across: 5
+bank lip above water: 0.33–0.40 m (mean 0.36)
+channel depth (lip to bed): 0.93–1.00 m (mean 0.96)
+water depth: 0.60–0.60 m (mean 0.60)
+wet margin: 1.30–1.80 m
+waterline welds: 1608/1608
+bed above water: 0 probes  (max 0.000 m)
+outer freeboard: 0.10–3.17 m
+submerged: trees 0  buildings 0  road crossings 0
+nearest object clearance: 0.07 m
+PASS
+sample +0.3431,-0.5458 ground 0.01455 water 0.01515 width 4.5 m
+sample +0.2046,-0.0730 ground 0.02129 water 0.02189 width 6.9 m
+sample +0.0685,-0.1228 ground 0.02564 water 0.02624 width 9.8 m
+sample +0.3516,+0.1522 ground 0.02422 water 0.02482 width 4.5 m
+sample +0.1047,+0.1641 ground 0.02232 water 0.02292 width 10.6 m
+sample +0.4867,+0.2294 ground 0.01521 water 0.01581 width 20.4 m
+sample -0.6173,+0.1751 ground 0.03800 water 0.03860 width 6.2 m
+-- final junction mesh --
+actual ribbon width 0.30–20.61 m
+junctions 2, triangles 56, invalid winding/area 0
+footprint probes wet 1612, dry 1450, mismatches 0
+boundary topology failures 0
+outside swept union 0.000065 m²; beyond 0.1 mm boundary band 0.000000000 m²
+rendered terrain clearance min 0.450 m, failures 0
+whole river triangles 6520, terrain probes 26080, failures 0
+submitted water channel runs: 3 in 250 m, both scan axes
+unbounded terrain reference 32 probes, max error 0.000000 m
+max adjacent-vertex carve change 11.651 m
+above-water bank intrusions 0
+cut seam failures 0, max height error 0.000002 m
+PASS final junction mesh

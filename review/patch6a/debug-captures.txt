@@ -1,0 +1,64 @@
+  scene build/update 3655.9 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/patch6a/junction-28-water.png
+  year 2336 · Classical
+  population 3847 in 19 settlements
+  boxes 954 · roofs/trees 37
+  replay took 0.8 ms
+  largest: Ulton (831) at -0.1436, -0.1175
+  latest: year 2210 — Zoridale and Bramanbridge go to war
+  scene build/update 3493.8 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/patch6a/junction-28-wire.png
+  year 2336 · Classical
+  population 3847 in 19 settlements
+  boxes 954 · roofs/trees 37
+  replay took 0.8 ms
+  largest: Ulton (831) at -0.1436, -0.1175
+  latest: year 2210 — Zoridale and Bramanbridge go to war
+  scene build/update 3449.5 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/patch6a/junction-28-banks.png
+  year 2336 · Classical
+  population 3847 in 19 settlements
+  boxes 954 · roofs/trees 37
+  replay took 0.8 ms
+  largest: Ulton (831) at -0.1436, -0.1175
+  latest: year 2210 — Zoridale and Bramanbridge go to war
+  scene build/update 3708.1 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/patch6a/junction-28-terrain.png
+  year 2336 · Classical
+  population 3847 in 19 settlements
+  boxes 954 · roofs/trees 37
+  replay took 0.8 ms
+  largest: Ulton (831) at -0.1436, -0.1175
+  latest: year 2210 — Zoridale and Bramanbridge go to war
+  scene build/update 3610.9 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/patch6a/junction-35-water.png
+  year 2336 · Classical
+  population 3847 in 19 settlements
+  boxes 954 · roofs/trees 37
+  replay took 0.8 ms
+  largest: Ulton (831) at -0.1436, -0.1175
+  latest: year 2210 — Zoridale and Bramanbridge go to war
+  scene build/update 3569.4 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/patch6a/junction-35-wire.png
+  year 2336 · Classical
+  population 3847 in 19 settlements
+  boxes 954 · roofs/trees 37
+  replay took 0.8 ms
+  largest: Ulton (831) at -0.1436, -0.1175
+  latest: year 2210 — Zoridale and Bramanbridge go to war
+  scene build/update 3496.2 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/patch6a/junction-35-banks.png
+  year 2336 · Classical
+  population 3847 in 19 settlements
+  boxes 954 · roofs/trees 37
+  replay took 0.8 ms
+  largest: Ulton (831) at -0.1436, -0.1175
+  latest: year 2210 — Zoridale and Bramanbridge go to war
+  scene build/update 3441.1 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/patch6a/junction-35-terrain.png
+  year 2336 · Classical
+  population 3847 in 19 settlements
+  boxes 954 · roofs/trees 37
+  replay took 0.8 ms
+  largest: Ulton (831) at -0.1436, -0.1175
+  latest: year 2210 — Zoridale and Bramanbridge go to war

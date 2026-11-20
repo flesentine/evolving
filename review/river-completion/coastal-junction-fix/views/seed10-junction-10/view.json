@@ -1,0 +1,24 @@
+{
+  "animationTime" : 0,
+  "eye" : [
+    0.4151,
+    0.13327,
+    0.296
+  ],
+  "fov" : 52,
+  "height" : 1200,
+  "hour" : 10,
+  "precipitation" : 0,
+  "provenance" : "seed 10 geometry regression: projecting terminal corner: receiving-footprint containment; explicit fixed overhead view",
+  "schemaVersion" : 1,
+  "season" : 0.7,
+  "seed" : 10,
+  "snow" : false,
+  "target" : [
+    0.4151,
+    0.01327,
+    0.295
+  ],
+  "width" : 1600,
+  "year" : 2336
+}

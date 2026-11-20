@@ -1,0 +1,8 @@
+  scene build/update 4987.0 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/before/seed1-junction-10.png
+  year 2336 · Classical
+  population 4002 in 18 settlements
+  boxes 995 · roofs/trees 37
+  replay took 0.8 ms
+  largest: Fenoston (831) at -0.1436, -0.1175
+  latest: year 2210 — An earthquake shakes Xanarmere

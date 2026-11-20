@@ -32,6 +32,9 @@ struct Terrain {
     var ao: [Float] = []
 
     var maxHeight: Float = 0
+    /// Immutable selected drainage authority, reused by simulation and renderer.
+    var riverGraph: RiverGraph? = nil
+    var lakeWater: [Float] = []
 
     // MARK: - Sampling
 
@@ -95,6 +98,18 @@ struct Terrain {
         return fertility[index(i, j)]
     }
 
+    /// The original a-c terrain triangle plane used to bound basin polygons.
+    /// This intentionally differs from the smooth bilinear placement estimate.
+    func originalTriangleHeight(at p: SIMD2<Float>) -> Float {
+        let f = (p + SIMD2(repeating: 1)) / cellSize
+        let i = min(max(Int(floor(f.x)), 0), size - 2), j = min(max(Int(floor(f.y)), 0), size - 2)
+        let u = min(max((Double(p.x) - Double(worldX(i))) / Double(worldX(i + 1) - worldX(i)), 0), 1)
+        let v = min(max((Double(p.y) - Double(worldZ(j))) / Double(worldZ(j + 1) - worldZ(j)), 0), 1)
+        let a = Double(height[index(i, j)]), b = Double(height[index(i + 1, j)])
+        let c = Double(height[index(i + 1, j + 1)]), d = Double(height[index(i, j + 1)])
+        return Float(u >= v ? a + (b - a) * u + (c - b) * v : a + (c - d) * u + (d - a) * v)
+    }
+
     var cellSize: Float { 2 / Float(size - 1) }
 
     func gradientAt(x: Float, z: Float) -> SIMD2<Float> {
@@ -105,11 +120,48 @@ struct Terrain {
     }
 
     func isWater(x: Float, z: Float) -> Bool {
-        heightAt(x: x, z: z) <= 0
+        if heightAt(x: x, z: z) <= 0 { return true }
+        guard !lakeWater.isEmpty else { return false }
+        let i = min(max(Int(floor((x + 1) / cellSize)), 0), size - 2)
+        let j = min(max(Int(floor((z + 1) / cellSize)), 0), size - 2)
+        let level = [index(i, j), index(i + 1, j), index(i + 1, j + 1), index(i, j + 1)].map { lakeWater[$0] }.max()!
+        return level > 0 && level > originalTriangleHeight(at: SIMD2(x, z))
     }
 }
 
 enum WorldGen {
+
+
+    /// Open only cells close to the original sea. Reading the mutated height
+    /// here lets one new mouth become the next mouth's sea and excavates a
+    /// row-order-dependent channel arbitrarily far inland.
+    static func carveEstuaries(_ height: inout [Float], river: [UInt8], size: Int) {
+        let metresPerUnit: Float = 1_000
+        let originalSea = height.map { $0 <= 0 }
+        for idx in 0..<height.count where river[idx] > 0 {
+            let i = idx % size, j = idx / size
+            var nearSea = false
+            for dj in -2...2 where !nearSea {
+                for di in -2...2 {
+                    let ni = min(max(i + di, 0), size - 1)
+                    let nj = min(max(j + dj, 0), size - 1)
+                    if originalSea[nj * size + ni] {
+                        nearSea = true
+                        break
+                    }
+                }
+            }
+            guard nearSea else { continue }
+
+            height[idx] = min(height[idx], -6 / metresPerUnit)
+            for (di, dj) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                let ni = min(max(i + di, 0), size - 1)
+                let nj = min(max(j + dj, 0), size - 1)
+                let n = nj * size + ni
+                if height[n] > 0 { height[n] = min(height[n], 2 / metresPerUnit) }
+            }
+        }
+    }
 
     static func generate(seed: UInt64, size: Int = 384) -> Terrain {
         let noise = ValueNoise(seed: seed)
@@ -221,29 +273,7 @@ enum WorldGen {
 
         // Estuaries: open river mouths into the sea so the rivers visibly
         // reach the coast instead of fading out on the beach.
-        for idx in 0..<count where river[idx] > 0 {
-            let i = idx % size, j = idx / size
-            var nearSea = false
-            for dj in -2...2 where !nearSea {
-                for di in -2...2 {
-                    let ni = min(max(i + di, 0), size - 1)
-                    let nj = min(max(j + dj, 0), size - 1)
-                    if height[nj * size + ni] <= 0 {
-                        nearSea = true
-                        break
-                    }
-                }
-            }
-            guard nearSea else { continue }
-
-            height[idx] = min(height[idx], -0.006)
-            for (di, dj) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
-                let ni = min(max(i + di, 0), size - 1)
-                let nj = min(max(j + dj, 0), size - 1)
-                let n = nj * size + ni
-                if height[n] > 0 { height[n] = min(height[n], 0.002) }
-            }
-        }
+        carveEstuaries(&height, river: river, size: size)
 
         // ---------------------------------------------------------------
         // Distance to water (sea or river)
@@ -334,7 +364,7 @@ enum WorldGen {
             }
         }
 
-        return Terrain(size: size,
+        var terrain = Terrain(size: size,
                        seed: seed,
                        height: height,
                        flow: flow,
@@ -346,5 +376,9 @@ enum WorldGen {
                        waterDistance: waterDistance,
                        ao: ao,
                        maxHeight: maxHeight)
+        let built = RiverGraph.build(terrain)
+        terrain.riverGraph = built
+        terrain.applyRiverGraph()
+        return terrain
     }
 }

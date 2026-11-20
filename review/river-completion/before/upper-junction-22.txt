@@ -1,0 +1,9 @@
+Baseline 954f2b6; exact case camera, season, weather, snow, viewport and animation time.
+  scene build/update 5832.5 ms
+wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/before/upper-junction-22.png
+  year 4594 · Medieval
+  population 16501 in 30 settlements
+  boxes 1301 · roofs/trees 29
+  replay took 2.3 ms
+  largest: Lorubridge (2574) at 0.1593, 0.2219
+  latest: year 4516 — An earthquake shakes Galorholm
