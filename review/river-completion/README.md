@@ -1,3 +1,5 @@
+**RELEASE BLOCKED (November 19 expanded audit):** seed 14 fails elevated-water/ocean overlap (9.534342 m²) and four coastal-junction bank-closure checks. PR #15 is draft again. The original twelve-world results below remain historical evidence, not complete release acceptance. Reproduction: `build/bin/civheadless river 14 2336`; see [expanded audit](nov19-audit/).
+
 # River completion acceptance
 
 The river repair is implemented on `codex/river-patch6a-confluence-footprint`,
