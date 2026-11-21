@@ -1,0 +1,9 @@
+2026-11-21 12:43:12.560 civheadless[65031:10030053] Evolving: terrain 384² in 74 ms
+2026-11-21 12:43:20.991 civheadless[65031:10030053] Evolving: replayed 5043 years in 3 ms
+2026-11-21 12:43:21.996 civheadless[65031:10030053] Evolving: Metal up on Apple M3 Pro, preview=false, year 5043, 30 settlements
+loaded bundle: com.mccullough.evolving
+principal class: EvolvingSaver
+view created: EvolvingSaver
+frames presented in 1.5s: 47
+native displayed review record: seed 6393821808673518700, year 5043.682, 2560x1600: OK
+OK

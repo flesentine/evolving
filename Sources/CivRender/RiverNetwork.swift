@@ -462,7 +462,7 @@ enum RiverChannel {
             var best = Float.greatestFiniteMagnitude, level: Float = 0
             var candidates: [(Float, Float)] = []
             for id in ids {
-                let value = Field.probe(triangles[id], p)
+                let value = carveIndex.records[id].probe.probe(p)
                 if value.distance < best { best = value.distance; level = value.water }
                 candidates.append((value.distance, value.water))
 
@@ -488,7 +488,7 @@ enum RiverChannel {
             for id in ids {
                 let record = carveIndex.records[id]
                 if p.x < record.low.x || p.x > record.high.x || p.y < record.low.y || p.y > record.high.y { continue }
-                let value = Field.probe(record.triangle, p)
+                let value = record.probe.probe(p)
                 if value.distance <= 0 && value.distance < (best?.distance ?? .greatestFiniteMagnitude) {
                     best = (value.water, value.distance)
                 }
@@ -518,7 +518,7 @@ enum RiverChannel {
             let ids = exhaustive || radius > bucketSize ? Array(carveIndex.records.indices) : (buckets[key] ?? [])
             for id in ids {
                 let record = carveIndex.records[id]
-                let query = Field.probe(record.triangle, p)
+                let query = record.probe.probe(p)
                 let distance = max(query.distance, 0)
                 if distance >= radius { continue }
                 // For a convex triangle, any point within the support disc

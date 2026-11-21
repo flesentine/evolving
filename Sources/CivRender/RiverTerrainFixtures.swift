@@ -5,6 +5,7 @@ import simd
 /// a high original surface, shifted relative to the old 20 m bucket lattice.
 enum RiverTerrainFixtures {
     static func run() -> Bool {
+        guard cachedProbeFixture() else { return false }
         // A synthetic river climbs away from one sea row. Estuary excavation
         // may reach only the original two-cell coastal halo plus its lip.
         // Rotate the input to expose the old row-order propagation.
@@ -67,5 +68,40 @@ enum RiverTerrainFixtures {
         print(String(format: "max 0.2 mm probe step %.6f m; exhaustive reference error %.6f m", maxJump, maxReferenceError))
         print(failures == 0 ? "PASS continuous terrain fixtures" : "FAIL continuous terrain fixtures")
         return failures == 0
+    }
+
+    /// Compare the cached query against the original arithmetic, including
+    /// edge/vertex ties, both windings, degenerate faces and translated slopes.
+    private static func cachedProbeFixture() -> Bool {
+        let metres = RiverChannel.metresPerUnit
+        var count = 0
+        for angle: Float in [0,0.37,1.2] {
+            for offset: Float in [0,-0.655,0.9] { // world-unit translations
+                func vertex(_ x: Float,_ z: Float,_ y: Float) -> Vertex {
+                    let p = SIMD2(offset,offset)+SIMD2(cos(angle)*x-sin(angle)*z,
+                        sin(angle)*x+cos(angle)*z)/metres
+                    return Vertex(position:SIMD3(p.x,y/metres,p.y),normal:SIMD3(0,1,0),rgb:.zero)
+                }
+                let a = vertex(-5,-4,3), b = vertex(7,-4,0), c = vertex(0,9,1)
+                for triangle in [[a,b,c],[c,b,a],[a,a,c],[a,b,b]] {
+                    let cached = RiverTriangleProbe(triangle)
+                    var points = triangle.map { SIMD2($0.position.x,$0.position.z) }
+                    for z in -12...12 { for x in -12...12 {
+                        points.append(SIMD2(offset,offset)+SIMD2(Float(x),Float(z))/metres)
+                    }}
+                    for p in points {
+                        let actual = cached.probe(p), expected = RiverChannel.Field.probe(triangle,p)
+                        guard actual.distance.bitPattern == expected.distance.bitPattern,
+                              actual.water.bitPattern == expected.water.bitPattern else {
+                            print("FAIL cached water triangle: distance/water differ at \(p)")
+                            return false
+                        }
+                        count += 1
+                    }
+                }
+            }
+        }
+        print("cached water triangle fixture: \(count) exact distance/height bit-pattern comparisons: PASS")
+        return true
     }
 }

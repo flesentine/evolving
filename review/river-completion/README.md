@@ -1,3 +1,5 @@
+**November 21 update — visual release hold:** the query cache preserves all retained river diagnostics and geometry hashes and measures a modest startup improvement. The seed-1 close-up still has a blunt land finger requiring bank/footprint investigation. PR #15 is draft; the earlier visual acceptance assessment below is superseded by the [current report](startup-query-cache/README.md) and [gallery](startup-query-cache/index.html).
+
 **November 20 update:** the expanded seed-14 coastal failure is repaired. Seeds 1–17 plus the saved world pass, and the rebuilt saver, Player and Timeline are installed and exercised. See the [current report](coastal-junction-fix/README.md) and [current comparison gallery](coastal-junction-fix/index.html). Fresh exact-head review and required CI remain release gates. The original results below are historical evidence.
 
 # River completion acceptance

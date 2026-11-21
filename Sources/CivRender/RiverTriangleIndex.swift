@@ -6,10 +6,12 @@ import simd
 struct RiverTriangleIndex {
     struct Record {
         let triangle: [Vertex]
+        let probe: RiverTriangleProbe
         let low: SIMD2<Float>
         let high: SIMD2<Float>
         let minWater: Float
         let gradient: Float // vertical / horizontal, dimensionless
+
     }
     private struct Node {
         var low: SIMD2<Float>
@@ -41,7 +43,7 @@ struct RiverTriangleIndex {
                 let dz = (ab.x * dyC - ac.x * dyB) / determinant
                 gradient = Float(hypot(dx, dz))
             }
-            return Record(triangle: triangle,
+            return Record(triangle: triangle, probe: RiverTriangleProbe(triangle),
                           low: points.reduce(SIMD2(repeating: .greatestFiniteMagnitude), simd_min),
                           high: points.reduce(SIMD2(repeating: -.greatestFiniteMagnitude), simd_max),
                           minWater: triangle.map { $0.position.y }.min()!, gradient: gradient)
@@ -108,7 +110,7 @@ struct RiverTriangleIndex {
         guard !surfaceIDs.isEmpty else { return nil }
         var best = Float.greatestFiniteMagnitude, bestID = Int.max, level: Float = 0
         func visit(_ id: Int) {
-            let value = RiverChannel.Field.probe(records[id].triangle, p)
+            let value = records[id].probe.probe(p)
             if value.distance < best || (value.distance == best && id < bestID) {
                 best = value.distance; bestID = id; level = value.water
             }
@@ -141,7 +143,7 @@ struct RiverTriangleIndex {
             // recompute the final small tie set in canonical triangle order.
             let ties = exhaustive ? surfaceIDs : candidateIDs(p, radius: best + support)
             for id in ties {
-                let value = RiverChannel.Field.probe(records[id].triangle, p)
+                let value = records[id].probe.probe(p)
                 if value.distance - best < support {
                     let w = pow(Double(1 - (value.distance - best) / support), 2)
                     sum += Double(value.water) * w; weight += w
