@@ -194,7 +194,11 @@ final class Renderer: NSObject, MTKViewDelegate {
         if freeOrbit == nil { beginFreeCamera() }
         guard var orbit = freeOrbit else { return }
         orbit.yaw += dx
-        orbit.pitch = min(max(orbit.pitch + dy, 0.10), 1.35)
+        // An automatic shot can start outside the manual range. Let a
+        // vertical drag bring it back gradually, and keep horizontal drags level.
+        let lower = min(orbit.pitch, 0.10)
+        let upper = max(orbit.pitch, 1.35)
+        orbit.pitch = min(max(orbit.pitch + dy, lower), upper)
         freeOrbit = orbit
         applyFreeCamera()
     }

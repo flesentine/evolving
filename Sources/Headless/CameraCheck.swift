@@ -29,7 +29,7 @@ enum CameraCheck {
         _ = try Snapshot.write(renderer: renderer, width: 1600, height: 1000, time: 0,
                                to: directory.appendingPathComponent("after-pan.png"))
         for yaw: Float in [0, .pi / 2, .pi, .pi * 1.5] {
-            for pitch: Float in [-0.15, 0.03, 0.35, 1.0, 1.50] {
+            for pitch: Float in [-0.15, 0.03, 0.083, 0.35, 1.0, 1.50] {
                 renderer.endFreeCamera()
                 let distance = 300 / metres
                 let target = SIMD3<Float>(0, 40 / metres, 0)
@@ -46,6 +46,39 @@ enum CameraCheck {
                 let point = matrix * SIMD4(target, 1)
                 precondition(point.x / point.w > 0 && point.y / point.w > 0,
                              "positive drag must move the world right/up at every bearing")
+
+                renderer.endFreeCamera()
+                renderer.cameraOverride = Renderer.Camera(eye: eye, target: target, fov: 48)
+                let capture = yaw == 0 && pitch == 0.083
+                if capture {
+                    _ = try Snapshot.write(renderer: renderer, width: 1600, height: 1000, time: 0,
+                                           to: directory.appendingPathComponent("low-shot-before-orbit.png"))
+                }
+                let yawDelta: Float = 0.1
+                renderer.orbitCamera(dx: yawDelta, dy: 0)
+                let orbit = renderer.cameraOverride!
+                let expectedEye = target + SIMD3(cos(yaw + yawDelta) * cos(pitch), sin(pitch),
+                                                  sin(yaw + yawDelta) * cos(pitch)) * distance
+                guard simd_distance(orbit.eye, expectedEye) < epsilon,
+                      orbit.target == target, orbit.fov == 48 else {
+                    throw NSError(domain: "CameraCheck", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "first horizontal orbit moved the captured shot off its pitch at \(pitch) rad"
+                    ])
+                }
+                if capture {
+                    _ = try Snapshot.write(renderer: renderer, width: 1600, height: 1000, time: 0,
+                                           to: directory.appendingPathComponent("low-shot-after-orbit.png"))
+                }
+                if pitch < 0.10 || pitch > 1.35 {
+                    let inward: Float = pitch < 0.10 ? 0.01 : -0.01
+                    renderer.orbitCamera(dx: 0, dy: -inward)
+                    precondition(simd_distance(renderer.cameraOverride!.eye, orbit.eye) < epsilon,
+                                 "vertical drag must not move farther outside the manual range")
+                    renderer.orbitCamera(dx: 0, dy: inward)
+                    let expectedHeight = target.y + sin(pitch + inward) * distance
+                    precondition(abs(renderer.cameraOverride!.eye.y - expectedHeight) < epsilon,
+                                 "vertical drag toward the manual range must move without snapping")
+                }
             }
         }
         renderer.zoomCamera(10000)
@@ -58,6 +91,6 @@ enum CameraCheck {
                          - 8 / metres) < epsilon, "close zoom limit changed unexpectedly")
         renderer.endFreeCamera()
         precondition(renderer.cameraOverride == nil, "Auto must release the manual camera")
-        print("PASS rendered camera: initial shot/FOV preserved; right/up pan at 4 bearings × 5 pitches; 8 m–4 km zoom; Auto reset")
+        print("PASS rendered camera: initial shot/FOV preserved; pan and orbit at 4 bearings × 6 pitches; gradual return to manual pitch range; 8 m–4 km zoom; Auto reset")
     }
 }
