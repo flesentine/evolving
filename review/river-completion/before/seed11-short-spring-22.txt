@@ -1,8 +1,0 @@
-  scene build/update 5444.2 ms
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/before/seed11-short-spring-22.png
-  year 2336 · Classical
-  population 3055 in 19 settlements
-  boxes 977 · roofs/trees 37
-  replay took 0.8 ms
-  largest: Bramenford (614) at -0.2115, -0.1175
-  latest: year 2226 — An earthquake shakes Bramenford

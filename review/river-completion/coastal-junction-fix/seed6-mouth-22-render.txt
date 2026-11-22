@@ -1,8 +1,0 @@
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-mouth-22/normal.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-mouth-22/flat.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-mouth-22/wire.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-mouth-22/height.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-mouth-22/depth.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-mouth-22/terrain.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed6-mouth-22/banks.png
-review view: seed 6 coastal-bank regression; explicit overhead mouth view, seed 6, year 2336.0

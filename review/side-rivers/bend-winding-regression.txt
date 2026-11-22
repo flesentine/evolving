@@ -1,8 +1,0 @@
-The intermediate source-backed layout exposed one reversed submitted ribbon triangle
-with the old bend constraint (before the true-radius correction):
-BAD TRIANGLE 312 area 3.725573111124092e-08 world-unit² = 0.03725573111124092 m²
-(0.04903054, 0.017803578, -0.2515879)
-(0.04744302, 0.017803578, -0.25206488)
-(0.049064055, 0.017803578, -0.25162476)
-The full-water winding gate failed. The true-radius width constraint fixes the
-submitted geometry; all final 12-seed gates report invalid winding/area 0.

@@ -1,8 +1,0 @@
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed14-coast-22/normal.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed14-coast-22/flat.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed14-coast-22/wire.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed14-coast-22/height.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed14-coast-22/depth.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed14-coast-22/terrain.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed14-coast-22/banks.png
-review view: seed 14 coastal junction regression: recorded fixed camera, seed 14, year 2336.0

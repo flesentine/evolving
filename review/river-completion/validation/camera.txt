@@ -1,1 +1,0 @@
-PASS rendered camera: initial shot/FOV preserved; right/up pan at 4 bearings × 5 pitches; 8 m–4 km zoom; Auto reset

@@ -1,8 +1,0 @@
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed11-short-spring-10/normal.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed11-short-spring-10/flat.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed11-short-spring-10/wire.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed11-short-spring-10/height.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed11-short-spring-10/depth.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed11-short-spring-10/terrain.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed11-short-spring-10/banks.png
-review view: seed 11 regression: short headwater beside main stem and junction bank closure; fixed reproducible overhead camera, seed 11, year 2336.0

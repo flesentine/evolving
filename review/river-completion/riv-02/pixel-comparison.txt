@@ -1,2 +1,0 @@
-seed14-coast-22/normal.png max RGB 3 changed channels 8
-frames 8 changed 1 maximum RGB delta 3

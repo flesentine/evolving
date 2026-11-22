@@ -1,3 +1,0 @@
-startup generation/simulation/scene 11246.0 ms (excluded from frame timing)
-frame timing: 120 frames, median 10.96 ms, p95 12.87 ms, maximum 17.97 ms
-11.40 ms/frame at 1600x1000 (scene scale 1.35) -> 87.7 fps

@@ -1,8 +1,0 @@
-Installed: /Users/mcculloughc1/Applications/Evolving Companion.app
-Installed: /Users/mcculloughc1/Applications/Evolving Player.app
-Installed: /Users/mcculloughc1/Applications/Evolving Timeline.app
-
-Installed: /Users/mcculloughc1/Library/Screen Savers/Evolving.saver
-
-Open System Settings → Screen Saver and pick “Evolving”.
-If it does not appear, quit System Settings completely and reopen it.

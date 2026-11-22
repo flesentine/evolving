@@ -23,11 +23,16 @@ xcuserdata/
 __pycache__/
 *.py[cod]
 
-# Generated review captures and root stills. Source and review notes stay.
+# Generated review captures and root stills.
 /review/*.png
-/review/river-completion/work/
-/review/river-completion/matrix/
 /*.png
+
+# River review evidence lives on the archive branch and may be kept locally.
+/review/patch6a/
+/review/patch6a-followup/
+/review/river-completion/
+/review/side-rivers/
+/review/timeline-navigation/
 
 # Credentials and secrets
 .env
@@ -52,8 +57,3 @@ id_ed25519*
 # Blender backups
 *.blend1
 *.blend2
-
-# Raw review inputs are preserved in the downloadable review-inputs.zip.
-/review/river-completion/matrix-records/
-/review/river-completion/ids/**/*.json
-/review/river-completion/provenance/

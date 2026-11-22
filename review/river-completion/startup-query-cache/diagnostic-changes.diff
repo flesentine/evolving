@@ -1,7 +1,0 @@
---- review/river-completion/coastal-junction-fix/riverterrainfixtures.txt
-+++ riverterrainfixtures.txt
-@@ -1,3 +1,4 @@
-+cached water triangle fixture: 22608 exact distance/height bit-pattern comparisons: PASS
- estuary fixtures: 4 orientations; original coastal halo preserved
- terrain cutoff fixtures: 416 bucket-boundary pairs; failures 0
- max 0.2 mm probe step 0.000121 m; exhaustive reference error 0.000000 m

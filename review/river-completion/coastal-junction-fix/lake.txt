@@ -1,1 +1,0 @@
-bounded lake/island fixture rendered; reproduce with riverlakefixture /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/lake

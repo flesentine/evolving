@@ -1,6 +1,0 @@
-year 2336.0, seed 6393821808673518700, era Classical
-settlements 19, buildings 291
-geometry hash f760ff6b4a739c8a / f760ff6b4a739c8a
-river mesh hash e5a5b3f89219c838 / e5a5b3f89219c838
-submitted terrain hash aa1597453774eef9 / aa1597453774eef9
-deterministic: OK

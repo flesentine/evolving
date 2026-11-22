@@ -1,5 +1,0 @@
-legacy material hour 10.0: max RGB delta 41/255, total 3028151
-exact material hour 10.0: max RGB delta 1/255, total 1
-legacy material hour 22.0: max RGB delta 48/255, total 3883732
-exact material hour 22.0: max RGB delta 0/255, total 0
-PASS GPU water triangulation invariance, daylight and night; legacy failure reproduced

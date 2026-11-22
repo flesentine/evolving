@@ -1,8 +1,0 @@
-  scene build/update 5564.6 ms
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/before/seed3-bank-cut-10.png
-  year 2336 · Classical
-  population 3201 in 18 settlements
-  boxes 869 · roofs/trees 37
-  replay took 0.7 ms
-  largest: Valelton (704) at -0.1749, -0.1697
-  latest: year 2175 — An earthquake shakes Xanorholm

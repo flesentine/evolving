@@ -3,7 +3,7 @@
 Base: `e72eb508c096c2b45bfcb8d2d9991977e60c2687`. Work stays on
 `codex/river-patch6a-confluence-footprint`. No automation files are changed.
 The current acceptance report, comparisons and reproducible views are in
-[river-completion](review/river-completion/README.md). Earlier review directories
+[river-release evidence](review/river-release.md). Earlier review directories
 remain historical evidence, not current validation.
 
 ## One drainage authority
@@ -112,4 +112,4 @@ propagate real ocean constraints downstream. Shore validation accepts water-to-
 water edges only when the actual submitted ocean covers them within 1 mm XY/Y.
 
 The expanded seed-14 failure now passes, alongside seeds 1–17 and the saved world.
-See [current validation and diagnostic changes](review/river-completion/coastal-junction-fix/README.md).
+See the [archived validation and diagnostic changes](https://github.com/flesentine/evolving/blob/8d0c0b7907c7da23f9e83d5a705219100b7b6f4a/review/river-completion/coastal-junction-fix/README.md).

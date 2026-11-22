@@ -1,8 +1,0 @@
-  scene build/update 5282.9 ms
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/before/seed10-junction-10.png
-  year 2336 · Classical
-  population 4077 in 17 settlements
-  boxes 965 · roofs/trees 37
-  replay took 0.7 ms
-  largest: Elaton (589) at 0.2480, 0.1749
-  latest: year 2264 — Fire destroys much of Selton

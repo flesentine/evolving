@@ -1,8 +1,0 @@
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/spring-close-10/normal.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/spring-close-10/flat.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/spring-close-10/wire.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/spring-close-10/height.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/spring-close-10/depth.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/spring-close-10/terrain.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/spring-close-10/banks.png
-review view: new close-up of classified spring R9; world coordinates from canonical graph, seed 6393821808673518700, year 4594.0

@@ -1,1 +1,0 @@
-PASS rendered camera: initial shot/FOV preserved; pan and orbit at 4 bearings × 6 pitches; gradual return to manual pitch range; 8 m–4 km zoom; Auto reset

@@ -1,3 +1,0 @@
-routing fixtures: area conservation, cycle detection, complete-path thinning, source tie: PASS
-submitted spring tips: 6 sources, 0.30 m cap width: PASS
-submitted wet-run fixture: two 0.30 m ribbons plus duplicate face: PASS

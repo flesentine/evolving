@@ -1,6 +1,0 @@
-year 4567.0, seed 6393821808673518700, era Medieval
-settlements 30, buildings 292
-geometry hash ca31c73d42137bfb / ca31c73d42137bfb
-river mesh hash a7376cf20b2007c9 / a7376cf20b2007c9
-submitted terrain hash 5ee7c814e1172475 / 5ee7c814e1172475
-deterministic: OK

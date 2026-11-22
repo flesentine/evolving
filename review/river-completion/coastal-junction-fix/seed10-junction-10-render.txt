@@ -1,8 +1,0 @@
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed10-junction-10/normal.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed10-junction-10/flat.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed10-junction-10/wire.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed10-junction-10/height.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed10-junction-10/depth.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed10-junction-10/terrain.png
-wrote /Users/mcculloughc1/Documents/opencode/evolving/review/river-completion/work/nov20-acceptance/views/seed10-junction-10/banks.png
-review view: seed 10 geometry regression: projecting terminal corner: receiving-footprint containment; explicit fixed overhead view, seed 10, year 2336.0

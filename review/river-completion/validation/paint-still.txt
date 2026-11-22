@@ -1,8 +1,0 @@
-  scene build/update 10755.5 ms
-wrote /Users/mcculloughc1/Documents/opencode/evolving/build/river-paint-only.png
-  year 2336 · Classical
-  population 3571 in 20 settlements
-  boxes 854 · roofs/trees 33
-  replay took 1.0 ms
-  largest: Corewatch (491) at -0.1697, 0.1488
-  latest: year 2134 — Dunenby is founded

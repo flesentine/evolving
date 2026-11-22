@@ -1,1 +1,0 @@
-12.93 ms/frame at 6016x3384 (scene scale 0.52) -> 77.3 fps

@@ -1,1 +1,0 @@
-PASS native Timeline input: orbit, Shift-drag, Move mode, right drag, trackpad, Option-scroll, mouse wheel, WASD

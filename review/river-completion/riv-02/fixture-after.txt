@@ -1,5 +1,0 @@
-seed-1 junction footprint: former tongue, upper at (489.0, 316.0) m, expected wet, got wet: PASS
-seed-1 junction footprint: former tongue, middle at (495.0, 324.0) m, expected wet, got wet: PASS
-seed-1 junction footprint: former tongue, downstream at (501.0, 331.0) m, expected wet, got wet: PASS
-seed-1 junction footprint: preserved dry wedge, upper at (469.0, 282.0) m, expected dry, got dry: PASS
-seed-1 junction footprint: preserved dry wedge, lower at (473.0, 288.0) m, expected dry, got dry: PASS
