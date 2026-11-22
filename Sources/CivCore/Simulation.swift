@@ -1,7 +1,7 @@
 import Foundation
 import simd
 
-struct Settlement {
+struct Settlement: Equatable {
     var id: Int32
     var name: String
     var x: Float
@@ -18,7 +18,7 @@ struct Settlement {
     var isAlive: Bool { abandoned < 0 }
 }
 
-struct ChronicleEntry {
+struct ChronicleEntry: Equatable {
     enum Kind: UInt8 {
         case era, founding, plague, fire, war, drought, boom, quake, abandon
     }
@@ -101,12 +101,15 @@ struct Simulation {
     /// Replays the simulation forward to `target` (inclusive).
     mutating func advance(to target: Float) {
         guard target > year else { return }
-        let steps = Int((target - year).rounded(.down))
-        for _ in 0..<max(steps, 0) {
-            tick()
+        // Events happen at whole-year boundaries. Fractional playback
+        // advances the clock without discarding ticks or shifting their years.
+        let completedYear = year.rounded(.down)
+        let steps = Int(target.rounded(.down) - completedYear)
+        if steps > 0 {
+            year = completedYear
+            for _ in 0..<steps { tick() }
         }
-        // Land exactly on the requested fractional year.
-        year = max(year, target)
+        year = target
         era = Era.at(year)
     }
 

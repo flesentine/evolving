@@ -251,6 +251,7 @@ case "riverterrainfixtures":
 
 case "riverfixtures":
     if !RiverReviewView.fixtures() { exit(1) }
+    if !ReviewPlaybackCheck.run() { exit(1) }
     if !RiverMeshValidation.fixtures() { exit(1) }
     if !RiverContinuationRegression.run() { exit(1) }
 
