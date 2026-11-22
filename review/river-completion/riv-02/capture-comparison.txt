@@ -1,0 +1,8 @@
+central-junction-10: byte-identical to accepted reference
+central-junction-22: byte-identical to accepted reference
+hooked-source-10: byte-identical to accepted reference
+hooked-source-22: byte-identical to accepted reference
+seed14-coast-10: byte-identical to accepted reference
+seed14-coast-22: differs
+upper-junction-10: byte-identical to accepted reference
+upper-junction-22: byte-identical to accepted reference

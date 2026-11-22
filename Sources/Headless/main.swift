@@ -252,6 +252,7 @@ case "riverterrainfixtures":
 case "riverfixtures":
     if !RiverReviewView.fixtures() { exit(1) }
     if !RiverMeshValidation.fixtures() { exit(1) }
+    if !RiverContinuationRegression.run() { exit(1) }
 
 case "plan":
     let year = arguments.count >= 3 ? Float(arguments[2]) ?? 1200 : 1200
