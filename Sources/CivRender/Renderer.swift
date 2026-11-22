@@ -577,6 +577,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         gableBatch.update(geometry.gables, device: context.device)
         archBatch.update(geometry.arches, device: context.device)
         fieldBatch.update(geometry.fields, device: context.device)
+        updateTrees(for: simulation)
         smokeEmitters = geometry.smoke
         for entry in buildingBatches {
             entry.batch.update(geometry.buildings[entry.path] ?? [], device: context.device)
@@ -1749,10 +1750,23 @@ final class Renderer: NSObject, MTKViewDelegate {
         }
     }
 
-    func updateTrees(_ trees: CityBuilder.Trees) {
+    private func updateTrees(for simulation: Simulation) {
+        let trees = CityBuilder.trees(terrain: scene.terrain,
+                                     settlements: simulation.settlements,
+                                     seed: simulation.seed,
+                                     riverField: scene.riverField)
         // Conifers and broadleaves are separate meshes, so separate batches.
         treeBatch.update(trees.conifers, device: context.device)
         broadleafBatch.update(trees.broadleaves, device: context.device)
+    }
+
+    /// Read the trunk origins from the same instance buffers used for draws.
+    func renderedTreeOrigins() -> (conifers: [SIMD4<Float>], broadleaves: [SIMD4<Float>]) {
+        func origins(_ batch: InstanceBatch) -> [SIMD4<Float>] {
+            let instances = batch.buffer.contents().assumingMemoryBound(to: InstanceData.self)
+            return (0..<batch.count).map { instances[$0].model.columns.3 }
+        }
+        return (origins(treeBatch), origins(broadleafBatch))
     }
 
     private lazy var treeBatch: InstanceBatch = {

@@ -33,8 +33,6 @@ enum RiverReview {
         renderer.cameraOverride = Renderer.Camera(eye: SIMD3(record.eye[0], record.eye[1], record.eye[2]),
             target: SIMD3(record.target[0], record.target[1], record.target[2]), fov: record.fov)
         renderer.updateScene(simulation)
-        renderer.updateTrees(CityBuilder.trees(terrain: renderer.scene.terrain,
-            settlements: simulation.settlements, seed: record.seed, riverField: renderer.scene.riverField))
         for mode in allPasses ? ["normal", "flat", "wire", "height", "depth", "terrain", "banks"] : ["normal"] {
             renderer.riverReviewMode = mode == "normal" ? "" : mode
             let output = directory.appendingPathComponent(mode + ".png")
@@ -66,8 +64,6 @@ enum RiverReview {
             let renderer = try Renderer(context: MetalContext(), terrain: terrain,
                 colorPixelFormat: .bgra8Unorm_srgb, depthPixelFormat: .depth32Float)
             renderer.updateScene(simulation)
-            renderer.updateTrees(CityBuilder.trees(terrain: renderer.scene.terrain,
-                settlements: simulation.settlements, seed: seed, riverField: renderer.scene.riverField))
             let town = simulation.largestSettlement()
             let p = town.map { SIMD2($0.x, $0.z) } ?? .zero
             let y = renderer.scene.terrain.interpolatedHeight(x: p.x, z: p.y)

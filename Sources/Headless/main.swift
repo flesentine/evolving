@@ -511,10 +511,6 @@ case "sim":
         applyCameraMode(renderer)
         applyCameraOverride(renderer)
         renderer.updateScene(simulation)
-        renderer.updateTrees(CityBuilder.trees(terrain: renderer.scene.terrain,
-                                               settlements: simulation.settlements,
-                                               seed: seed,
-                                               riverField: renderer.scene.riverField))
 
         let sceneBuildMilliseconds = Date().timeIntervalSince(sceneStarted) * 1000
         let env = ProcessInfo.processInfo.environment
@@ -590,10 +586,6 @@ case "bench":
         applyCameraMode(renderer)
         applyCameraOverride(renderer)
         renderer.updateScene(simulation)
-        renderer.updateTrees(CityBuilder.trees(terrain: renderer.scene.terrain,
-                                               settlements: simulation.settlements,
-                                               seed: 1,
-                                               riverField: renderer.scene.riverField))
 
         print(String(format: "startup generation/simulation/scene %.1f ms (excluded from frame timing)", Date().timeIntervalSince(startup) * 1000))
         let scale = renderer.renderScale(width: width, height: height)

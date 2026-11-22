@@ -13,8 +13,7 @@ enum CameraCheck {
                                     colorPixelFormat: .bgra8Unorm_srgb, depthPixelFormat: .depth32Float)
         renderer.hourOverride = 10
         renderer.updateScene(simulation)
-        renderer.updateTrees(CityBuilder.trees(terrain: renderer.scene.terrain,
-            settlements: simulation.settlements, seed: simulation.seed, riverField: renderer.scene.riverField))
+        try checkTreePlacement(renderer: renderer, simulation: simulation)
         let metres = RiverNetwork.metresPerUnit
         let epsilon = 0.001 / metres // 1 mm camera-position roundoff tolerance
         let original = Renderer.Camera(eye: SIMD3(-0.15, 0.40, -0.05),
@@ -92,5 +91,25 @@ enum CameraCheck {
         renderer.endFreeCamera()
         precondition(renderer.cameraOverride == nil, "Auto must release the manual camera")
         print("PASS rendered camera: initial shot/FOV preserved; pan and orbit at 4 bearings × 6 pitches; gradual return to manual pitch range; 8 m–4 km zoom; Auto reset")
+    }
+
+    private static func checkTreePlacement(renderer: Renderer, simulation: Simulation) throws {
+        let field = renderer.scene.riverField
+        let expected = CityBuilder.trees(terrain: renderer.scene.terrain,
+            settlements: simulation.settlements, seed: simulation.seed, riverField: field)
+        let oldNative = CityBuilder.trees(terrain: simulation.terrain,
+            settlements: simulation.settlements, seed: simulation.seed, riverField: field)
+        let conifers = expected.conifers.map { $0.model.columns.3 }
+        let broadleaves = expected.broadleaves.map { $0.model.columns.3 }
+        let rendered = renderer.renderedTreeOrigins()
+        guard !conifers.isEmpty, !broadleaves.isEmpty,
+              rendered.conifers == conifers, rendered.broadleaves == broadleaves,
+              rendered.conifers != oldNative.conifers.map({ $0.model.columns.3 })
+                || rendered.broadleaves != oldNative.broadleaves.map({ $0.model.columns.3 }) else {
+            throw NSError(domain: "CameraCheck", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "tree instance buffers must match carved placement terrain and expose the old native mismatch"
+            ])
+        }
+        print("PASS rendered trees: \(conifers.count) conifers and \(broadleaves.count) broadleaves match the shared placement terrain; the old native path differs")
     }
 }
