@@ -453,7 +453,7 @@ struct RiverGraph {
         }
 
         let thinned = RiverRouting.pruneCoveredSources(reaches, area: finalArea)
-        reaches = prepareJunctions(mergeContinuations(thinned.reaches))
+        reaches = prepareJunctions(mergeContinuations(thinned.reaches, terrain: terrain, receivers: down))
         // Upstream-first reach order for the connected water profile.
         var pendingUp = [Int](repeating: 0, count: reaches.count)
         for i in reaches.indices {
@@ -1093,7 +1093,7 @@ struct RiverGraph {
                           incomingArea: flow[cells[max(cells.count - 2, 0)]])
     }
 
-    private static func resample(_ points: [SIMD2<Float>],
+    static func resample(_ points: [SIMD2<Float>],
                                  spacing: Float) -> [SIMD2<Float>] {
         guard points.count >= 2 else { return points }
         var cumulative: [Float] = [0]
