@@ -101,6 +101,12 @@ func checkNavigationInput() {
     print("PASS native Timeline input: orbit, Shift-drag, Move mode, right drag, trackpad, Option-scroll, mouse wheel, WASD")
 }
 
+struct BookmarkCheck {
+    enum Step: String { case save, restore }
+    let step: Step
+    let directory: URL
+}
+
 /// A standalone viewer with a year slider, so the whole arc can be scrubbed
 /// without going through Screen Saver settings.
 final class TimelineApp: NSObject, NSApplicationDelegate {
@@ -108,6 +114,13 @@ final class TimelineApp: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
     private var inputView: InputView!
     private var moveButton: NSButton!
+    private var liveButton: NSButton!
+    private let bookmarkCheck: BookmarkCheck?
+
+    init(bookmarkCheck: BookmarkCheck? = nil) {
+        self.bookmarkCheck = bookmarkCheck
+        super.init()
+    }
     private var saver: ScreenSaverView!
     private var slider: NSSlider!
     private var yearLabel: NSTextField!
@@ -178,6 +191,12 @@ final class TimelineApp: NSObject, NSApplicationDelegate {
         review.autoresizingMask = [.minXMargin, .minYMargin]
         review.toolTip = "Save this exact view for reproducible river inspection"
         content.addSubview(review)
+        let bookmarks = NSButton(title: "Bookmarks", target: self, action: #selector(showBookmarks(_:)))
+        bookmarks.bezelStyle = .rounded
+        bookmarks.frame = NSRect(x: size.width - 302, y: size.height - 42, width: 118, height: 30)
+        bookmarks.autoresizingMask = [.minXMargin, .minYMargin]
+        bookmarks.toolTip = "Save or revisit a favorite place in this world"
+        content.addSubview(bookmarks)
         buildControls(in: content, width: size.width)
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -192,7 +211,8 @@ final class TimelineApp: NSObject, NSApplicationDelegate {
         }
 
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self else { return event }
+            guard let self, event.window === self.window, self.window.attachedSheet == nil,
+                  event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return event }
             switch event.keyCode {
             case 123:
                 self.setYear(self.currentYear - (event.modifierFlags.contains(.shift) ? 100 : 10))
@@ -209,6 +229,9 @@ final class TimelineApp: NSObject, NSApplicationDelegate {
             default:
                 return event
             }
+        }
+        if let bookmarkCheck {
+            DispatchQueue.main.async { [weak self] in self?.runBookmarkCheck(bookmarkCheck) }
         }
     }
 
@@ -229,10 +252,11 @@ final class TimelineApp: NSObject, NSApplicationDelegate {
         playButton.frame = NSRect(x: 14, y: 16, width: 70, height: 30)
         bar.addSubview(playButton)
 
-        let live = NSButton(title: "Live", target: self, action: #selector(goLive))
-        live.bezelStyle = .rounded
-        live.frame = NSRect(x: 90, y: 16, width: 60, height: 30)
-        bar.addSubview(live)
+        liveButton = NSButton(title: "Live", target: self, action: #selector(goLive))
+        liveButton.bezelStyle = .rounded
+        liveButton.setButtonType(.pushOnPushOff)
+        liveButton.frame = NSRect(x: 90, y: 16, width: 60, height: 30)
+        bar.addSubview(liveButton)
 
         let auto = NSButton(title: "Auto", target: self, action: #selector(autoCamera))
         auto.bezelStyle = .rounded
@@ -299,6 +323,131 @@ final class TimelineApp: NSObject, NSApplicationDelegate {
         playButton.title = playing ? "Pause" : "Play"
     }
 
+    private func bookmarkStore() throws -> TimelineBookmarkStore {
+        if let bookmarkCheck { return TimelineBookmarkStore(directory: bookmarkCheck.directory) }
+        return try TimelineBookmarkStore.local()
+    }
+
+    private func capturedView() -> RiverReviewView? {
+        guard let data = saver.perform(Selector(("riverReviewViewData")))?.takeUnretainedValue() as? Data else {
+            return nil
+        }
+        return try? JSONDecoder().decode(RiverReviewView.self, from: data).validated()
+    }
+
+    @objc private func showBookmarks(_ button: NSButton) {
+        let menu = NSMenu()
+        let save = NSMenuItem(title: "Save Bookmark…", action: #selector(promptForBookmark), keyEquivalent: "")
+        save.target = self
+        menu.addItem(save)
+        do {
+            let seed = capturedView()?.seed
+            let bookmarks = try bookmarkStore().load().filter { $0.view.seed == seed }
+            if !bookmarks.isEmpty {
+                menu.addItem(.separator())
+                let remove = NSMenu()
+                for bookmark in bookmarks {
+                    let detail = bookmark.mode == .live ? "Live" : "Year \(Int(bookmark.view.year.rounded()))"
+                    let title = "\(bookmark.name) · \(detail)"
+                    let openItem = NSMenuItem(title: title, action: #selector(openBookmark(_:)), keyEquivalent: "")
+                    openItem.target = self
+                    openItem.representedObject = bookmark
+                    menu.addItem(openItem)
+
+                    let removeItem = NSMenuItem(title: title, action: #selector(confirmRemoveBookmark(_:)), keyEquivalent: "")
+                    removeItem.target = self
+                    removeItem.representedObject = bookmark
+                    remove.addItem(removeItem)
+                }
+                menu.addItem(.separator())
+                let removeItem = NSMenuItem(title: "Remove Bookmark…", action: nil, keyEquivalent: "")
+                removeItem.submenu = remove
+                menu.addItem(removeItem)
+            }
+        } catch {
+            bookmarkAlert("Bookmarks could not be read", error.localizedDescription)
+            return
+        }
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 2), in: button)
+    }
+
+    @objc private func promptForBookmark() {
+        guard let view = capturedView() else {
+            bookmarkAlert("This view is still loading", "Wait for the world to appear, then save the bookmark.")
+            return
+        }
+        let mode: TimelineBookmark.Mode = readLiveMode() ? .live : .historical
+        let alert = NSAlert()
+        alert.messageText = "Save Bookmark"
+        alert.informativeText = mode == .live
+            ? "This place will reopen in Live mode."
+            : "This place will reopen at the year shown."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        let name = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        name.placeholderString = "Name this place"
+        name.stringValue = mode == .live ? "Live View" : "Year \(Int(view.year.rounded()))"
+        alert.accessoryView = name
+        alert.window.initialFirstResponder = name
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn, let self else { return }
+            let bookmark = TimelineBookmark(name: name.stringValue, mode: mode, view: view)
+            do {
+                _ = try bookmark.validated()
+            } catch {
+                self.bookmarkAlert("The bookmark could not be saved", "Enter a name of up to 80 characters and try again.")
+                return
+            }
+            do {
+                try self.bookmarkStore().save(bookmark)
+            } catch {
+                self.bookmarkAlert("The bookmark could not be saved", error.localizedDescription)
+            }
+        }
+    }
+
+    @objc private func openBookmark(_ item: NSMenuItem) {
+        guard let bookmark = item.representedObject as? TimelineBookmark else { return }
+        if !restoreBookmark(bookmark) {
+            bookmarkAlert("This bookmark could not be opened", "Wait for its world to finish loading and try again.")
+        }
+    }
+
+    private func restoreBookmark(_ bookmark: TimelineBookmark) -> Bool {
+        guard let data = try? bookmark.encoded(),
+              let result = saver.perform(Selector(("restoreTimelineBookmark:")),
+                                         with: data as NSData)?.takeUnretainedValue() as? NSNumber,
+              result.boolValue else { return false }
+        playing = false
+        playButton.title = "Play"
+        syncTimeline()
+        window.makeFirstResponder(inputView)
+        return true
+    }
+
+    @objc private func confirmRemoveBookmark(_ item: NSMenuItem) {
+        guard let bookmark = item.representedObject as? TimelineBookmark else { return }
+        let alert = NSAlert()
+        alert.messageText = "Remove “\(bookmark.name)”?"
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Remove")
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertSecondButtonReturn, let self else { return }
+            do {
+                try self.bookmarkStore().remove(bookmark)
+            } catch {
+                self.bookmarkAlert("The bookmark could not be removed", error.localizedDescription)
+            }
+        }
+    }
+
+    private func bookmarkAlert(_ title: String, _ details: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = details
+        alert.beginSheetModal(for: window)
+    }
+
     @objc private func saveReviewView() {
         let captured = saver.perform(Selector(("riverReviewViewData")))?.takeUnretainedValue() as? Data
         let panel = NSSavePanel()
@@ -363,16 +512,25 @@ final class TimelineApp: NSObject, NSApplicationDelegate {
         playing = false
         playButton.title = "Play"
         _ = saver.perform(Selector(("clearTimelineOverride")))
-        if let value = readYear() {
-            currentYear = value
-            slider.doubleValue = Double(value)
-            updateLabels()
-        }
+        syncTimeline()
     }
 
     private func tick() {
-        guard playing else { return }
-        setYear(currentYear + 4 * playbackSpeed)
+        if playing {
+            setYear(currentYear + 4 * playbackSpeed)
+        } else if readLiveMode(), readYear() != currentYear {
+            syncTimeline()
+        }
+    }
+
+    private func syncTimeline() {
+        if let value = readYear() { currentYear = value }
+        slider.doubleValue = Double(currentYear)
+        updateLabels()
+    }
+
+    private func readLiveMode() -> Bool {
+        (saver.perform(Selector(("isTimelineLive")))?.takeUnretainedValue() as? NSNumber)?.boolValue ?? false
     }
 
     private func setYear(_ year: Float) {
@@ -392,10 +550,102 @@ final class TimelineApp: NSObject, NSApplicationDelegate {
 
     private func updateLabels() {
         let era = Era.at(currentYear)
-        yearLabel.stringValue = String(format: "Year %.0f · %@ · %.1fx",
-                                       currentYear, era.name, playbackSpeed)
+        let live = readLiveMode()
+        liveButton.state = live ? .on : .off
+        yearLabel.stringValue = String(format: "Year %.0f · %@ · %@",
+                                       currentYear, era.name, live ? "Live" : String(format: "%.1fx", playbackSpeed))
         if let index = Era.allCases.firstIndex(of: era) {
             eraPopup.selectItem(at: index)
+        }
+    }
+
+    /// Runs in the bundled app, including its actual saver view and persistence.
+    private func runBookmarkCheck(_ check: BookmarkCheck) {
+        func require(_ condition: Bool, _ message: String) {
+            if !condition {
+                FileHandle.standardError.write(Data("FAIL \(message)\n".utf8))
+                exit(1)
+            }
+        }
+
+        func view(where match: (RiverReviewView) -> Bool = { _ in true }) -> RiverReviewView {
+            let deadline = Date().addingTimeInterval(8)
+            while Date() < deadline {
+                RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.04))
+                if let frame = capturedView(), match(frame) { return frame }
+            }
+            FileHandle.standardError.write(Data("FAIL no matching native Timeline frame\n".utf8))
+            exit(1)
+        }
+
+        func sameCamera(_ a: RiverReviewView, _ b: RiverReviewView) -> Bool {
+            a.eye == b.eye && a.target == b.target && a.fov == b.fov
+        }
+
+        func screenshot(_ name: String) {
+            let capture = Process()
+            capture.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+            capture.arguments = ["-x", "-l", String(window.windowNumber),
+                                 check.directory.appendingPathComponent(name).path]
+            if (try? capture.run()) != nil { capture.waitUntilExit() }
+        }
+
+        do {
+            let store = try bookmarkStore()
+            let initial = view()
+            let historicalYear: Float = 4400.25
+            switch check.step {
+            case .save:
+                let existing = try store.load()
+                require(existing.isEmpty, "fixture directory already contains bookmarks")
+                require(readLiveMode(), "initial Timeline mode is Live")
+                try store.save(TimelineBookmark(name: "Clifftop Live", mode: .live, view: initial))
+                setYear(historicalYear)
+                let unpanned = view { $0.year == historicalYear }
+                pan(dx: 65, dy: -22)
+                zoom(4)
+                let historical = view { $0.year == historicalYear && !sameCamera($0, unpanned) }
+                require(!readLiveMode(), "scrubbing pauses the live clock")
+                try store.save(TimelineBookmark(name: "Market Bend", mode: .historical, view: historical))
+                screenshot("saved-historical.png")
+                print("PASS saved named historical and Live bookmarks for seed \(initial.seed)")
+            case .restore:
+                let bookmarks = try store.load()
+                guard bookmarks.count == 2,
+                      let historical = bookmarks.first(where: { $0.name == "Market Bend" }),
+                      let live = bookmarks.first(where: { $0.name == "Clifftop Live" }) else {
+                    require(false, "a separate launch must load both named bookmarks")
+                    return
+                }
+                let item = NSMenuItem()
+                item.representedObject = historical
+                openBookmark(item)
+                let restored = view { $0.year == historicalYear && sameCamera($0, historical.view) }
+                require(restored.seed == initial.seed && !readLiveMode(), "historical bookmark must pin year in this world")
+                try restored.write(to: check.directory.appendingPathComponent("restored-historical.json"))
+                screenshot("restored-historical.png")
+
+                pan(dx: 53, dy: 0)
+                _ = view { !sameCamera($0, restored) }
+                item.representedObject = live
+                openBookmark(item)
+                let resumed = view { sameCamera($0, live.view) && $0.year != historicalYear }
+                require(resumed.seed == initial.seed && resumed.year >= initial.year && readLiveMode(),
+                        "Live bookmark must follow the present world clock")
+                try resumed.write(to: check.directory.appendingPathComponent("restored-live.json"))
+                screenshot("restored-live.png")
+
+                var wrongWorld = historical.view
+                wrongWorld.seed ^= 1
+                require(!restoreBookmark(TimelineBookmark(name: "Another World", mode: .historical, view: wrongWorld)),
+                        "bookmark from another world must be rejected")
+                require(readLiveMode(), "rejecting a bookmark must preserve current mode")
+                print("PASS separate launch restored exact historical camera/year and exact Live camera/current clock")
+            }
+            NSApp.terminate(nil)
+        } catch {
+            FileHandle.standardError.write(Data("FAIL bookmark check: \(error)\n".utf8))
+            exit(1)
         }
     }
 
@@ -413,7 +663,18 @@ if CommandLine.arguments.contains("--check-navigation") {
     checkNavigationInput()
     exit(0)
 }
-let delegate = TimelineApp()
+let arguments = CommandLine.arguments
+let check: BookmarkCheck?
+if arguments.dropFirst().first == "--check-bookmarks" {
+    guard arguments.count == 4, let step = BookmarkCheck.Step(rawValue: arguments[2]) else {
+        print("usage: EvolvingTimeline --check-bookmarks <save|restore> <fixture-directory>")
+        exit(2)
+    }
+    check = BookmarkCheck(step: step, directory: URL(fileURLWithPath: arguments[3], isDirectory: true))
+} else {
+    check = nil
+}
+let delegate = TimelineApp(bookmarkCheck: check)
 app.delegate = delegate
 app.setActivationPolicy(.regular)
 app.run()
