@@ -59,6 +59,8 @@ final class WorldScene {
     /// Rebuilt whenever the road network changes; nil until then.
     private(set) var roadMesh: Mesh?
     private(set) var streetMesh: Mesh?
+    private(set) var fieldMesh: Mesh?
+    private var roadFieldMask: FieldSurface.Mask?
     private(set) var roadBridges: [RoadBridge.Crossing] = []
     private(set) var unbridgedRoadPoints: [SIMD2<Float>] = []
     private(set) var bridgeDrivePaths: [Int: RoadBridge.DrivePath] = [:]
@@ -677,12 +679,14 @@ final class WorldScene {
 
         guard vertices.count >= 3, indices.count >= 3 else {
             roadMesh = nil
+            roadFieldMask = nil
             roadBridges = []
             unbridgedRoadPoints = []
             bridgeDrivePaths = [:]
             return
         }
         roadMesh = try Mesh(device: device, vertices: vertices, indices: indices)
+        roadFieldMask = nil
         roadBridges = crossings
         unbridgedRoadPoints = unbridged
         bridgeDrivePaths = drivePaths
@@ -782,6 +786,18 @@ final class WorldScene {
             return
         }
         streetMesh = try Mesh(device: device, vertices: vertices, indices: indices)
+    }
+
+    func rebuildFields(_ plots: [InstanceData]) throws {
+        // A previous field mesh might cross a road rebuilt this frame.
+        fieldMesh = nil
+        guard !plots.isEmpty else { return }
+        let roads = roadFieldMask ?? FieldSurface.Mask(mesh: roadMesh)
+        roadFieldMask = roads
+        let fields = FieldSurface.build(plots, scene: self, roads: roads,
+                                        streets: FieldSurface.Mask(mesh: streetMesh))
+        fieldMesh = fields.indices.isEmpty ? nil : try Mesh(device: device, vertices: fields.vertices,
+                                                           indices: fields.indices)
     }
 
     /// Dashed centre line for modern roads.

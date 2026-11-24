@@ -114,6 +114,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     private let identityBatch: InstanceBatch
     private var roadIdentityBuffer: MTLBuffer?
     private var streetIdentityBuffer: MTLBuffer?
+    private var fieldIdentityBuffer: MTLBuffer?
     private var railIdentityBuffer: MTLBuffer?
     private var riverIdentityBuffer: MTLBuffer?
     private var bankIdentityBuffer: MTLBuffer?
@@ -458,6 +459,7 @@ final class Renderer: NSObject, MTKViewDelegate {
                              device: device)
         roadIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 11)
         streetIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 12)
+        fieldIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 5)
         railIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 13)
         riverIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 18)
         bankIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 8)
@@ -603,7 +605,6 @@ final class Renderer: NSObject, MTKViewDelegate {
         coneBatch.update(geometry.cones, device: context.device)
         gableBatch.update(geometry.gables, device: context.device)
         archBatch.update(geometry.arches, device: context.device)
-        fieldBatch.update(geometry.fields, device: context.device)
         updateTrees(for: simulation)
         smokeEmitters = geometry.smoke
         for entry in buildingBatches {
@@ -696,6 +697,11 @@ final class Renderer: NSObject, MTKViewDelegate {
                                      surface: RoadSurface.forStreet(simulation.era))
         } catch {
             NSLog("Evolving: street mesh failed — \(error)")
+        }
+        do {
+            try scene.rebuildFields(geometry.fields)
+        } catch {
+            NSLog("Evolving: field mesh failed — \(error)")
         }
     }
 
@@ -1871,11 +1877,6 @@ final class Renderer: NSObject, MTKViewDelegate {
         InstanceBatch(mesh: scene.cartMesh, device: context.device, capacity: 128)
     }()
 
-    /// Farmland plots; drawn before the buildings so they sit on the ground.
-    private lazy var fieldBatch: InstanceBatch = {
-        InstanceBatch(mesh: scene.cubeMesh, device: context.device, capacity: 512)
-    }()
-
     /// Pitched roofs for the pre-industrial eras.
     private lazy var archBatch: InstanceBatch = {
         InstanceBatch(mesh: scene.archMesh, device: context.device, capacity: 128)
@@ -2721,6 +2722,10 @@ final class Renderer: NSObject, MTKViewDelegate {
         }
 
         if riverView.isEmpty {
+        if let fields = scene.fieldMesh, let buffer = fieldIdentityBuffer {
+            encoder.setVertexBuffer(buffer, offset: 0, index: 2)
+            draw(fields, with: encoder, instances: 1)
+        }
         // Roads sit just above the terrain and below the buildings.
         if let streets = scene.streetMesh {
             if let buffer = streetIdentityBuffer {
@@ -2769,7 +2774,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             draw(townSignBatch.mesh, with: encoder, instances: townSignBatch.count)
         }
 
-        for batch in [fieldBatch, boxBatch, gableBatch, archBatch, roadPropBatch, roadPropGableBatch, catEyeBatch, crestBatch, emblemBatch, trafficLightBatch, treeBatch, broadleafBatch, coneBatch, lampBatch, carBatch, cartBatch, boatHullBatch, boatSailBatch, trainBatch, birdBatch, personBatch, personHeadBatch, personHeadBrimBatch, personLegBatch, personArmBatch, carryBatch, animalBatch] where batch.count > 0 {
+        for batch in [boxBatch, gableBatch, archBatch, roadPropBatch, roadPropGableBatch, catEyeBatch, crestBatch, emblemBatch, trafficLightBatch, treeBatch, broadleafBatch, coneBatch, lampBatch, carBatch, cartBatch, boatHullBatch, boatSailBatch, trainBatch, birdBatch, personBatch, personHeadBatch, personHeadBrimBatch, personLegBatch, personArmBatch, carryBatch, animalBatch] where batch.count > 0 {
             encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
             draw(batch.mesh, with: encoder, instances: batch.count)
         }

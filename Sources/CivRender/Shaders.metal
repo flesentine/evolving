@@ -640,15 +640,18 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
         albedo *= 1.0 - 0.10 * smoothstep(0.85, 1.0, course) * courseAA * detailFade;
         albedo *= 1.0 - 0.05 * smoothstep(0.90, 1.0, brick) * brickAA * detailFade;
     } else if (in.material > 4.5 && in.material < 5.5) {
-        // Ploughed crops: fine furrows so fields read as worked land.
-        float furrowCoord = (in.world.x + in.world.z * 0.35) * 520.0;
+        // The field mesh supplies local coordinates in metres. Rows run
+        // across the fall line on sloping parcels.
+        float furrowCoord = in.uv.x * 0.68;
         float furrow = fract(furrowCoord);
         float furrowAA = saturate(1.0 - fwidth(furrowCoord) * 1.8);
         albedo *= 1.0 - 0.16 * smoothstep(0.42, 1.0, furrow) * furrowAA * detailFade;
-        float crossCoord = (in.world.z - in.world.x * 0.35) * 260.0;
+        float crossCoord = in.uv.y * 0.24;
         float cross = fract(crossCoord);
         float crossAA = saturate(1.0 - fwidth(crossCoord) * 1.8);
         albedo *= 1.0 - 0.05 * smoothstep(0.60, 1.0, cross) * crossAA * detailFade;
+        float cropCover = valueNoise(in.uv * 0.21);
+        albedo *= 0.86 + 0.22 * cropCover;
     } else if (in.material > 7.5 && in.material < 8.5) {
         // Ground cover: broad mottling plus fine grain, so hillsides read as
         // land rather than a flat wash of colour at any camera distance.
