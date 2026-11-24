@@ -704,6 +704,11 @@ final class EvolvingSaver: ScreenSaverView {
         return try? record.encoded() as NSData
     }
 
+    @objc func timelineBookmarkViewData() -> NSData? {
+        guard let record = renderer?.lastReviewView else { return nil }
+        return try? record.encoded(maximumYear: .greatestFiniteMagnitude) as NSData
+    }
+
     @objc func beginFreeCamera() {
         renderer?.beginFreeCamera()
     }

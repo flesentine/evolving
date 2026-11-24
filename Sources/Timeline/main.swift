@@ -329,10 +329,10 @@ final class TimelineApp: NSObject, NSApplicationDelegate {
     }
 
     private func capturedView() -> RiverReviewView? {
-        guard let data = saver.perform(Selector(("riverReviewViewData")))?.takeUnretainedValue() as? Data else {
+        guard let data = saver.perform(Selector(("timelineBookmarkViewData")))?.takeUnretainedValue() as? Data else {
             return nil
         }
-        return try? JSONDecoder().decode(RiverReviewView.self, from: data).validated()
+        return try? JSONDecoder().decode(RiverReviewView.self, from: data).validated(maximumYear: .greatestFiniteMagnitude)
     }
 
     @objc private func showBookmarks(_ button: NSButton) {
@@ -632,7 +632,8 @@ final class TimelineApp: NSObject, NSApplicationDelegate {
                 let resumed = view { sameCamera($0, live.view) && $0.year != historicalYear }
                 require(resumed.seed == initial.seed && resumed.year >= initial.year && readLiveMode(),
                         "Live bookmark must follow the present world clock")
-                try resumed.write(to: check.directory.appendingPathComponent("restored-live.json"))
+                try resumed.encoded(maximumYear: .greatestFiniteMagnitude)
+                    .write(to: check.directory.appendingPathComponent("restored-live.json"), options: .atomic)
                 screenshot("restored-live.png")
 
                 var wrongWorld = historical.view

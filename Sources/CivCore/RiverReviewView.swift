@@ -18,10 +18,10 @@ struct RiverReviewView: Codable, Equatable {
     var height: Int
     var provenance: String = "captured displayed frame"
 
-    func validated() throws -> RiverReviewView {
+    func validated(maximumYear: Float = 12000) throws -> RiverReviewView {
         let values = [year, hour, season, precipitation, animationTime, fov] + eye + target
         guard schemaVersion == 1, eye.count == 3, target.count == 3,
-              values.allSatisfy({ $0.isFinite }), eye != target, year >= 0, year <= 12000,
+              values.allSatisfy({ $0.isFinite }), eye != target, year >= 0, year <= maximumYear,
               hour >= 0, hour < 24, season >= 0, season <= 1,
               precipitation >= 0, precipitation <= 1, animationTime >= 0,
               fov > 1, fov < 170, width >= 64, height >= 64, width <= 8192, height <= 8192 else {
@@ -30,8 +30,8 @@ struct RiverReviewView: Codable, Equatable {
         }
         return self
     }
-    func encoded() throws -> Data {
-        _ = try validated()
+    func encoded(maximumYear: Float = 12000) throws -> Data {
+        _ = try validated(maximumYear: maximumYear)
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return try encoder.encode(self)
     }

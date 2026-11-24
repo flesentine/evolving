@@ -25,7 +25,9 @@ struct TimelineBookmark: Codable, Equatable {
               name.count <= 80, name.rangeOfCharacter(from: .newlines) == nil else {
             throw CocoaError(.fileReadCorruptFile)
         }
-        _ = try view.validated()
+        // Live worlds can continue well beyond the historical slider.
+        // The saved Live year is descriptive and never drives a replay.
+        _ = try view.validated(maximumYear: mode == .live ? .greatestFiniteMagnitude : 12000)
         // A camera must have a horizontal viewing direction for lookAt's up
         // vector. Normal Timeline views always include a horizontal offset.
         let dx = view.eye[0] - view.target[0]
