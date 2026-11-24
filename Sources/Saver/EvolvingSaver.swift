@@ -667,11 +667,46 @@ final class EvolvingSaver: ScreenSaverView {
         timelineYearOverride = nil
     }
 
+    @objc func isTimelineLive() -> NSNumber {
+        NSNumber(value: timelineYearOverride == nil)
+    }
+
+    /// Restore a named camera in the existing world. A historical bookmark
+    /// uses its exact frame year; a Live bookmark resolves the current year.
+    @objc func restoreTimelineBookmark(_ data: NSData) -> NSNumber {
+        guard let config, let renderer, var sim = simulation,
+              let bookmark = try? JSONDecoder().decode(TimelineBookmark.self, from: data as Data).validated(),
+              bookmark.view.seed == config.seed else { return NSNumber(value: false) }
+
+        let view = bookmark.view
+        let year = bookmark.mode == .live ? config.simYear(at: Date()) : view.year
+        timelineYearOverride = bookmark.mode == .historical ? year : nil
+        if year < sim.year {
+            sim = Simulation(seed: config.seed, terrain: sim.terrain)
+        }
+        sim.advance(to: year)
+        simulation = sim
+        lastSceneYear = sim.year
+        lastSceneEra = sim.era
+        renderer.restoreTimelineCamera(Renderer.Camera(
+            eye: SIMD3(view.eye[0], view.eye[1], view.eye[2]),
+            target: SIMD3(view.target[0], view.target[1], view.target[2]), fov: view.fov))
+        renderer.updateScene(sim, refreshRoads: true)
+        updateHUD(force: true, now: CACurrentMediaTime())
+        drawIfDue(force: true)
+        return NSNumber(value: true)
+    }
+
     // MARK: - Free camera (Timeline app)
 
     @objc func riverReviewViewData() -> NSData? {
         guard let record = renderer?.lastReviewView else { return nil }
         return try? record.encoded() as NSData
+    }
+
+    @objc func timelineBookmarkViewData() -> NSData? {
+        guard let record = renderer?.lastReviewView else { return nil }
+        return try? record.encoded(maximumYear: .greatestFiniteMagnitude) as NSData
     }
 
     @objc func beginFreeCamera() {
@@ -709,7 +744,7 @@ final class EvolvingSaver: ScreenSaverView {
     /// Rebuilds the deterministic world at an earlier year.
     private func rebuildSimulation(to year: Float) {
         guard let config, let renderer else { return }
-        let terrain = renderer.scene.terrain
+        guard let terrain = simulation?.terrain else { return }
         var sim = Simulation(seed: config.seed, terrain: terrain)
         sim.advance(to: max(year, 0))
         simulation = sim

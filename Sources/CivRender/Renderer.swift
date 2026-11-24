@@ -253,6 +253,11 @@ final class Renderer: NSObject, MTKViewDelegate {
         applyFreeCamera()
     }
 
+    func restoreTimelineCamera(_ camera: Camera) {
+        freeOrbit = nil
+        cameraOverride = camera
+    }
+
     func endFreeCamera() {
         freeOrbit = nil
         cameraOverride = nil
@@ -593,7 +598,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     // MARK: - Scene updates
 
     /// Rebuilds every derived mesh from the simulation. Called once per sim year.
-    func updateScene(_ simulation: Simulation) {
+    func updateScene(_ simulation: Simulation, refreshRoads: Bool = false) {
         reviewSeed = simulation.seed; reviewYear = simulation.year
         livingSettlements = simulation.settlements.filter { $0.isAlive }
         let geometry = CityBuilder.build(settlements: simulation.settlements,
@@ -649,7 +654,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         // Roads only change when a settlement appears or the era (and with it
         // the road surface) changes, so the A* pass is not run every frame.
         let alive = simulation.settlements.reduce(0) { $1.isAlive ? $0 + 1 : $0 }
-        if alive != lastRoadSettlementCount || simulation.era != lastRoadEra {
+        if refreshRoads || alive != lastRoadSettlementCount || simulation.era != lastRoadEra {
             lastRoadSettlementCount = alive
             lastRoadEra = simulation.era
             let segments = RoadBuilder.segments(for: simulation, terrain: scene.terrain)
