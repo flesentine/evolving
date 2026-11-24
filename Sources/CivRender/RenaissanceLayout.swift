@@ -19,7 +19,8 @@ enum RenaissanceLayout: SettlementLayout {
         var rng = SplitMix64(seed: seed
                              ^ (UInt64(bitPattern: Int64(s.id)) &* 0x9E37_79B9_7F4A_7C15)
                              ^ 0x2E17_A155)
-        let axis = rng.nextFloat(in: 0...(Float.pi / 2))
+        let axis = HistoricQuarter.streetAxis(for: s, seed: seed)
+            ?? rng.nextFloat(in: 0...(Float.pi / 2))
         let dir = SIMD2<Float>(cos(axis), sin(axis))
         let perp = SIMD2<Float>(-sin(axis), cos(axis))
 

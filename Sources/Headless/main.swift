@@ -39,6 +39,7 @@ func usage() -> Never {
       civheadless bridgefixtures
       civheadless farmcheck <directory> <seed> <year>
       civheadless farmfixtures
+      civheadless townhistorycheck <seed> <town-id>
       civheadless bench [year] [width] [height] [frames]
       civheadless resources [seed]
       civheadless determinism [year] [seed]
@@ -100,6 +101,11 @@ let arguments = CommandLine.arguments
 guard arguments.count >= 2 else { usage() }
 
 switch arguments[1] {
+
+case "townhistorycheck":
+    guard arguments.count == 4, let seed = UInt64(arguments[2]),
+          let townID = Int32(arguments[3]) else { usage() }
+    TownHistoryCheck.run(seed: seed, townID: townID)
 
 case "info":
     print("Evolving headless tool")
