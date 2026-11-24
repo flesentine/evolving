@@ -28,11 +28,23 @@ func usage() -> Never {
       civheadless sheet <out.png>
       civheadless map <out.png> [seed]
       civheadless sim <out.png> [year] [hour] [seed] [cameraTime]
+      civheadless rivermaterialcheck <directory>
+      civheadless riverreview <view.json> <directory> [all]
+      civheadless cameracheck <directory>
       civheadless bench [year] [width] [height] [frames]
       civheadless resources [seed]
       civheadless determinism [year] [seed]
       civheadless plan [year] [seed]
       civheadless river [seed] [year]
+      civheadless riverfixtures
+      civheadless riverroutingfixtures
+      civheadless rivertrace <json> [seed]
+      civheadless riverterrainfixtures
+      civheadless riverdebug <directory> [seed]
+      civheadless riverreview <view.json> <directory> [all]
+      civheadless riverreviewmatrix <directory>
+      civheadless riverlakefixture <directory>
+      civheadless rivermaterialcheck <directory>
       civheadless info
     """)
     exit(2)
@@ -102,20 +114,24 @@ case "river":
     print("seed \(seed), year \(year)")
     print(network.diagnostics.summary)
     print("-- channel --")
-    var channel = RiverChannel.diagnostics(terrain, network: network.reaches)
+    let field = RiverChannel.Field(terrain: terrain, network: network.reaches)
+    var channel = RiverChannel.diagnostics(terrain, network: network.reaches, suppliedField: field)
 
     // Check the objects the renderer will place against the same water
     // polygons it draws. Trees and buildings must stand clear of the channel.
     var simulation = Simulation(seed: seed, terrain: terrain)
     simulation.advance(to: year)
-    let field = RiverChannel.Field(terrain: terrain, network: network.reaches)
+    // Match WorldScene's actual placement heightfield, not original terrain
+    // that can leave diagnostic houses above the displayed carved surface.
+    let placementTerrain = RiverChannel.supportedTerrain(RiverChannel.carvedTerrain(terrain,field:field),
+        field:field,radius:RiverChannel.terrainSupportRadius(terrain,detail:2))
     let geometry = CityBuilder.build(settlements: simulation.settlements,
                                      era: simulation.era,
                                      year: simulation.year,
-                                     terrain: terrain,
+                                     terrain: placementTerrain,
                                      seed: seed,
                                      riverField: field)
-    let trees = CityBuilder.trees(terrain: terrain,
+    let trees = CityBuilder.trees(terrain: placementTerrain,
                                   settlements: simulation.settlements,
                                   seed: seed,
                                   riverField: field)
@@ -162,7 +178,7 @@ case "river":
                                                 z: sample.position.y)
         print(String(format: "sample %+.4f,%+.4f ground %.5f water %.5f width %.1f m",
                      sample.position.x, sample.position.y, ground,
-                     ground + RiverChannel.waterLift,
+                     field.waterLevel(at: sample.position) ?? RiverGraph.waterLevel(sample),
                      RiverChannel.halfWidth(sample) * 2
                         * RiverChannel.metresPerUnit))
     }
@@ -181,9 +197,63 @@ case "river":
     for p in crossings.prefix(6) {
         print(String(format: "crossing %+.4f, %+.4f", p.x, p.y))
     }
-    if !network.diagnostics.passes || !channel.passes {
+    let placementFailures = RiverPlacement.violations(geometry,field:field)
+    print("submitted static placement footprint violations \(placementFailures): \(placementFailures == 0 ? "PASS" : "FAIL")")
+    let meshResult = RiverMeshValidation.run(terrain, network: network.reaches, field: field)
+    print(meshResult.summary)
+    let endpointsPass = RiverEndpointValidation.run(terrain, network: network.reaches, field: field)
+    if !network.diagnostics.passes || !channel.passes || !meshResult.passes || !endpointsPass || placementFailures > 0 {
         exit(1)
     }
+
+case "riverdebug":
+    guard arguments.count >= 3 else { usage() }
+    let seed = arguments.count >= 4 ? UInt64(arguments[3]) ?? 1 : 1
+    let terrain = WorldGen.generate(seed: seed)
+    let network = RiverNetwork.build(terrain).reaches
+    let field = RiverChannel.Field(terrain: terrain, network: network)
+    do {
+        try RiverDebugImage.write(terrain: terrain, network: network, field: field,
+                                  directory: URL(fileURLWithPath: arguments[2]))
+    } catch { fail("riverdebug failed — \(error)") }
+
+case "riverroutingfixtures":
+    if !RiverRoutingFixtures.run() { exit(1) }
+
+case "rivertrace":
+    guard arguments.count >= 3 else { usage() }
+    let seed = arguments.count >= 4 ? UInt64(arguments[3]) ?? 1 : 1
+    let terrain = WorldGen.generate(seed: seed)
+    let result = RiverNetwork.build(terrain)
+    let paths: [[String: Any]] = result.reaches.map { reach in
+        ["id": reach.id, "upstream": reach.upstream, "downstream": reach.downstream ?? -1,
+         "source": reach.isSource, "mouth": reach.isMouth,
+         "firstCell": reach.firstCell, "lastCell": reach.lastCell,
+         "incomingAreaCells": reach.incomingArea,
+         "sourceWidthFactors": reach.samples.map { $0.sourceWidthFactor },
+         "drawnRows": reach.samples.map { sample in
+             let direction = sample.junctionTangent ?? sample.tangent
+             return [sample.position.x,sample.position.y,RiverGraph.channelHalfWidth(sample),direction.x,direction.y,RiverGraph.waterLevel(sample)]
+         },
+         "samples": reach.samples.map { sample in
+             [sample.position.x, sample.position.y, sample.bed, sample.width,
+              sample.channelWidth, sample.waterOverride]
+         }]
+    }
+    do {
+        let data = try JSONSerialization.data(withJSONObject: paths, options: [.sortedKeys])
+        try data.write(to: URL(fileURLWithPath: arguments[2]))
+        print(result.diagnostics.summary)
+    } catch { fail("rivertrace failed — \(error)") }
+
+case "riverterrainfixtures":
+    if !RiverTerrainFixtures.run() { exit(1) }
+
+case "riverfixtures":
+    if !RiverReviewView.fixtures() { exit(1) }
+    if !ReviewPlaybackCheck.run() { exit(1) }
+    if !RiverMeshValidation.fixtures() { exit(1) }
+    if !RiverContinuationRegression.run() { exit(1) }
 
 case "plan":
     let year = arguments.count >= 3 ? Float(arguments[2]) ?? 1200 : 1200
@@ -286,16 +356,18 @@ case "determinism":
 
     let network = RiverNetwork.build(terrain).reaches
     let field = RiverChannel.Field(terrain: terrain, network: network)
+    let placementTerrain = RiverChannel.carvedTerrain(terrain, field: field,
+                                                      supportRadius: RiverChannel.terrainSupportRadius(terrain))
     let a = CityBuilder.build(settlements: first.settlements,
                               era: first.era,
                               year: first.year,
-                              terrain: terrain,
+                              terrain: placementTerrain,
                               seed: seed,
                               riverField: field)
     let b = CityBuilder.build(settlements: second.settlements,
                               era: second.era,
                               year: second.year,
-                              terrain: terrain,
+                              terrain: placementTerrain,
                               seed: seed,
                               riverField: field)
     let ha = hash(a), hb = hash(b)
@@ -305,6 +377,36 @@ case "determinism":
     if ha != hb {
         fail("determinism failed — geometry differs between identical runs")
     }
+    func surfaceHash(_ mesh: RiverSurface.Geometry) -> UInt64 {
+        var hash: UInt64 = 0xCBF2_9CE4_8422_2325
+        func mix(_ bits: UInt32) {
+            hash = (hash ^ UInt64(bits)) &* 0x0000_0100_0000_01B3
+        }
+        for vertex in mesh.vertices {
+            for value in [vertex.position.x, vertex.position.y, vertex.position.z,
+                          vertex.normal.x, vertex.normal.y, vertex.normal.z,
+                          vertex.color.x, vertex.color.y, vertex.color.z, vertex.color.w,
+                          vertex.uv.x, vertex.uv.y] { mix(value.bitPattern) }
+        }
+        for index in mesh.indices { mix(index) }
+        return hash
+    }
+    let riverA = surfaceHash(field.mesh)
+    let riverB = surfaceHash(RiverSurface.build(terrain, network: RiverNetwork.build(terrain).reaches))
+    print(String(format: "river mesh hash %016llx / %016llx", riverA, riverB))
+    if riverA != riverB { fail("determinism failed — river mesh differs") }
+    let fieldB = RiverChannel.Field(terrain: terrain, network: RiverNetwork.build(terrain).reaches)
+    let carvedA = RiverChannel.carvedTerrain(terrain, field: field)
+    let carvedB = RiverChannel.carvedTerrain(terrain, field: fieldB)
+    let supportedA = RiverChannel.supportedTerrain(carvedA, field: field, radius: RiverChannel.terrainSupportRadius(terrain))
+    let supportedB = RiverChannel.supportedTerrain(carvedB, field: fieldB, radius: RiverChannel.terrainSupportRadius(terrain))
+    let terrainA = WorldScene.terrainVertices(carvedA, detail: 2, riverField: field, coarseSupport: supportedA)
+    let terrainB = WorldScene.terrainVertices(carvedB, detail: 2, riverField: fieldB, coarseSupport: supportedB)
+    let indices = WorldScene.terrainIndices(terrain, detail: 2)
+    let terrainHashA = surfaceHash(RiverSurface.Geometry(vertices: terrainA, indices: indices, junctions: [], ribbonWidths: []))
+    let terrainHashB = surfaceHash(RiverSurface.Geometry(vertices: terrainB, indices: indices, junctions: [], ribbonWidths: []))
+    print(String(format: "submitted terrain hash %016llx / %016llx", terrainHashA, terrainHashB))
+    if terrainHashA != terrainHashB { fail("determinism failed — submitted terrain differs") }
     print("deterministic: OK")
 
 case "resources":
@@ -398,6 +500,7 @@ case "sim":
         simulation.advance(to: simYear)
         let elapsed = Date().timeIntervalSince(started)
 
+        let sceneStarted = Date()
         let renderer = try Renderer(context: context,
                                     terrain: terrain,
                                     colorPixelFormat: .bgra8Unorm_srgb,
@@ -408,17 +511,15 @@ case "sim":
         applyCameraMode(renderer)
         applyCameraOverride(renderer)
         renderer.updateScene(simulation)
-        renderer.updateTrees(CityBuilder.trees(terrain: renderer.scene.terrain,
-                                               settlements: simulation.settlements,
-                                               seed: seed,
-                                               riverField: renderer.scene.riverField))
 
+        let sceneBuildMilliseconds = Date().timeIntervalSince(sceneStarted) * 1000
         let env = ProcessInfo.processInfo.environment
         let width = Int(env["EVOLVING_WIDTH"] ?? "") ?? 1600
         let height = Int(env["EVOLVING_HEIGHT"] ?? "") ?? 1000
         let url = try Snapshot.write(renderer: renderer,
                                      width: width, height: height, time: seconds, to: out)
 
+        print(String(format: "  scene build/update %.1f ms", sceneBuildMilliseconds))
         print("wrote \(url.path)")
         print("  year \(Int(simulation.year)) · \(simulation.era.name)")
         print("  population \(Int(simulation.totalPopulation)) in \(simulation.settlements.count) settlements")
@@ -435,11 +536,40 @@ case "sim":
         fail("sim failed — \(error)")
     }
 
+case "riverlakefixture":
+    guard arguments.count >= 3 else { usage() }
+    do { try RiverReview.lakeFixture(URL(fileURLWithPath: arguments[2])) }
+    catch { fail("river lake fixture failed — \(error)") }
+
+case "riverreviewmatrix":
+    guard arguments.count >= 3 else { usage() }
+    do { try RiverReview.matrix(URL(fileURLWithPath: arguments[2])) }
+    catch { fail("river review matrix failed — \(error)") }
+
+case "rivermaterialcheck":
+    guard arguments.count >= 3 else { usage() }
+    do { try RiverMaterialCheck.run(URL(fileURLWithPath: arguments[2])) }
+    catch { fail("rivermaterialcheck failed — \(error)") }
+
+case "riverreview":
+    guard arguments.count >= 4 else { usage() }
+    do {
+        let record = try RiverReviewView.read(URL(fileURLWithPath: arguments[2]))
+        try RiverReview.replay(record, directory: URL(fileURLWithPath: arguments[3]),
+                               allPasses: arguments.count >= 5 && arguments[4] == "all", includeIDs: !arguments.contains("--no-ids"))
+    } catch { fail("riverreview failed — \(error)") }
+
+case "cameracheck":
+    guard arguments.count >= 3 else { usage() }
+    do { try CameraCheck.run(directory: URL(fileURLWithPath: arguments[2])) }
+    catch { fail("cameracheck failed — \(error)") }
+
 case "bench":
     let simYear = arguments.count >= 3 ? Float(arguments[2]) ?? 3000 : 3000
     let width = arguments.count >= 4 ? Int(arguments[3]) ?? 6016 : 6016
     let height = arguments.count >= 5 ? Int(arguments[4]) ?? 3384 : 3384
     let frames = arguments.count >= 6 ? Int(arguments[5]) ?? 6 : 6
+    let startup = Date()
 
     do {
         let context = try MetalContext()
@@ -456,11 +586,8 @@ case "bench":
         applyCameraMode(renderer)
         applyCameraOverride(renderer)
         renderer.updateScene(simulation)
-        renderer.updateTrees(CityBuilder.trees(terrain: renderer.scene.terrain,
-                                               settlements: simulation.settlements,
-                                               seed: 1,
-                                               riverField: renderer.scene.riverField))
 
+        print(String(format: "startup generation/simulation/scene %.1f ms (excluded from frame timing)", Date().timeIntervalSince(startup) * 1000))
         let scale = renderer.renderScale(width: width, height: height)
         let ms = try Snapshot.measure(renderer: renderer,
                                       width: width, height: height,
@@ -548,6 +675,12 @@ case "checkbundle":
     if frames <= 0 {
         fail("the saver view did not present any frames")
     }
+    guard view.responds(to: Selector(("riverReviewViewData"))),
+          let data = view.perform(Selector(("riverReviewViewData")))?.takeUnretainedValue() as? Data,
+          let record = try? JSONDecoder().decode(RiverReviewView.self, from: data).validated() else {
+        fail("the saver did not export a valid displayed review view")
+    }
+    print("native displayed review record: seed \(record.seed), year \(record.year), \(record.width)x\(record.height): OK")
     print("OK")
 
 case "hostshot":

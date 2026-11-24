@@ -235,7 +235,10 @@ open "$HOME/Applications/Evolving Timeline.app"
 - the era menu jumps to any age,
 - **Live** returns to wall-clock time,
 - left/right arrows step 10 years (Shift = 100), Space toggles play, Esc quits,
-- **drag** to orbit the camera, **scroll** or pinch to zoom, **right-drag** to pan,
+- **drag** to orbit; **Shift-drag**, right/middle-drag or **two-finger scroll** to move,
+- click **Move** (or press **M**) to make normal dragging move the view,
+- **WASD** moves the camera; hold Shift to move faster,
+- **pinch**, mouse wheel or **Option-scroll** zooms; zoom-out covers the whole island,
 - double-click the view or press **Auto** to return to the automatic camera.
 
 Moving forward is incremental; moving backward replays the deterministic world from the seed,

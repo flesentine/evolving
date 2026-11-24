@@ -195,10 +195,6 @@ final class EvolvingSaver: ScreenSaverView {
             NSLog("Evolving: replayed \(Int(sim.year)) years in \(Int((CACurrentMediaTime() - replayStart) * 1000)) ms")
 
             renderer.updateScene(sim)
-            renderer.updateTrees(CityBuilder.trees(terrain: terrain,
-                                                   settlements: sim.settlements,
-                                                   seed: worldConfig.seed,
-                                                   riverField: renderer.scene.riverField))
 
             addSubview(view)
             self.metalView = view
@@ -662,10 +658,6 @@ final class EvolvingSaver: ScreenSaverView {
         lastSceneYear = updated.year
         lastSceneEra = updated.era
         renderer.updateScene(updated)
-        renderer.updateTrees(CityBuilder.trees(terrain: updated.terrain,
-                                               settlements: updated.settlements,
-                                               seed: updated.seed,
-                                               riverField: renderer.scene.riverField))
         updateHUD(force: true, now: CACurrentMediaTime())
     }
 
@@ -674,6 +666,11 @@ final class EvolvingSaver: ScreenSaverView {
     }
 
     // MARK: - Free camera (Timeline app)
+
+    @objc func riverReviewViewData() -> NSData? {
+        guard let record = renderer?.lastReviewView else { return nil }
+        return try? record.encoded() as NSData
+    }
 
     @objc func beginFreeCamera() {
         renderer?.beginFreeCamera()
@@ -717,10 +714,6 @@ final class EvolvingSaver: ScreenSaverView {
         lastSceneYear = sim.year
         lastSceneEra = sim.era
         renderer.updateScene(sim)
-        renderer.updateTrees(CityBuilder.trees(terrain: terrain,
-                                               settlements: sim.settlements,
-                                               seed: sim.seed,
-                                               riverField: renderer.scene.riverField))
         updateHUD(force: true, now: CACurrentMediaTime())
     }
 
@@ -745,10 +738,6 @@ final class EvolvingSaver: ScreenSaverView {
                 lastSceneYear = sim.year
                 lastSceneEra = sim.era
                 renderer?.updateScene(sim)
-                renderer?.updateTrees(CityBuilder.trees(terrain: sim.terrain,
-                                                        settlements: sim.settlements,
-                                                        seed: sim.seed,
-                                                        riverField: renderer?.scene.riverField))
             }
         }
 

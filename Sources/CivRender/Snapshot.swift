@@ -53,10 +53,15 @@ enum Snapshot {
         }
 
         for _ in 0..<2 { try renderOnce() }
-        let start = CFAbsoluteTimeGetCurrent()
-        for _ in 0..<max(frames, 1) { try renderOnce() }
-        let elapsed = CFAbsoluteTimeGetCurrent() - start
-        return elapsed / Double(max(frames, 1)) * 1000.0
+        var times: [Double] = []
+        for _ in 0..<max(frames, 1) {
+            let start = CFAbsoluteTimeGetCurrent(); try renderOnce()
+            times.append((CFAbsoluteTimeGetCurrent() - start) * 1000)
+        }
+        let sorted = times.sorted(), p95 = sorted[min(Int(Double(sorted.count - 1) * 0.95), sorted.count - 1)]
+        print(String(format: "frame timing: %d frames, median %.2f ms, p95 %.2f ms, maximum %.2f ms",
+            times.count, sorted[sorted.count / 2], p95, sorted.last!))
+        return times.reduce(0, +) / Double(times.count)
     }
 
     /// Renders one frame offscreen and writes it as a PNG.

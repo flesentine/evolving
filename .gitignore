@@ -23,9 +23,16 @@ xcuserdata/
 __pycache__/
 *.py[cod]
 
-# Generated review captures and root stills. Source and review notes stay.
+# Generated review captures and root stills.
 /review/*.png
 /*.png
+
+# River review evidence lives on the archive branch and may be kept locally.
+/review/patch6a/
+/review/patch6a-followup/
+/review/river-completion/
+/review/side-rivers/
+/review/timeline-navigation/
 
 # Credentials and secrets
 .env
