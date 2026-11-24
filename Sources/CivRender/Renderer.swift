@@ -37,6 +37,30 @@ final class InstanceBatch {
 /// Owns the render pipelines and the scene, and can draw either into an
 /// `MTKView` (screen saver) or into an offscreen texture (snapshot tooling).
 final class Renderer: NSObject, MTKViewDelegate {
+    /// Opt-in timing from Metal's presentation callback. Callbacks can run
+    /// off the main thread and Metal reports zero for a dropped presentation.
+    private final class FramePresentations {
+        private let lock = NSLock()
+        private var count = 0
+        private var first: CFTimeInterval = 0
+
+        func record(_ time: CFTimeInterval) {
+            guard time > 0 else { return }
+            lock.withLock {
+                if first == 0 || time < first { first = time }
+                count += 1
+            }
+        }
+
+        var presentedCount: Int { lock.withLock { count } }
+        var firstPresentedTime: CFTimeInterval { lock.withLock { first } }
+    }
+
+    private let presentations = ProcessInfo.processInfo.environment["EVOLVING_MEASURE_PRESENTATION"] == "1"
+        ? FramePresentations() : nil
+
+    var presentedFrameCount: Int { presentations?.presentedCount ?? 0 }
+    var firstFramePresentedTime: CFTimeInterval { presentations?.firstPresentedTime ?? 0 }
 
     /// Must stay byte-identical to `struct FrameUniforms` in Shaders.metal.
     struct FrameUniforms {
@@ -2778,6 +2802,9 @@ final class Renderer: NSObject, MTKViewDelegate {
                 let ms = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
                 NSLog("Evolving gpu: %.2f ms", ms)
             }
+        }
+        if let presentations {
+            drawable.addPresentedHandler { presentations.record($0.presentedTime) }
         }
         commandBuffer.present(drawable)
         commandBuffer.commit()

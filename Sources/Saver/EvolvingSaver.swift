@@ -66,6 +66,8 @@ final class EvolvingSaver: ScreenSaverView {
 
     /// Frame counter exposed to the verification tool via KVC.
     @objc dynamic var framesDrawn: Int { renderer?.framesDrawn ?? 0 }
+    @objc dynamic var presentedFrameCount: Int { renderer?.presentedFrameCount ?? 0 }
+    @objc dynamic var firstFramePresentedTime: Double { renderer?.firstFramePresentedTime ?? 0 }
 
     override init?(frame: NSRect, isPreview: Bool) {
         super.init(frame: frame, isPreview: isPreview)

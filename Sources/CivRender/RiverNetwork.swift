@@ -451,12 +451,12 @@ enum RiverChannel {
             nearbyWater(at:p)
         }
         func surface(at p: SIMD2<Float>) -> (water: Float?, distance: Float)? {
-            guard let value = nearbyWater(at: p) else { return nil }
+            guard let value = nearbyWater(at: p, blendExterior: false) else { return nil }
             return (value.distance <= 0 ? value.water : nil, value.distance)
         }
         /// Bounded query for wet classification and exclusion only. Terrain
         /// carving uses the global hierarchy below, never this bucket halo.
-        private func nearbyWater(at p: SIMD2<Float>) -> (water: Float, distance: Float)? {
+        private func nearbyWater(at p: SIMD2<Float>, blendExterior: Bool = true) -> (water: Float, distance: Float)? {
             let x = Int(floor(p.x / bucketSize)), z = Int(floor(p.y / bucketSize))
             guard let ids = buckets[Field.key(x, z)] else { return nil }
             var best = Float.greatestFiniteMagnitude, level: Float = 0
@@ -464,11 +464,11 @@ enum RiverChannel {
             for id in ids {
                 let value = carveIndex.records[id].probe.probe(p)
                 if value.distance < best { best = value.distance; level = value.water }
-                candidates.append((value.distance, value.water))
+                if blendExterior { candidates.append((value.distance, value.water)) }
 
             }
             guard best < .greatestFiniteMagnitude else { return nil }
-            if best > 0 {
+            if blendExterior && best > 0 {
                 // Blend water levels over nearest-boundary ties. The support
                 // shrinks to zero at the shoreline, preserving exact mesh Y.
                 let support = min(best, 2 / metresPerUnit) // at most 2 m
@@ -501,7 +501,19 @@ enum RiverChannel {
         func carvedHeight(_ original: Float, at p: SIMD2<Float>, supportRadius: Float,
                           exhaustive: Bool = false) -> Float {
             if original <= lowestWater - bedClearance { return original }
-            guard let water = interiorWater(p, exhaustive: exhaustive) ?? carveIndex.nearest(p, exhaustive: exhaustive) else { return original }
+            // The blend cannot be lower than the lowest water vertex. Once
+            // the valley floor from that level reaches original terrain, a
+            // farther boundary cannot affect the carve. Invert the outer
+            // slope in Double and round the search outward by 1 mm to cover
+            // interpolation and floating-point error. Wet and support
+            // queries remain exact, including across the computed limit.
+            let riseToOriginal = Double(original) - Double(lowestWater) + Double(bedClearance)
+            let limit = Double(wetShelf) + max(0, riseToOriginal - Double(shelfRise)) / Double(valleySlope)
+            let maximumDistance = exhaustive ? Float.greatestFiniteMagnitude : Float(limit) + 0.001 / metresPerUnit
+            guard let water = interiorWater(p, exhaustive: exhaustive)
+                    ?? carveIndex.nearest(p, maximumDistance: maximumDistance, exhaustive: exhaustive) else {
+                return supportedHeight(original, at: p, supportRadius: supportRadius, exhaustive: exhaustive)
+            }
             let d = max(water.distance, 0)
             let rise = d <= wetShelf ? d / wetShelf * shelfRise
                 : shelfRise + (d - wetShelf) * valleySlope
@@ -534,11 +546,11 @@ enum RiverChannel {
             return min(base, result)
         }
         func waterLevel(at p: SIMD2<Float>) -> Float? {
-            guard let value = nearbyWater(at: p), value.distance <= 0 else { return nil }
+            guard let value = nearbyWater(at: p, blendExterior: false), value.distance <= 0 else { return nil }
             return value.water
         }
         func signedDistance(at p: SIMD2<Float>) -> Float? {
-            nearbyWater(at: p)?.distance
+            nearbyWater(at: p, blendExterior: false)?.distance
         }
         func isNearWater(at p: SIMD2<Float>, margin: Float) -> Bool {
             guard let d = signedDistance(at: p) else { return false }

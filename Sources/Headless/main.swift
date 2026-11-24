@@ -1,7 +1,10 @@
 import Foundation
 import AppKit
+import QuartzCore
 import ScreenSaver
 import simd
+
+let launchTime = CACurrentMediaTime()
 
 // A small development tool:
 //
@@ -629,6 +632,7 @@ case "checkbundle":
     guard arguments.count >= 3 else { usage() }
     let path = arguments[2]
     let seconds = arguments.count >= 4 ? Double(arguments[3]) ?? 1.5 : 1.5
+    let measurePresentation = ProcessInfo.processInfo.environment["EVOLVING_MEASURE_PRESENTATION"] == "1"
 
     guard let bundle = Bundle(path: path) else {
         fail("not a bundle: \(path)")
@@ -662,6 +666,21 @@ case "checkbundle":
     window.orderFrontRegardless()
 
     view.startAnimation()
+    if measurePresentation {
+        guard view.responds(to: Selector(("firstFramePresentedTime"))) else {
+            fail("the saver does not support Metal presentation timing")
+        }
+        let deadline = Date().addingTimeInterval(5)
+        var presented = 0.0
+        while presented == 0, Date() < deadline {
+            RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.005))
+            presented = (view.value(forKey: "firstFramePresentedTime") as? Double) ?? 0
+        }
+        guard presented >= launchTime else { fail("Metal did not present a frame within five seconds of starting animation") }
+        print(String(format: "first_presented_s=%.6f", presented - launchTime))
+    }
+    let presentedBefore = measurePresentation ? (view.value(forKey: "presentedFrameCount") as? Int ?? 0) : 0
+    let measurementStarted = CACurrentMediaTime()
     let deadline = Date().addingTimeInterval(seconds)
     while Date() < deadline {
         RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.05))
@@ -672,6 +691,11 @@ case "checkbundle":
     window.orderOut(nil)
 
     print("frames presented in \(seconds)s: \(frames)")
+    if measurePresentation {
+        let presented = (view.value(forKey: "presentedFrameCount") as? Int ?? 0) - presentedBefore
+        let elapsed = CACurrentMediaTime() - measurementStarted
+        print(String(format: "Metal presentations=%d elapsed=%.3f fps=%.3f", presented, elapsed, Double(presented) / elapsed))
+    }
     if frames <= 0 {
         fail("the saver view did not present any frames")
     }
