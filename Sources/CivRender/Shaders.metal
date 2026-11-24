@@ -473,6 +473,26 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
                            (in.uv.y + row) / 8.0);
         albedo = townSignAtlas.sample(signSampler, uv).rgb;
         surfaceRough = 0.70;
+    } else if (in.material > 10.5 && in.material < 11.5 && in.extra > 8.5) {
+        // Bridge walls use metre-scale surface coordinates and their actual
+        // face normals. They are independent of road-ribbon camber and paint.
+        float2 uv = in.uv;
+        if (in.extra < 9.5) {
+            float course = uv.y / 0.43;
+            float stone = uv.x / 0.92 + floor(course) * 0.5;
+            float seamV = smoothstep(0.04, 0.11, min(fract(course), 1.0 - fract(course)));
+            float seamU = smoothstep(0.03, 0.08, min(fract(stone), 1.0 - fract(stone)));
+            float detail = saturate(1.0 - max(fwidth(stone), fwidth(course)));
+            float tone = 0.85 + hash21(float2(floor(stone), floor(course))) * 0.20;
+            albedo *= mix(0.94, mix(0.61, tone, seamU * seamV), detail);
+            surfaceRough = 0.91;
+        } else if (in.extra < 10.5) {
+            albedo *= 0.90 + 0.14 * valueNoise(uv * 1.75);
+            surfaceRough = 0.57;
+        } else {
+            albedo *= 0.87 + 0.20 * valueNoise(uv * 2.3);
+            surfaceRough = 0.85;
+        }
     } else if (in.material > 10.5 && in.material < 12.5) {
         // Road and street surfaces. Vertex alpha carries the surface family;
         // uv.x is across the ribbon (0…1), uv.y is distance in road widths.

@@ -97,6 +97,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         var phase: Float
         var colour: SIMD3<Float>
         var isCart: Bool
+        var bridgeRoute: RoadBridge.DrivePath?
     }
 
     private struct BoatPath {
@@ -1214,8 +1215,8 @@ final class Renderer: NSObject, MTKViewDelegate {
         boatPaths.removeAll(keepingCapacity: true)
 
         if era.rawValue >= Era.modern.rawValue {
-            var candidates: [(SIMD2<Float>, SIMD2<Float>, Float)] = []
-            for segment in segments {
+            var candidates: [(SIMD2<Float>, SIMD2<Float>, Float, RoadBridge.DrivePath?)] = []
+            for (segmentID, segment) in segments.enumerated() {
                 guard segment.points.count >= 2,
                       let first = segment.points.first,
                       let last = segment.points.last else { continue }
@@ -1226,7 +1227,8 @@ final class Renderer: NSObject, MTKViewDelegate {
                 guard length > 0.02 else { continue }
                 let count = min(max(Int(length / 0.045), 1), 3)
                 for _ in 0..<count {
-                    candidates.append((first, last, length))
+                    let route = scene.bridgeDrivePaths[segmentID]
+                    candidates.append((first, last, route?.length ?? length, route))
                 }
             }
 
@@ -1245,11 +1247,12 @@ final class Renderer: NSObject, MTKViewDelegate {
                                         speed: 0.0020 + Float(i % 5) * 0.0004,
                                         phase: Float((i * 37) % 100) / 100,
                                         colour: palette[i % palette.count],
-                                        isCart: false))
+                                        isCart: false,
+                                        bridgeRoute: candidate.3))
             }
         } else if era.rawValue >= Era.bronze.rawValue {
-            var candidates: [(SIMD2<Float>, SIMD2<Float>, Float)] = []
-            for segment in segments {
+            var candidates: [(SIMD2<Float>, SIMD2<Float>, Float, RoadBridge.DrivePath?)] = []
+            for (segmentID, segment) in segments.enumerated() {
                 guard segment.points.count >= 2,
                       let first = segment.points.first,
                       let last = segment.points.last else { continue }
@@ -1260,7 +1263,8 @@ final class Renderer: NSObject, MTKViewDelegate {
                 guard length > 0.03 else { continue }
                 let count = min(max(Int(length / 0.09), 1), 2)
                 for _ in 0..<count {
-                    candidates.append((first, last, length))
+                    let route = scene.bridgeDrivePaths[segmentID]
+                    candidates.append((first, last, route?.length ?? length, route))
                 }
             }
 
@@ -1273,7 +1277,8 @@ final class Renderer: NSObject, MTKViewDelegate {
                                         speed: 0.0011 + Float(i % 4) * 0.0002,
                                         phase: Float((i * 53) % 100) / 100,
                                         colour: brown,
-                                        isCart: true))
+                                        isCart: true,
+                                        bridgeRoute: candidate.3))
             }
         }
 
@@ -1302,13 +1307,20 @@ final class Renderer: NSObject, MTKViewDelegate {
             let outbound = v < 0.5
             let u = outbound ? v * 2 : (1 - v) * 2
 
-            var dir = simd_normalize(path.end - path.start)
-            if !outbound { dir = -dir }
-            let side = SIMD2<Float>(-dir.y, dir.x) * 0.0014
-            let p = path.start + (path.end - path.start) * u + side
-
-            let h = scene.terrain.interpolatedHeight(x: p.x, z: p.y)
-            guard h > 0.006, !scene.terrain.isWater(x: p.x, z: p.y) else { continue }
+            let p: SIMD2<Float>, h: Float, dir: SIMD2<Float>
+            if let route = path.bridgeRoute {
+                let pose = route.pose(progress: u, forward: outbound)
+                p = SIMD2(pose.position.x, pose.position.z)
+                h = pose.position.y
+                dir = pose.direction
+            } else {
+                let heading = simd_normalize(path.end - path.start)
+                dir = outbound ? heading : -heading
+                let side = SIMD2<Float>(-dir.y, dir.x) * 0.0014
+                p = path.start + (path.end - path.start) * u + side
+                h = scene.terrain.interpolatedHeight(x: p.x, z: p.y)
+                guard h > 0.006, !scene.terrain.isWater(x: p.x, z: p.y) else { continue }
+            }
 
             let angle = atan2(dir.x, dir.y)
 
@@ -1351,7 +1363,7 @@ final class Renderer: NSObject, MTKViewDelegate {
                             * (0.00034 * (k == 0 ? -1 : 1) * (0.7 + wobble * 0.2)
                                + ripple * 0.00006)
                         let q = back + spread + dir * (0.00022 * Float(k))
-                        let hh = scene.terrain.interpolatedHeight(x: q.x, z: q.y)
+                        let hh = path.bridgeRoute == nil ? scene.terrain.interpolatedHeight(x: q.x, z: q.y) : h
                         guard hh > 0.004 else { continue }
                         let size = (0.00052 + 0.00016 * abs(wobble))
                             * (1.0 + 0.15 * ripple)
