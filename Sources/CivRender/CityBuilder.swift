@@ -178,9 +178,15 @@ enum CityBuilder {
         let radius = plan.radius
         let cell = plan.cell
         let half = plan.half
-        let plots = plan.plots.filter {
-            connected($0.center, to: SIMD2(s.x, s.z), river: river)
+        let historic = HistoricQuarter(settlement: s, era: era, terrain: terrain,
+                                       axis: plan.axis, river: river)
+        let plots = plan.plots.filter { plot in
+            let allowance = 2.6 / RiverGraph.metresPerUnit // Maximum building setback.
+            let footprintRadius = simd_length(SIMD2(plot.width, plot.depth)) * 0.5 + allowance
+            return historic?.overlaps(plot.center, radius: footprintRadius) != true
+                && connected(plot.center, to: SIMD2(s.x, s.z), river: river)
         }
+        let streetStart = geometry.streetLines.count
         let smokeStart = geometry.smoke.count
         // A settlement centre can land on a distributary. Paving is not a
         // building, so it is not caught by the house filter; skip civic
@@ -217,6 +223,11 @@ enum CityBuilder {
                             terrain: terrain, river: river,
                             into: &geometry.streetLines)
             }
+        }
+
+        if let historic {
+            let retained = geometry.streetLines[streetStart...].flatMap { historic.streets(in: $0) }
+            geometry.streetLines.replaceSubrange(streetStart..., with: retained)
         }
 
         // A Renaissance piazza is a larger paved civic room.
@@ -549,9 +560,11 @@ enum CityBuilder {
             }
         }
 
-        // Dedicated landmark meshes: temples, churches and docks.
-        for landmark in plan.landmarks {
-            let g = terrain.heightAt(x: landmark.center.x, z: landmark.center.y)
+        // An older church keeps its site while the town's other monuments change.
+        let landmarks = historic.map { plan.landmarks + [$0.church] } ?? plan.landmarks
+        for (index, landmark) in landmarks.enumerated() {
+            let retained = index == plan.landmarks.count ? historic : nil
+            let g = retained?.ground ?? terrain.heightAt(x: landmark.center.x, z: landmark.center.y)
             guard g > 0.004, !terrain.isWater(x: landmark.center.x, z: landmark.center.y) else {
                 continue
             }
@@ -562,6 +575,11 @@ enum CityBuilder {
             case .cathedral: key = "__cathedral"
             case .dome:      key = "__dome"
             case .dock:      key = "__dock"
+            }
+            if let historic, retained == nil {
+                if landmark.kind == .church || landmark.kind == .cathedral { continue }
+                let extent = RiverPlacement.authoredBounds(key).map { simd_length($0) }.max() ?? 0
+                if historic.overlaps(landmark.center, radius: extent * landmark.scale) { continue }
             }
             let model = translation(SIMD3(landmark.center.x, g - 0.0003,
                                           landmark.center.y))
