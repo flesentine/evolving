@@ -267,6 +267,8 @@ final class Renderer: NSObject, MTKViewDelegate {
 
     /// Where the close-up shot looks, damped so it drifts rather than jumps.
     private var focusPoint = SIMD3<Float>(0, 0, 0)
+    private var autoFocusTransition: (point: SIMD3<Float>, radius: Float, time: Float)?
+    private var lastCameraTime: Float?
 
     private let meshPipeline: MTLRenderPipelineState
     private let waterPipeline: MTLRenderPipelineState
@@ -624,15 +626,21 @@ final class Renderer: NSObject, MTKViewDelegate {
 
         if let largest = simulation.largestSettlement() {
             let target = SIMD3<Float>(largest.x, 0, largest.z)
-            if hasFocus {
-                focusPoint += (target - focusPoint) * 0.25
-            } else {
-                focusPoint = target
-                hasFocus = true
+            let updatedPoint = hasFocus ? focusPoint + (target - focusPoint) * 0.25 : target
+            let updatedRadius = CityBuilder.cityRadius(largest.population)
+            if hasFocus, let time = lastCameraTime, (updatedPoint != focusPoint || updatedRadius != focusRadius) {
+                let prior = automaticFocus(at: time)
+                autoFocusTransition = (prior.point, prior.radius, time)
             }
-            focusRadius = CityBuilder.cityRadius(largest.population)
+            focusPoint = updatedPoint
+            focusRadius = updatedRadius
+            hasFocus = true
             updateCloseAzimuth()
             squareAngle = clearAngle(radius: focusRadius * 2.30 + 0.012)
+        } else {
+            hasFocus = false
+            focusPoint = .zero
+            autoFocusTransition = nil
         }
 
         // Roads only change when a settlement appears or the era (and with it
@@ -2004,13 +2012,7 @@ final class Renderer: NSObject, MTKViewDelegate {
 
     // MARK: - Camera + sun
 
-    /// Two shots on a ~110 s cycle: a wide orbital hero shot, then a slow push
-    /// toward the largest settlement, then back out. The transitions are eased
-    /// so the camera never snaps.
-    /// Three shots on a ~160 s cycle: wide hero orbit, low coastal drift, then
-    /// a slow push toward the largest settlement. The orbit angle uses one
-    /// constant speed so blending between shots never snaps the heading.
-    private func automaticCamera(time: Float, aspect: Float) -> Camera {
+    func automaticCamera(time: Float) -> Camera {
         switch cameraMode {
         case .wide:  return wideCamera(time: time)
         case .coast: return coastCamera(time: time)
@@ -2186,43 +2188,100 @@ final class Renderer: NSObject, MTKViewDelegate {
                       fov: 46)
     }
 
+    private enum AutomaticShot {
+        case island, coast, valley, town
+    }
+
+    private struct CameraFraming {
+        // Polar framing: distance and elevation are metres, FOV is degrees.
+        let radius: Float
+        let elevation: Float
+        let fov: Float
+        let focus: Float
+        let islandAim: Float
+    }
+
+    // Vary the order and dwell, while the bearing continues through every
+    // transition and through the wrap. Times are in seconds.
+    private static let automaticShots: [(shot: AutomaticShot, hold: Float, move: Float)] = [
+        (.island, 34, 16), (.coast, 26, 19), (.valley, 29, 14), (.town, 25, 21),
+        (.island, 28, 20), (.town, 23, 17), (.valley, 31, 19), (.coast, 24, 15),
+        (.island, 36, 18), (.valley, 26, 19), (.coast, 30, 21), (.town, 27, 22),
+        (.coast, 24, 19), (.island, 33, 20), (.town, 32, 16), (.valley, 25, 20),
+        (.island, 29, 14), (.coast, 28, 16), (.town, 26, 18), (.valley, 32, 18)
+    ]
+    private static let automaticDuration = automaticShots.reduce(Float(0)) { $0 + $1.hold + $1.move }
+
+    private static func cameraEase(_ progress: Float) -> Float {
+        let t = min(max(progress, 0), 1)
+        return t * t * t * (t * (t * 6 - 15) + 10)
+    }
+
+    private func automaticFocus(at time: Float) -> (point: SIMD3<Float>, radius: Float) {
+        guard let old = autoFocusTransition else { return (focusPoint, focusRadius) }
+        // A newly dominant town or changing population can alter framing
+        // at a simulation tick. Keep the visible focus and glide to its update.
+        let t = Renderer.cameraEase((time - old.time) / 12)
+        return (old.point + (focusPoint - old.point) * t, old.radius + (focusRadius - old.radius) * t)
+    }
+
+    private func framing(_ shot: AutomaticShot, focusRadius: Float) -> CameraFraming {
+        switch shot {
+        case .island: return CameraFraming(radius: 1900, elevation: 610, fov: 46, focus: 0, islandAim: 90)
+        case .coast: return CameraFraming(radius: 1750, elevation: 265, fov: 42, focus: 0, islandAim: 65)
+        case .valley where hasFocus: return CameraFraming(radius: 700, elevation: 350, fov: 39, focus: 1, islandAim: 0)
+        case .town where hasFocus:
+            let town = focusRadius * RiverNetwork.metresPerUnit
+            return CameraFraming(radius: max(245, town * 3.5), elevation: max(155, town * 2.2),
+                                 fov: 50, focus: 1, islandAim: 0)
+        default: return CameraFraming(radius: 1560, elevation: 450, fov: 48, focus: 0, islandAim: 95)
+        }
+    }
+
     private func cyclingCamera(time: Float) -> Camera {
-        let cycle = time.truncatingRemainder(dividingBy: 160)
-
-        let low: Float
-        switch cycle {
-        case ..<38:  low = 0
-        case ..<50:  low = smoothstep(38, 50, cycle)
-        case ..<84:  low = 1
-        case ..<96:  low = 1 - smoothstep(84, 96, cycle)
-        default:     low = 0
+        let shots = Renderer.automaticShots
+        var phase = max(time, 0).truncatingRemainder(dividingBy: Renderer.automaticDuration)
+        var index = 0
+        while phase >= shots[index].hold + shots[index].move {
+            phase -= shots[index].hold + shots[index].move
+            index += 1
         }
+        let shot = shots[index]
+        let focus = automaticFocus(at: time)
+        let a = framing(shot.shot, focusRadius: focus.radius)
+        let b = framing(shots[(index + 1) % shots.count].shot, focusRadius: focus.radius)
+        let eased = Renderer.cameraEase((phase - shot.hold) / shot.move)
+        func blend(_ lhs: Float, _ rhs: Float) -> Float { lhs + (rhs - lhs) * eased }
 
-        let close: Float
-        switch cycle {
-        case ..<108: close = 0
-        case ..<122: close = smoothstep(108, 122, cycle)
-        case ..<148: close = 1
-        default:     close = 1 - smoothstep(148, 160, cycle)
+        let metres = RiverNetwork.metresPerUnit
+        let weight = blend(a.focus, b.focus)
+        let focusXZ = SIMD2(focus.point.x, focus.point.z)
+        let centre = focusXZ * weight
+        let townAim = scene.renderedTerrainHeight(at: focusXZ) + max(28 / metres, focus.radius * 0.38)
+        let targetY = weight * townAim + blend(a.islandAim, b.islandAim) / metres
+        let radius = blend(a.radius, b.radius) / metres
+        // Orbit the changing subject in polar coordinates. Cartesian blending
+        // between opposite viewpoints could take a chord directly into town.
+        let bearing = 0.55 + time * 0.011 + 0.18 * sin(time * 0.006)
+        let offset = SIMD2(cos(bearing), sin(bearing)) * radius
+        let eye = centre + offset
+        let preferredY = targetY + blend(a.elevation, b.elevation) / metres
+        var eyeY = max(preferredY, scene.renderedTerrainHeight(at: eye) + 24 / metres)
+        if weight > 0 {
+            var sightlineY = eyeY
+            // Check the approach outside the immediate roofs/banks around
+            // the subject. Solve for the eye height that clears each sample.
+            let start = min(0.5, 30 / metres / radius)
+            let samples = Int(ceil(radius * metres / 8))
+            for i in 0..<samples {
+                let u = start + (1 - start) * Float(i) / Float(samples)
+                let ground = scene.renderedTerrainHeight(at: centre + offset * u)
+                sightlineY = max(sightlineY, targetY + (ground + 8 / metres - targetY) / u)
+            }
+            eyeY += (sightlineY - eyeY) * weight
         }
-
-        let wideWeight = max(1 - low - close, 0)
-        let orbit = time * 0.016 + 0.55
-        let closeCam = cityCamera(time: time)
-
-        let wideEye = SIMD3<Float>(cos(orbit) * 1.66,
-                                   0.48 + sin(time * 0.031) * 0.04,
-                                   sin(orbit) * 1.66)
-        let lowEye = SIMD3<Float>(cos(orbit) * 1.80,
-                                  0.20 + sin(time * 0.023) * 0.03,
-                                  sin(orbit) * 1.80)
-
-        let eye = wideEye * wideWeight + lowEye * low + closeCam.eye * close
-        let fov = 36 * wideWeight + 40 * low + closeCam.fov * close
-        let wideTarget = SIMD3<Float>(0, 0.10, 0)
-        let lowTarget = SIMD3<Float>(0, 0.02, 0)
-        let target = wideTarget * wideWeight + lowTarget * low + closeCam.target * close
-        return Camera(eye: eye, target: target, fov: fov)
+        return Camera(eye: SIMD3(eye.x, eyeY, eye.y),
+                      target: SIMD3(centre.x, targetY, centre.y), fov: blend(a.fov, b.fov))
     }
 
     private func sun(for time: Float) -> (direction: SIMD3<Float>, elevation: Float, night: Float) {
@@ -2564,7 +2623,8 @@ final class Renderer: NSObject, MTKViewDelegate {
         encoder.label = "Evolving frame"
 
         let aspect = Float(size.width / size.height)
-        let cam = cameraOverride ?? automaticCamera(time: time, aspect: aspect)
+        let cam = cameraOverride ?? automaticCamera(time: time)
+        lastCameraTime = time
         lastRenderedCamera = cam
         let view = lookAt(eye: cam.eye, center: cam.target, up: SIMD3(0, 1, 0))
         let projection = perspective(fovyRadians: degreesToRadians(cam.fov),
