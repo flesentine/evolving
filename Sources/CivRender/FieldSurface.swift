@@ -61,6 +61,50 @@ enum FieldSurface {
             }
         }
 
+        mutating func insertFootprint(_ points: [SIMD2<Float>]) {
+            let polygon = points.map(FieldSurface.projection)
+            guard abs(RiverPolygon.area(polygon)) > RiverPolygon.areaEpsilon else { return }
+            insert(polygon)
+        }
+
+        func intersectsFootprint(_ points: [SIMD2<Float>]) -> Bool {
+            let polygon = points.map(FieldSurface.projection)
+            return nearby(polygon).contains {
+                abs(RiverPolygon.area(RiverGeometryChecks.intersection(polygon, $0)))
+                    > RiverPolygon.areaEpsilon
+            }
+        }
+
+        func covers(_ point: SIMD2<Float>) -> Bool {
+            height(at: point) != nil
+        }
+
+        func height(at point: SIMD2<Float>) -> Float? {
+            // Give the spatial lookup a nonzero bounds box at triangle edges.
+            let half: Float = 0.01 / FieldSurface.metres
+            let corners = [point - SIMD2(half, half), point + SIMD2(half, -half),
+                           point + SIMD2(half, half), point + SIMD2(-half, half)]
+            var height: Float?
+            for triangle in nearby(corners.map(FieldSurface.projection)) {
+                let a = FieldSurface.xz(triangle[0])
+                let u = FieldSurface.xz(triangle[1]) - a
+                let v = FieldSurface.xz(triangle[2]) - a
+                let w = point - a
+                func cross(_ lhs: SIMD2<Float>, _ rhs: SIMD2<Float>) -> Float {
+                    lhs.x * rhs.y - lhs.y * rhs.x
+                }
+                let area = cross(u, v)
+                guard area != 0 else { continue }
+                let t = cross(w, v) / area
+                let s = cross(u, w) / area
+                guard t >= 0, s >= 0, t + s <= 1 else { continue }
+                let y = triangle[0].position.y * (1 - t - s)
+                    + triangle[1].position.y * t + triangle[2].position.y * s
+                height = max(height ?? y, y)
+            }
+            return height
+        }
+
         func nearby(_ polygon: [Vertex]) -> [[Vertex]] {
             let box = Bounds(polygon)
             var ids: Set<Int> = []
