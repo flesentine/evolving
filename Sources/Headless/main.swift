@@ -34,6 +34,7 @@ func usage() -> Never {
       civheadless rivermaterialcheck <directory>
       civheadless riverreview <view.json> <directory> [all]
       civheadless cameracheck <directory>
+      civheadless cameraautocheck <directory> <seed> <year> [--render]
       civheadless bench [year] [width] [height] [frames]
       civheadless resources [seed]
       civheadless determinism [year] [seed]
@@ -566,6 +567,13 @@ case "cameracheck":
     guard arguments.count >= 3 else { usage() }
     do { try CameraCheck.run(directory: URL(fileURLWithPath: arguments[2])) }
     catch { fail("cameracheck failed — \(error)") }
+
+case "cameraautocheck":
+    guard arguments.count >= 5, let seed = UInt64(arguments[3]), let year = Float(arguments[4]) else { usage() }
+    do {
+        try CameraCheck.automatic(directory: URL(fileURLWithPath: arguments[2]), seed: seed, year: year,
+                                  render: arguments.contains("--render"))
+    } catch { fail("cameraautocheck failed — \(error)") }
 
 case "bench":
     let simYear = arguments.count >= 3 ? Float(arguments[2]) ?? 3000 : 3000

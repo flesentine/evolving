@@ -344,12 +344,22 @@ final class WorldScene {
     /// Height of the submitted detail-2 terrain triangles, not a bilinear
     /// approximation or a reconstructed nominal bed.
     static func renderedTerrainHeight(_ p: SIMD2<Float>, terrain: Terrain, vertices: [Vertex]) -> Float {
+        renderedTerrainHeight(p, terrain: terrain) { vertices[$0].position.y }
+    }
+
+    func renderedTerrainHeight(at p: SIMD2<Float>) -> Float {
+        let vertices = terrainMesh.vertexBuffer.contents().assumingMemoryBound(to: Vertex.self)
+        return WorldScene.renderedTerrainHeight(p, terrain: terrain) { vertices[$0].position.y }
+    }
+
+    private static func renderedTerrainHeight(_ p: SIMD2<Float>, terrain: Terrain,
+                                              heightAtIndex: (Int) -> Float) -> Float {
         let n = (terrain.size - 1) * 2 + 1, spacing = terrain.cellSize / 2
         let x = min(max((p.x + 1) / spacing, 0), Float(n - 1) - 0.0001)
         let z = min(max((p.y + 1) / spacing, 0), Float(n - 1) - 0.0001)
         let i = Int(floor(x)), j = Int(floor(z)), u = x - Float(i), v = z - Float(j)
-        let a = vertices[j * n + i].position.y, b = vertices[j * n + i + 1].position.y
-        let c = vertices[(j + 1) * n + i + 1].position.y, d = vertices[(j + 1) * n + i].position.y
+        let a = heightAtIndex(j * n + i), b = heightAtIndex(j * n + i + 1)
+        let c = heightAtIndex((j + 1) * n + i + 1), d = heightAtIndex((j + 1) * n + i)
         return u >= v ? a * (1 - u) + b * (u - v) + c * v
             : a * (1 - v) + c * u + d * (v - u)
     }
