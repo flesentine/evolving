@@ -301,6 +301,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     private var streetGrids: [CityBuilder.StreetGrid] = []
     private var squareAngle: Float = 0
     private var hasFocus = false
+    private(set) var townActivities: [TownActivity] = []
     private var carPaths: [CarPath] = []
     private var boatPaths: [BoatPath] = []
     private var railPoints: [SIMD2<Float>] = []
@@ -703,6 +704,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         } catch {
             NSLog("Evolving: field mesh failed — \(error)")
         }
+        townActivities = TownActivity.choose(geometry.activityCandidates, geometry: geometry, scene: scene)
     }
 
     /// Milestones, signposts, tollhouses, cairns, ford posts and cat's eyes.
@@ -1588,66 +1590,69 @@ final class Renderer: NSObject, MTKViewDelegate {
                 }
             }
         }
-        // A couple of people standing at the stalls, facing the square.
-        for (si, settlement) in livingSettlements.enumerated() {
-            let grid = si < streetGrids.count
-                ? streetGrids[si]
-                : CityBuilder.StreetGrid(x: settlement.x, z: settlement.z, angle: 0,
-                                         cell: max(CityBuilder.cityRadius(settlement.population) * 0.5, 0.008),
-                                         radius: CityBuilder.cityRadius(settlement.population))
-            for k in 0..<2 {
-                let h = hash01(si * 91 + k * 13 + 5)
-                let h2 = hash01(si * 47 + k * 29 + 77)
-                let angle = h * 2 * Float.pi
-                let radius = grid.radius * (0.28 + 0.10 * h2)
-                let x = grid.x + cos(angle) * radius
-                let z = grid.z + sin(angle) * radius
-                let ground = scene.terrain.interpolatedHeight(x: x, z: z)
-                guard ground > 0.006, !scene.terrain.isWater(x: x, z: z),
-                      scene.riverField.waterLevel(at: SIMD2(x, z)) == nil
-                else { continue }
+        for activity in townActivities {
+            let pose = activity.sample(time: time)
+            let p = pose.position
+            let ground = max(scene.renderedTerrainHeight(at: p), scene.activityStreets.height(at: p) ?? 0)
+            let metres = TownActivity.metres
+            let scale: Float = 4.4 / metres
+            let coat = activity.kind.coat
+            let bob = abs(pose.stride) * (0.23 / metres)
+            let base = translation(SIMD3(p.x, ground + bob, p.y)) * rotationY(pose.facing)
+            let lean = activity.kind == .fieldwork ? 0.18 * pose.reach : 0
+            let model = base * scaleMatrix(SIMD3(repeating: scale)) * rotationX(lean)
+            let cratePitch = -0.89 + pose.reach * 0.55
+            people.append(InstanceData(model: model, color: SIMD4(coat, 0)))
+            brims.append(InstanceData(model: model, color: SIMD4(SIMD3(repeating: 1), 0)))
 
-                let scale: Float = 0.0044 * (0.94 + h2 * 0.10)
-                let facing = angle + Float.pi * 0.5
-                let coat = clothing[(si * 5 + k + 2) % clothing.count]
-                let base = SIMD3<Float>(x, ground, z)
-                let body = translation(base)
-                    * rotationY(facing)
-                    * scaleMatrix(SIMD3(repeating: scale))
-                people.append(InstanceData(model: body, color: SIMD4(coat, 0)))
-                if h2 > 0.58 {
-                    brims.append(InstanceData(model: body, color: SIMD4(SIMD3(repeating: 1), 0)))
-                } else {
-                    heads.append(InstanceData(model: body, color: SIMD4(SIMD3(repeating: 1), 0)))
-                }
+            for side in [Float(-1), 1] {
+                let leg = model * translation(SIMD3(side * 0.085, 0.49, 0))
+                    * rotationX(side * pose.stride * 0.50)
+                legs.append(InstanceData(model: leg, color: SIMD4(coat * 0.45, 0)))
 
-                let c = cos(facing), sn = sin(facing)
-                func localPoint(_ lx: Float, _ ly: Float, _ lz: Float) -> SIMD3<Float> {
-                    SIMD3(base.x + (lx * c + lz * sn) * scale,
-                          base.y + ly * scale,
-                          base.z + (-lx * sn + lz * c) * scale)
+                let swing = side * pose.stride * 0.42
+                let handPitch: Float
+                switch activity.kind {
+                case .fieldwork: handPitch = side > 0 ? -0.15 - pose.reach * 0.65 : swing
+                case .market: handPitch = side > 0 ? -0.35 - pose.reach * 1.05 : swing
+                case .freight: handPitch = cratePitch
                 }
-                for (side, swingSign) in [(Float(-1), Float(1)), (Float(1), Float(-1))] {
-                    let hip = localPoint(side * 0.085, 0.49, 0)
-                    let model = translation(hip)
-                        * rotationY(facing)
-                        * rotationX(0.10 * swingSign)
-                        * scaleMatrix(SIMD3(repeating: scale))
-                    legs.append(InstanceData(model: model, color: SIMD4(coat * 0.45, 0)))
+                let arm = model * translation(SIMD3(side * 0.205, 0.845, 0))
+                    * rotationX(handPitch)
+                arms.append(InstanceData(model: arm, color: SIMD4(coat, 0)))
+
+                if side > 0, activity.kind != .freight {
+                    let hand = arm * translation(SIMD3(0, -0.41, 0))
+                    if activity.kind == .fieldwork {
+                        let handle = hand * rotationX(-handPitch + 0.10 - pose.reach * 0.70)
+                        carried.append(InstanceData(
+                            model: handle * translation(SIMD3(0, -0.16, 0))
+                                * scaleMatrix(SIMD3(0.045, 0.49, 0.045)),
+                            color: SIMD4(0.48, 0.33, 0.20, 0)))
+                        carried.append(InstanceData(
+                            model: handle * translation(SIMD3(0, -0.39, 0.03))
+                                * scaleMatrix(SIMD3(0.23, 0.055, 0.125)),
+                            color: SIMD4(0.34, 0.36, 0.38, 0)))
+                    } else {
+                        carried.append(InstanceData(
+                            model: hand * rotationX(-handPitch)
+                                * scaleMatrix(SIMD3(0.31, 0.22, 0.28)),
+                            color: SIMD4(0.66, 0.47, 0.25, 0)))
+                    }
                 }
-                for (side, swingSign) in [(Float(-1), Float(-1)), (Float(1), Float(1))] {
-                    let shoulder = localPoint(side * 0.205, 0.845, 0)
-                    let model = translation(shoulder)
-                        * rotationY(facing)
-                        * rotationX(0.08 * swingSign)
-                        * scaleMatrix(SIMD3(repeating: scale))
-                    arms.append(InstanceData(model: model, color: SIMD4(coat, 0)))
-                }
-                let hand = localPoint(0.21, 0.50, 0.02)
+            }
+            if activity.kind == .freight {
+                let hand = rotationX(cratePitch) * SIMD4<Float>(0, -0.41, 0, 1)
+                let load = model * translation(SIMD3(0, 0.845 + hand.y, hand.z + 0.12))
                 carried.append(InstanceData(
-                    model: translation(hand) * rotationY(facing)
-                        * scaleMatrix(SIMD3(scale * 0.34, scale * 0.26, scale * 0.28)),
-                    color: SIMD4(SIMD3(0.52, 0.40, 0.24), 0)))
+                    model: load * scaleMatrix(SIMD3(0.53, 0.31, 0.33)),
+                    color: SIMD4(0.54, 0.37, 0.22, 0)))
+                for side in [Float(-1), 1] {
+                    carried.append(InstanceData(
+                        model: load * translation(SIMD3(side * 0.18, 0, 0))
+                            * scaleMatrix(SIMD3(0.037, 0.32, 0.34)),
+                        color: SIMD4(0.23, 0.25, 0.26, 0)))
+                }
             }
         }
 
