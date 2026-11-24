@@ -73,6 +73,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         var shadow: SIMD4<Float>
         var closeLightViewProjection: simd_float4x4
         var closeShadow: SIMD4<Float>
+        var twilight: SIMD4<Float> // dawn, dusk, unused, unused
     }
 
     /// Must stay byte-identical to `struct PostUniforms` in Shaders.metal.
@@ -185,7 +186,6 @@ final class Renderer: NSObject, MTKViewDelegate {
     private(set) var lastReviewView: RiverReviewView?
     private var reviewSeed: UInt64 = 1
     private var reviewYear: Float = 0
-    private var lastSunHour: Float = 12
     var riverReviewMode: String?
     /// Controlled shader-regression fixture only; normal rendering leaves both unset.
     var validationWaterMesh: Mesh?
@@ -294,7 +294,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     private var postWidth = 0
     private var postHeight = 0
     private var currentNight: Float = 0
-    private var currentElevation: Float = 0.5
+    private var currentTwilight: SIMD2<Float> = .zero
     private var closeAzimuth: Float = 0
     private var livingSettlements: [Settlement] = []
     private var focusRadius: Float = 0.05
@@ -2006,11 +2006,13 @@ final class Renderer: NSObject, MTKViewDelegate {
                     model: model,
                     color: SIMD4(SIMD3(0.92, 0.94, 0.97), 0.85 * weatherIntensity)))
             } else {
-                let model = translation(SIMD3(x, y, z))
-                    * scaleMatrix(SIMD3(0.0004, 0.009, 0.0004))
+                let metres = RiverGraph.metresPerUnit
+                let model = translation(SIMD3(x + phase * 58 / metres, y, z))
+                    * rotationZ(0.13)
+                    * scaleMatrix(SIMD3(0.18, 6, 0.18) / metres)
                 instances.append(InstanceData(
                     model: model,
-                    color: SIMD4(SIMD3(0.60, 0.70, 0.80), 0.32 * weatherIntensity)))
+                    color: SIMD4(SIMD3(0.62, 0.72, 0.82), 0.28 * weatherIntensity)))
             }
         }
 
@@ -2297,20 +2299,31 @@ final class Renderer: NSObject, MTKViewDelegate {
                       target: SIMD3(centre.x, targetY, centre.y), fov: blend(a.fov, b.fov))
     }
 
-    private func sun(for time: Float) -> (direction: SIMD3<Float>, elevation: Float, night: Float) {
+    private struct SolarLight {
+        let hour: Float
+        let direction: SIMD3<Float>
+        let elevation: Float
+        let night: Float
+        let twilight: SIMD2<Float>
+    }
+
+    private func solarLight() -> SolarLight {
         let hour: Float
         if let override = hourOverride {
             hour = override
         } else {
             let comps = Calendar.current.dateComponents([.hour, .minute, .second], from: Date())
-            hour = Float(comps.hour ?? 12) + Float(comps.minute ?? 0) / 60
+            hour = Float(comps.hour ?? 12) + Float(comps.minute ?? 0) / 60 + Float(comps.second ?? 0) / 3600
         }
-        lastSunHour = hour
         let a = (hour / 24) * 2 * Float.pi - .pi / 2
         let elevation = sin(a)
-        let dir = simd_normalize(SIMD3<Float>(cos(a) * 0.86, elevation, 0.38))
-        let night = smoothstep(0.06, -0.14, elevation)
-        return (dir, elevation, night)
+        let azimuth = cos(a)
+        let direction = simd_normalize(SIMD3<Float>(azimuth * 0.86, elevation, 0.38))
+        let night = 1 - smoothstep(-0.22, 0.07, elevation)
+        let window = smoothstep(-0.32, -0.055, elevation) * (1 - smoothstep(0.025, 0.37, elevation))
+        let morning = smoothstep(-0.22, 0.22, azimuth)
+        return SolarLight(hour: hour, direction: direction, elevation: elevation, night: night,
+                          twilight: SIMD2(window * morning, window * (1 - morning)))
     }
 
     /// Season as 0 (midsummer) … 1 (midwinter), derived from the real date.
@@ -2379,7 +2392,8 @@ final class Renderer: NSObject, MTKViewDelegate {
                                      night: .zero,
                                      shadow: .zero,
                                      closeLightViewProjection: matrix_identity_float4x4,
-                                     closeShadow: .zero)
+                                     closeShadow: .zero,
+                                     twilight: .zero)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<FrameUniforms>.stride, index: 1)
 
         encoder.setVertexBuffer(identityBatch.buffer, offset: 0, index: 2)
@@ -2445,12 +2459,12 @@ final class Renderer: NSObject, MTKViewDelegate {
         scenePass.depthAttachment.storeAction = .dontCare
         scenePass.depthAttachment.clearDepth = 1.0
 
-        let (shadowSunDir, shadowElevation, _) = sun(for: time)
-        currentLightVP = lightMatrix(sunDir: shadowSunDir)
-        currentCloseLightVP = lightMatrix(sunDir: shadowSunDir,
+        let light = solarLight()
+        currentLightVP = lightMatrix(sunDir: light.direction)
+        currentCloseLightVP = lightMatrix(sunDir: light.direction,
                                           centre: SIMD3<Float>(focusPoint.x, 0.03, focusPoint.z),
                                           extent: 0.30)
-        if shadowElevation > 0.02 {
+        if light.elevation > 0.02 {
             encodeShadow(commandBuffer: commandBuffer, map: shadowMap,
                          lightVP: currentLightVP, includeTerrain: true)
             if let closeShadowMap {
@@ -2462,7 +2476,8 @@ final class Renderer: NSObject, MTKViewDelegate {
         encodeScene(commandBuffer: commandBuffer,
                     passDescriptor: scenePass,
                     size: CGSize(width: sceneWidth, height: sceneHeight),
-                    time: time)
+                    time: time,
+                    light: light)
 
         if sceneScale >= 0.999 {
             // Native or near-native: composite straight into the drawable.
@@ -2610,14 +2625,15 @@ final class Renderer: NSObject, MTKViewDelegate {
         // The blur radius is expressed in pixels at 1000 px tall, so the look is
         // identical whether we are drawing a 1600×1000 still or a 6 MP display.
         let scale = max(height / 1000.0, 0.5)
-        let warmth = smoothstep(0.35, 0.0, abs(currentElevation))
-        let saturation = 1.06 - currentNight * 0.08
+        let warmth = currentTwilight.y - currentTwilight.x * 0.45
+        let saturation = 1.04 - currentNight * 0.07 - weatherIntensity * 0.19
+        let contrast = 1.03 - currentNight * 0.045 - weatherIntensity * 0.065
 
         var uniforms = PostUniforms(
             params: SIMD4(0.50, 0.25, 0.30, 3.2 * scale),
             extra: SIMD4(time, 0.30, 0.62 * currentNight, 0),
             view: SIMD4(sceneScale, 0.0025, 0, 0),
-            grade: SIMD4(warmth, 1.06, saturation, 0.34)
+            grade: SIMD4(warmth, contrast, saturation, 0.29)
         )
 
         encoder.setRenderPipelineState(postPipeline)
@@ -2630,7 +2646,8 @@ final class Renderer: NSObject, MTKViewDelegate {
     private func encodeScene(commandBuffer: MTLCommandBuffer,
                              passDescriptor: MTLRenderPassDescriptor,
                              size: CGSize,
-                             time: Float) {
+                             time: Float,
+                             light: SolarLight) {
         guard size.width > 0, size.height > 0 else { return }
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: passDescriptor) else { return }
         encoder.label = "Evolving frame"
@@ -2643,7 +2660,6 @@ final class Renderer: NSObject, MTKViewDelegate {
         let projection = perspective(fovyRadians: degreesToRadians(cam.fov),
                                      aspect: aspect, near: 0.004, far: 30)
 
-        let (sunDir, sunElevation, night) = sun(for: time)
         let weather = weatherState()
         weatherIntensity = weather.intensity
         weatherIsSnow = weather.snow
@@ -2669,19 +2685,20 @@ final class Renderer: NSObject, MTKViewDelegate {
             lightViewProjection: currentLightVP,
             inverseViewProjection: simd_inverse(projection * view),
             cameraAndTime: SIMD4(cam.eye.x, cam.eye.y, cam.eye.z, time),
-            sunAndPad: SIMD4(sunDir, sunElevation),
-            night: SIMD4(night, season(), 1, weather.intensity),
+            sunAndPad: SIMD4(light.direction, light.elevation),
+            night: SIMD4(light.night, season(), 1, weather.intensity),
             shadow: SIMD4(1.0 / Float(shadowSize), 0.0015, 0.00012, debugShadow),
             closeLightViewProjection: currentCloseLightVP,
-            closeShadow: SIMD4(1.0 / Float(closeShadowSize), 0.00070, 0.00010, validationLegacyWaterDepth ? 1 : 0)
+            closeShadow: SIMD4(1.0 / Float(closeShadowSize), 0.00070, 0.00010, validationLegacyWaterDepth ? 1 : 0),
+            twilight: SIMD4(light.twilight.x, light.twilight.y, 0, 0)
         )
-        lastReviewView = RiverReviewView(seed: reviewSeed, year: reviewYear, hour: lastSunHour,
+        lastReviewView = RiverReviewView(seed: reviewSeed, year: reviewYear, hour: light.hour,
             season: uniforms.night.y, precipitation: weather.intensity, snow: weather.snow,
             animationTime: time, eye: [cam.eye.x, cam.eye.y, cam.eye.z],
             target: [cam.target.x, cam.target.y, cam.target.z], fov: cam.fov,
             width: reviewViewport.width, height: reviewViewport.height)
-        currentNight = night
-        currentElevation = sunElevation
+        currentNight = light.night
+        currentTwilight = light.twilight
 
         updateTraffic(time: time, camera: cam)
         updateWeather(time: time, camera: cam)

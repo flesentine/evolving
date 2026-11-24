@@ -19,6 +19,7 @@ struct FrameUniforms {
     float4   shadow;          // x = texel size, y = normal offset, z = depth bias, w = unused
     float4x4 closeLightProjection;
     float4   closeShadow;     // same layout as shadow, for the town-scale cascade
+    float4   twilight;        // x = dawn, y = dusk
 };
 
 struct InstanceData {
@@ -147,18 +148,26 @@ static inline float shadowFactor(texture2d<float> map, sampler smp,
     return sum / 9.0;
 }
 
+static inline float3 atmosphereGradient(float height, constant FrameUniforms &u)
+{
+    float day = smoothstep(-0.16, 0.45, u.sunAndPad.w);
+    float3 top = mix(float3(0.017, 0.032, 0.076), float3(0.16, 0.33, 0.60), day);
+    float3 rim = mix(float3(0.044, 0.071, 0.14), float3(0.68, 0.77, 0.84), day);
+    top = mix(top, float3(0.11, 0.19, 0.34), u.twilight.x);
+    rim = mix(rim, float3(0.46, 0.47, 0.58), u.twilight.x);
+    top = mix(top, float3(0.13, 0.10, 0.24), u.twilight.y);
+    rim = mix(rim, float3(0.66, 0.34, 0.22), u.twilight.y);
+    float3 stormTop = mix(float3(0.065, 0.083, 0.11), float3(0.27, 0.32, 0.38), day);
+    float3 stormRim = mix(float3(0.11, 0.14, 0.18), float3(0.46, 0.51, 0.56), day);
+    float overcast = u.night.w * 0.86;
+    return mix(mix(rim, stormRim, overcast), mix(top, stormTop, overcast), sqrt(saturate(height)));
+}
+
 static inline float3 skyRadiance(float3 ray, constant FrameUniforms &u)
 {
-    float day = saturate(u.sunAndPad.w * 3.0);
+    float day = smoothstep(-0.16, 0.45, u.sunAndPad.w);
     float weather = u.night.w;
-
-    float3 zenith  = mix(float3(0.015, 0.025, 0.07), float3(0.13, 0.30, 0.60), day);
-    float3 horizon = mix(float3(0.04, 0.06, 0.13), float3(0.66, 0.77, 0.88), day);
-    float3 col = mix(horizon, zenith, pow(saturate(ray.y), 0.60));
-
-    float3 overcast = mix(float3(0.10, 0.12, 0.15), float3(0.36, 0.40, 0.44), day);
-    col = mix(col, overcast, weather * 0.85);
-
+    float3 col = atmosphereGradient(ray.y, u);
     if (ray.y > 0.02) {
         float2 cp = ray.xz / max(ray.y, 0.10) * 0.16
                   + float2(u.cameraAndTime.w * 0.0030, u.cameraAndTime.w * 0.0012);
@@ -168,17 +177,13 @@ static inline float3 skyRadiance(float3 ray, constant FrameUniforms &u)
         float cover = smoothstep(0.42, 0.70, cn) * smoothstep(0.0, 0.05, ray.y);
         float3 cloudLit = mix(float3(0.10, 0.12, 0.17), float3(0.94, 0.95, 0.96), day);
         float3 cloudShade = mix(float3(0.05, 0.06, 0.09), float3(0.56, 0.59, 0.64), day);
-        col = mix(col, mix(cloudShade, cloudLit, saturate(day)), cover * (0.55 + 0.30 * weather));
+        cloudLit = mix(cloudLit, float3(0.56, 0.47, 0.50), u.twilight.x * 0.75);
+        cloudLit = mix(cloudLit, float3(0.80, 0.46, 0.35), u.twilight.y * 0.85);
+        float3 cloud = mix(cloudShade, cloudLit, day);
+        cloud = mix(cloud, mix(float3(0.08, 0.10, 0.14), float3(0.38, 0.43, 0.50), day), weather);
+        col = mix(col, cloud, cover * (0.53 + 0.30 * weather));
     }
     return col;
-}
-
-static inline float3 skyColour(float sunElevation)
-{
-    float day = saturate(sunElevation);
-    float3 zenith  = mix(float3(0.03, 0.05, 0.12), float3(0.16, 0.33, 0.62), day);
-    float3 horizon = mix(float3(0.06, 0.08, 0.16), float3(0.68, 0.78, 0.88), day);
-    return mix(horizon, zenith, 0.55);
 }
 
 static float submittedGround(float2 world, texture2d<float> submittedHeights) {
@@ -735,10 +740,14 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
 
     float  ndl     = max(dot(n, sun), 0.0);
     float  wrap    = max(dot(n, sun) * 0.5 + 0.5, 0.0);
-    float3 skyAmb  = mix(float3(0.145, 0.175, 0.30), float3(0.34, 0.46, 0.66), day);
-    float3 gndAmb  = mix(float3(0.095, 0.105, 0.135), float3(0.20, 0.18, 0.14), day);
-    float3 ambient = mix(gndAmb, skyAmb, n.y * 0.5 + 0.5) * mix(0.95, 0.50, day);
-    float3 sunCol  = mix(float3(1.00, 0.52, 0.28), float3(1.00, 0.94, 0.84), day);
+    float3 skyAmb  = mix(float3(0.15, 0.19, 0.29), float3(0.39, 0.48, 0.65), day);
+    skyAmb = mix(skyAmb, float3(0.31, 0.34, 0.53), u.twilight.x);
+    skyAmb = mix(skyAmb, float3(0.37, 0.25, 0.38), u.twilight.y);
+    float3 gndAmb = mix(float3(0.112, 0.126, 0.166), float3(0.27, 0.25, 0.20), day);
+    float3 ambient = mix(gndAmb, skyAmb, n.y * 0.5 + 0.5) * mix(0.88, 0.60, day);
+    float3 lowSun = mix(float3(1.00, 0.73, 0.58), float3(1.00, 0.48, 0.25), u.twilight.y);
+    float3 sunCol = mix(lowSun, float3(1.00, 0.96, 0.87), day);
+    float direct = smoothstep(-0.02, 0.15, sunUp);
 
     // Moonlight keeps the island readable at night without pretending it is day.
     float3 moonDir = normalize(-sun);
@@ -747,31 +756,34 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
 
     float cloud = cloudShadow(in.world.xz, u.cameraAndTime.w);
     float weather = u.night.w;
-    float sunVis = (1.0 - cloud * 0.55 * day) * (1.0 - weather * 0.55);
-    ambient *= mix(1.0, 0.78, weather);
+    float sunVis = (1.0 - cloud * 0.44 * day) * (1.0 - weather * 0.79);
+    ambient = mix(ambient, ambient * float3(0.74, 0.80, 0.90), weather);
 
-    float shadow = shadowFactor(shadowMap, shadowSampler,
-                                u.lightViewProjection, u.shadow,
-                                in.world, n, sun, 1.0);
+    float shadow = 1.0;
+    if (sunUp > 0.02 && u.shadow.w < 0.5) {
+        shadow = shadowFactor(shadowMap, shadowSampler,
+                                    u.lightViewProjection, u.shadow,
+                                    in.world, n, sun, 1.0);
 
-    // Town-scale cascade: inside its bounds, use the higher-resolution map.
-    float4 clp = u.closeLightProjection * float4(in.world + n * u.closeShadow.y, 1.0);
-    float3 cp = clp.xyz / max(clp.w, 1e-5);
-    float2 cuv = float2(cp.x * 0.5 + 0.5, 0.5 - cp.y * 0.5);
-    if (all(cuv > 0.005) && all(cuv < 0.995)) {
-        float closeShadow = shadowFactor(closeShadowMap, shadowSampler,
-                                         u.closeLightProjection, u.closeShadow,
-                                         in.world, n, sun, 1.1);
-        float edge = min(min(cuv.x, 1.0 - cuv.x), min(cuv.y, 1.0 - cuv.y));
-        float blend = smoothstep(0.010, 0.060, edge);
-        shadow = mix(shadow, closeShadow, blend);
+        // Town-scale cascade: inside its bounds, use the higher-resolution map.
+        float4 clp = u.closeLightProjection * float4(in.world + n * u.closeShadow.y, 1.0);
+        float3 cp = clp.xyz / max(clp.w, 1e-5);
+        float2 cuv = float2(cp.x * 0.5 + 0.5, 0.5 - cp.y * 0.5);
+        if (all(cuv > 0.005) && all(cuv < 0.995)) {
+            float closeShadow = shadowFactor(closeShadowMap, shadowSampler,
+                                             u.closeLightProjection, u.closeShadow,
+                                             in.world, n, sun, 1.1);
+            float edge = min(min(cuv.x, 1.0 - cuv.x), min(cuv.y, 1.0 - cuv.y));
+            float blend = smoothstep(0.010, 0.060, edge);
+            shadow = mix(shadow, closeShadow, blend);
+        }
+        // Fade the cascade in at sunrise. At night it was not rendered.
+        shadow = mix(1.0, shadow, smoothstep(0.02, 0.14, sunUp));
     }
-    // Debug flag: u.shadow.w == 1 disables shadows, 2 also tags the river.
-    if (u.shadow.w > 0.5) { shadow = 1.0; }
 
     float3 lit = albedo * (ambient
-                           + sunCol * (ndl * 0.95 + wrap * 0.10) * sunVis * shadow * mix(0.03, 0.52, day)
-                           + moonCol * moonLit * 0.55);
+                           + sunCol * (ndl * 0.95 + wrap * 0.10) * sunVis * shadow * direct * mix(0.25, 0.58, day)
+                           + moonCol * moonLit * 0.46);
 
     if (in.material > 17.5 && in.material < 18.5) {
         // River water: submitted-terrain depth, continuous world-space ripples,
@@ -808,7 +820,7 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
         // A flat sheet can carry a real Fresnel without the bed-step pools
         // that made Phase 2 switch it off: grazing views reflect the sky,
         // steep views look into the tinted body.
-        float3 sky = skyColour(u.sunAndPad.w) * 0.90;
+        float3 sky = atmosphereGradient(0.36, u) * 0.90;
         float fres = 0.07 + 0.38 * pow(1.0 - saturate(dot(n, vd)), 4.0);
 
         // Shore silt, clear shallow shelf, mid channel and deep water.
@@ -831,7 +843,7 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
         // the water without the regular lanes a stretched flow texture made.
         float3 halfDir = normalize(sun + vd);
         float glint = pow(max(dot(n, halfDir), 0.0), 220.0);
-        water += sunCol * glint * sunVis * shadow
+        water += sunCol * glint * sunVis * shadow * direct
                * mix(0.015, 0.09, detail);
 
         // Shoreline foam: a continuous lip where depth reaches zero, broken
@@ -869,7 +881,7 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
         float shininess = mix(12.0, 90.0, 1.0 - surfaceRough);
         float shine = smoothstep(0.55, 0.15, surfaceRough);
         float spec = pow(max(dot(n, H), 0.0), shininess) * shine;
-        lit += sunCol * spec * shadow * sunVis * 0.65;
+        lit += sunCol * spec * shadow * sunVis * direct * 0.65;
     }
 
     float flash = lightningFlash(u.cameraAndTime.w, weather);
@@ -926,9 +938,13 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
 
     // Distance fog plus a radial horizon fade so the edge of the world grid
     // dissolves into the sky instead of ending in a hard square.
-    float3 horizonColour = mix(float3(0.04, 0.06, 0.12), float3(0.60, 0.70, 0.82), day);
+    float3 horizonColour = atmosphereGradient(0.06, u);
     float dist = length(u.cameraAndTime.xyz - in.world);
-    float fog  = 1.0 - exp(-max(dist - 3.0, 0.0) * 0.30);
+    // World distances are kilometres. Rain and a shallow dawn veil soften
+    // distant ridges while keeping nearby roofs and roads legible.
+    float lowland = 1.0 - smoothstep(0.04, 0.24, in.world.y);
+    float density = weather * 0.92 + (u.twilight.x * 0.30 + u.twilight.y * 0.12) * lowland;
+    float fog = 1.0 - exp(-max(dist - 3.0, 0.0) * 0.30 - max(dist - 0.12, 0.0) * density);
     float radial = smoothstep(0.98, 1.24, length(in.world.xz));
     lit = mix(lit, horizonColour, saturate(max(fog * u.night.z, radial)));
 
@@ -1017,7 +1033,9 @@ fragment float4 skyFragment(SkyVaryings in [[stage_in]],
     float3 sun = normalize(u.sunAndPad.xyz);
     float  glow = pow(saturate(dot(ray, sun) * 0.5 + 0.5), 24.0);
     float  golden = 1.0 - saturate(abs(u.sunAndPad.w) * 4.0);
-    col += float3(1.0, 0.55, 0.28) * glow * (0.30 + 0.55 * golden) * (0.25 + 0.75 * day);
+    float3 halo = mix(float3(1.0, 0.70, 0.57), float3(1.0, 0.48, 0.24), u.twilight.y);
+    col += halo * glow * (0.25 * day + 0.4 * golden * max(u.twilight.x, u.twilight.y))
+         * (1.0 - weather) * (1.0 - weather);
 
     col += lightningFlash(u.cameraAndTime.w, weather) * float3(0.55, 0.60, 0.75) * 0.65;
 
@@ -1148,7 +1166,8 @@ fragment float4 postFragment(PostVaryings in [[stage_in]],
     col = (col - 0.5) * u.grade.y + 0.5;
     col *= mix(float3(0.96, 0.98, 1.05), float3(1.05, 1.01, 0.95),
                smoothstep(0.10, 0.85, luma));
-    col += u.grade.x * 0.03 * float3(1.0, 0.68, 0.38) * smoothstep(0.35, 1.0, luma);
+    col += (max(u.grade.x, 0.0) * float3(0.036, 0.018, 0.005)
+         + max(-u.grade.x, 0.0) * float3(0.006, 0.023, 0.041)) * smoothstep(0.26, 0.85, luma);
 
     // ---- Vignette --------------------------------------------------------
     float2 v = (uv - 0.5) * float2(1.0, 1.12);
