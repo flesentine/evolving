@@ -45,6 +45,7 @@ func usage() -> Never {
       civheadless neolithichouses <directory>
       civheadless neolithicstone <directory>
       civheadless neolithicyards <directory>
+      civheadless neolithicprops <directory>
       civheadless lifecyclecheck <saver-path> [screenshots-directory]
       civheadless worldtransfercheck [fixture-output]
       civheadless townactivitycheck <directory> <seed>
@@ -109,6 +110,79 @@ let arguments = CommandLine.arguments
 guard arguments.count >= 2 else { usage() }
 
 switch arguments[1] {
+
+case "neolithicprops":
+    guard arguments.count == 3 else { usage() }
+    do {
+        let directory = URL(fileURLWithPath: arguments[2], isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let terrain = WorldGen.generate(seed: 1)
+        var sim = Simulation(seed: 1, terrain: terrain)
+        sim.advance(to: 450)
+        let renderer = try Renderer(context: MetalContext(), terrain: terrain,
+                                    colorPixelFormat: .bgra8Unorm_srgb, depthPixelFormat: .depth32Float)
+        renderer.updateScene(sim)
+        let scene = renderer.scene
+        let props = NeolithicProps.paths.map { renderer.submittedHouseholdProps($0) }
+        let roads = scene.activityRoads
+        let banks = scene.riverBankFootprint
+        let crops = FieldSurface.Mask(mesh: scene.fieldMesh)
+        var occupied = FieldSurface.Mask()
+        let metres = RiverGraph.metresPerUnit
+        for (path, items) in zip(NeolithicProps.paths, props) {
+            guard !items.isEmpty else { fail("missing submitted household prop \(path)") }
+            let bounds = RiverPlacement.authoredBounds(path)
+            let asset = try CivMesh.bounds(named: path + ".civmesh")
+            for item in items {
+                let footprint = RiverPlacement.transformed(bounds, by: item.model)
+                let base = item.model.columns.3
+                let probes = footprint + [SIMD2(base.x, base.z)]
+                let sole = base.y + asset.min.y / metres
+                guard footprint.count == 4,
+                      probes.allSatisfy({ abs(sole - scene.renderedTerrainHeight(at: $0)) <= 0.035 / metres
+                          && !scene.terrain.isWater(x: $0.x, z: $0.y) }),
+                      !scene.riverField.intersectsFootprint(footprint, margin: 0.3 / metres),
+                      !banks.intersectsFootprint(footprint), !roads.intersectsFootprint(footprint),
+                      !scene.activityStreets.intersectsFootprint(footprint),
+                      !crops.intersectsFootprint(footprint), !occupied.intersectsFootprint(footprint)
+                else { fail("unsupported or obstructing submitted household prop \(path)") }
+                occupied.insertFootprint(footprint)
+            }
+            print("PASS \(path): \(items.count) submitted instances, grounded and clear of banks, paths, and crops")
+        }
+        renderer.updateScene(sim)
+        for (path, items) in zip(NeolithicProps.paths, props) {
+            let replay = renderer.submittedHouseholdProps(path)
+            guard items.count == replay.count,
+                  zip(items, replay).allSatisfy({ $0.model == $1.model })
+            else { fail("household prop placement differs on replay for \(path)") }
+        }
+        print("PASS household prop placement replays exactly")
+        let existing = try RiverReviewView.read(URL(fileURLWithPath: "review/neolithic/neo-05/inland.json"))
+        NeolithicReference.apply(existing, to: renderer)
+        _ = try Snapshot.write(renderer: renderer, width: existing.width, height: existing.height,
+                               time: existing.animationTime, to: directory.appendingPathComponent("inland-after.png"))
+        for (path, items) in zip(NeolithicProps.paths, props) {
+            let base = items[0].model.columns.3
+            let target = SIMD3(base.x, base.y + 0.25 / metres, base.z)
+            let eye = target + SIMD3<Float>(2.0, 2.4, 4.1) / metres
+            var view = existing
+            view.eye = [eye.x, eye.y, eye.z]
+            view.target = [target.x, target.y, target.z]
+            view.fov = 20
+            view.provenance = "NEO-06 placed household prop"
+            NeolithicReference.apply(view, to: renderer)
+            let name = URL(fileURLWithPath: path).lastPathComponent
+            try view.write(to: directory.appendingPathComponent(name + ".json"))
+            _ = try Snapshot.write(renderer: renderer, width: view.width, height: view.height,
+                                   time: view.animationTime, to: directory.appendingPathComponent(name + ".png"))
+        }
+        sim.advance(to: 810)
+        renderer.updateScene(sim)
+        guard NeolithicProps.paths.allSatisfy({ renderer.submittedHouseholdProps($0).isEmpty })
+        else { fail("Neolithic household props leaked into Bronze Age batches") }
+        print("PASS year-810 transition clears Neolithic household prop batches")
+    } catch { fail("Neolithic prop check failed — \(error)") }
 
 case "neolithicyards":
     guard arguments.count == 3 else { usage() }

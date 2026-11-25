@@ -3,8 +3,8 @@
 Open [neolithic.blend](neolithic.blend) in Blender. It contains the editable
 timber-and-daub house, the kneeling worker and quern, and the pig from the
 [NEO-01 reference hamlet](../../review/neolithic/neo-01/README.md), along with
-the three production inland house forms and two exposed stone homes. The .blend
-uses the existing building atlas through a relative path within the checkout.
+the three production inland house forms, two exposed stone homes, and five
+[household props](../../review/neolithic/neo-06/README.md). The .blend uses the existing building atlas through a relative path within the checkout.
 
 - Edit the meshes in the **Evolving Neolithic Exports** collection. Blender uses
   metres and Z-up. The house entrance faces Blender −Y. The exporter converts to

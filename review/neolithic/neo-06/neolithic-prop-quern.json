@@ -1,0 +1,24 @@
+{
+  "animationTime" : 27,
+  "eye" : [
+    -0.16029093,
+    0.024013832,
+    0.16491367
+  ],
+  "fov" : 20,
+  "height" : 900,
+  "hour" : 14,
+  "precipitation" : 0,
+  "provenance" : "NEO-06 placed household prop",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    -0.16229093,
+    0.021613833,
+    0.16081367
+  ],
+  "width" : 1440,
+  "year" : 450
+}
