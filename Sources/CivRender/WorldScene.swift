@@ -167,7 +167,7 @@ final class WorldScene {
         boatSailMesh = try Mesh(device: context.device, vertices: Geometry.boatSail())
 
         var loaded: [(path: String, mesh: Mesh)] = []
-        for path in BuildingCatalog.allPaths {
+        for path in BuildingCatalog.allPaths + NeolithicReference.paths {
             guard let asset = try? CivMesh.load(named: path + ".civmesh"),
                   let mesh = try? Mesh(device: context.device,
                                        vertices: asset.vertices,

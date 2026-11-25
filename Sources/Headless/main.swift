@@ -41,6 +41,7 @@ func usage() -> Never {
       civheadless farmfixtures
       civheadless townhistorycheck <seed> <town-id>
       civheadless worldupgradecheck
+      civheadless neolithicreference <directory>
       civheadless lifecyclecheck <saver-path> [screenshots-directory]
       civheadless worldtransfercheck [fixture-output]
       civheadless townactivitycheck <directory> <seed>
@@ -105,6 +106,41 @@ let arguments = CommandLine.arguments
 guard arguments.count >= 2 else { usage() }
 
 switch arguments[1] {
+
+case "neolithicreference":
+    guard arguments.count == 3 else { usage() }
+    do {
+        let directory = URL(fileURLWithPath: arguments[2], isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let terrain = WorldGen.generate(seed: NeolithicReference.seed)
+        var simulation = Simulation(seed: NeolithicReference.seed, terrain: terrain)
+        simulation.advance(to: NeolithicReference.year)
+        let renderer = try Renderer(context: MetalContext(), terrain: terrain,
+                                    colorPixelFormat: .bgra8Unorm_srgb, depthPixelFormat: .depth32Float)
+        renderer.showsNeolithicReference = true
+        renderer.updateScene(simulation)
+        guard let stage = renderer.neolithicReferenceStage else {
+            fail("NEO-01 could not fit its assets on dry terrain in the reference hamlet")
+        }
+        let views = stage.views()
+        for (name, view) in views {
+            try view.write(to: directory.appendingPathComponent(name + ".json"))
+        }
+        for (pass, show) in [("before", false), ("after", true)] {
+            renderer.showsNeolithicReference = show
+            renderer.updateScene(simulation)
+            guard (renderer.neolithicReferenceStage != nil) == show else {
+                fail("NEO-01 staging did not match pass \(pass)")
+            }
+            for (name, view) in views {
+                NeolithicReference.apply(view, to: renderer)
+                _ = try Snapshot.write(renderer: renderer, width: view.width, height: view.height,
+                                       time: view.animationTime,
+                                       to: directory.appendingPathComponent(name + "-" + pass + ".png"))
+            }
+        }
+        print("PASS NEO-01 dry reference stage, three saved views and six renders")
+    } catch { fail("NEO-01 reference failed — \(error)") }
 
 case "lifecyclecheck":
     guard arguments.count == 3 || arguments.count == 4 else { usage() }
