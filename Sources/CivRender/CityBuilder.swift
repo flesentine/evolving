@@ -450,20 +450,7 @@ enum CityBuilder {
             let ground = terrain.heightAt(x: hx, z: hz)
             guard ground > 0.004, terrain.isWater(x: hx, z: hz) == false else { continue }
 
-            var baseScale = asset.scale * 0.00088
-                * (0.95 + rng.nextFloat() * 0.10)
-            if asset.path == "modern-tower" { baseScale *= 0.92 }
-            if asset.path.contains("information") || asset.path.contains("future") {
-                baseScale *= 0.88
-            }
-
-            // Keep the footprint inside its plot; only the height carries the
-            // landmark / density multiplier.
-            let footprint = BuildingCatalog.footprint(for: asset.path)
-            let footprintWidth = max(footprint.x * baseScale, 1e-5)
-            let footprintDepth = max(footprint.y * baseScale, 1e-5)
-            let fit = min(1.0, min(slot.width * 0.96 / footprintWidth,
-                                   slot.depth * 0.96 / footprintDepth))
+            let sizeVariation = 0.95 + rng.nextFloat() * 0.10
             let heightScale = slot.scaleMultiplier
 
             let tint = tints[Int(rng.nextFloat() * Float(tints.count))]
@@ -479,32 +466,58 @@ enum CityBuilder {
                     material: SIMD4(2, 0, 0, 0)))
             }
 
-            let facingTransform = rotationY(facing + rng.nextFloat(in: -0.05...0.05))
-                * scaleMatrix(SIMD3(baseScale * fit, baseScale * heightScale, baseScale * fit))
-            var model = translation(SIMD3(hx, ground + slot.podium - 0.0002, hz)) * facingTransform
-            if era == .neolithic {
-                let footprint = RiverPlacement.transformed(RiverPlacement.authoredBounds(asset.path), by: model)
-                guard footprint.count == 4,
-                      footprint.allSatisfy({ !terrain.isWater(x: $0.x, z: $0.y) }),
-                      river?.intersectsFootprint(footprint, margin: 2 / metres) != true,
-                      !geometry.neolithicHouseFootprints.contains(where: {
-                          RiverPlacement.rectanglesOverlap(footprint, $0, clearance: 0.25 / metres)
-                      }) else { continue }
-                let edges = footprint.indices.map { (footprint[$0] + footprint[($0 + 1) % 4]) * 0.5 }
-                let samples = (footprint + edges + [SIMD2(hx, hz)]).map { p in
-                    renderedGround?(p) ?? terrain.originalTriangleHeight(at: p)
+            let orientation = rotationY(facing + rng.nextFloat(in: -0.05...0.05))
+            func houseModel(_ candidate: BuildingAsset) -> simd_float4x4 {
+                var baseScale = candidate.scale * 0.00088 * sizeVariation
+                if candidate.path == "modern-tower" { baseScale *= 0.92 }
+                if candidate.path.contains("information") || candidate.path.contains("future") {
+                    baseScale *= 0.88
                 }
-                let highest = samples.max()!
-                let lowest = samples.min()!
-                // All three authored stone skirts extend 1.55 m below the floor origin.
-                guard highest - lowest <= (1.55 * baseScale * heightScale) else { continue }
-                model.columns.3.y = highest
-                geometry.neolithicHouseFootprints.append(footprint)
+                let dimensions = BuildingCatalog.footprint(for: candidate.path)
+                let width = max(dimensions.x * baseScale, 1e-5)
+                let depth = max(dimensions.y * baseScale, 1e-5)
+                let fit = min(1.0, min(slot.width * 0.96 / width, slot.depth * 0.96 / depth))
+                return translation(SIMD3(hx, ground + slot.podium - 0.0002, hz))
+                    * (orientation * scaleMatrix(SIMD3(baseScale * fit, baseScale * heightScale, baseScale * fit)))
             }
-            geometry.buildings[asset.path, default: []].append(InstanceData(
-                model: model,
-                color: SIMD4(tint, 0),
-                material: SIMD4(9, 0, 0, 0)))
+
+            if era == .neolithic {
+                var candidates = [asset]
+                if NeolithicCoast.isExposed(SIMD2(hx, hz), terrain: terrain) {
+                    let stone = BuildingCatalog.neolithicStone
+                    let first = (Int(slot.cellIndex.x) + slot.ring) % stone.count
+                    candidates.insert(contentsOf: [stone[first], stone[(first + 1) % stone.count]], at: 0)
+                }
+                var placedHouse = false
+                for candidate in candidates {
+                    var model = houseModel(candidate)
+                    let footprint = RiverPlacement.transformed(RiverPlacement.authoredBounds(candidate.path), by: model)
+                    guard footprint.count == 4,
+                          footprint.allSatisfy({ !terrain.isWater(x: $0.x, z: $0.y) }),
+                          river?.intersectsFootprint(footprint, margin: 2 / metres) != true,
+                          !geometry.neolithicHouseFootprints.contains(where: {
+                              RiverPlacement.rectanglesOverlap(footprint, $0, clearance: 0.25 / metres)
+                          }) else { continue }
+                    let edges = footprint.indices.map { (footprint[$0] + footprint[($0 + 1) % 4]) * 0.5 }
+                    let samples = (footprint + edges + [SIMD2(hx, hz)]).map { p in
+                        renderedGround?(p) ?? terrain.originalTriangleHeight(at: p)
+                    }
+                    let highest = samples.max()!
+                    let lowest = samples.min()!
+                    // The authored stone skirts extend 1.55 m below the floor origin.
+                    guard highest - lowest <= 1.55 * model.columns.1.y else { continue }
+                    model.columns.3.y = highest
+                    geometry.neolithicHouseFootprints.append(footprint)
+                    geometry.buildings[candidate.path, default: []].append(InstanceData(
+                        model: model, color: SIMD4(tint, 0), material: SIMD4(9, 0, 0, 0)))
+                    placedHouse = true
+                    break
+                }
+                if !placedHouse { continue }
+            } else {
+                geometry.buildings[asset.path, default: []].append(InstanceData(
+                    model: houseModel(asset), color: SIMD4(tint, 0), material: SIMD4(9, 0, 0, 0)))
+            }
 
             if activity == .freight,
                slot.district == .industrial || slot.district == .commercial {

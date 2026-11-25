@@ -58,7 +58,9 @@ enum NeolithicHouseCheck {
                                         year: year, terrain: scene.terrain, seed: seed,
                                         riverField: field, renderedGround: scene.renderedTerrainHeight(at:))
         let paths = BuildingCatalog.neolithic.map(\.path)
-        guard Set(geometry.buildings.keys.filter { $0.hasPrefix("variants/neolithic-") }) == Set(paths) else {
+        let stone = Set(BuildingCatalog.neolithicStone.map(\.path))
+        guard Set(geometry.buildings.keys.filter { $0.hasPrefix("variants/neolithic-") })
+            .subtracting(stone) == Set(paths) else {
             throw Failure("The placed house catalog is missing an inland variant or contains legacy houses")
         }
 

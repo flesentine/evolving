@@ -1,0 +1,24 @@
+{
+  "animationTime" : 24,
+  "eye" : [
+    0.46890825,
+    0.021956984,
+    0.27024445
+  ],
+  "fov" : 39,
+  "height" : 900,
+  "hour" : 14.5,
+  "precipitation" : 0,
+  "provenance" : "NEO-04 production stone home",
+  "schemaVersion" : 1,
+  "season" : 0.73,
+  "seed" : 6,
+  "snow" : false,
+  "target" : [
+    0.48158407,
+    0.017956983,
+    0.26455903
+  ],
+  "width" : 1440,
+  "year" : 790
+}
