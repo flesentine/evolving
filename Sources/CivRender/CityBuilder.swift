@@ -29,6 +29,7 @@ enum CityBuilder {
         var streets: [StreetGrid] = []
         var streetLines: [StreetLine] = []
         var buildings: [String: [InstanceData]] = [:]
+        var activityCandidates: [[TownActivity]] = []
     }
 
     /// One street ribbon, clipped to dry land.
@@ -178,9 +179,15 @@ enum CityBuilder {
         let radius = plan.radius
         let cell = plan.cell
         let half = plan.half
-        let plots = plan.plots.filter {
-            connected($0.center, to: SIMD2(s.x, s.z), river: river)
+        let historic = HistoricQuarter(settlement: s, era: era, terrain: terrain,
+                                       axis: plan.axis, river: river)
+        let plots = plan.plots.filter { plot in
+            let allowance = 2.6 / RiverGraph.metresPerUnit // Maximum building setback.
+            let footprintRadius = simd_length(SIMD2(plot.width, plot.depth)) * 0.5 + allowance
+            return historic?.overlaps(plot.center, radius: footprintRadius) != true
+                && connected(plot.center, to: SIMD2(s.x, s.z), river: river)
         }
+        let streetStart = geometry.streetLines.count
         let smokeStart = geometry.smoke.count
         // A settlement centre can land on a distributary. Paving is not a
         // building, so it is not caught by the house filter; skip civic
@@ -217,6 +224,11 @@ enum CityBuilder {
                             terrain: terrain, river: river,
                             into: &geometry.streetLines)
             }
+        }
+
+        if let historic {
+            let retained = geometry.streetLines[streetStart...].flatMap { historic.streets(in: $0) }
+            geometry.streetLines.replaceSubrange(streetStart..., with: retained)
         }
 
         // A Renaissance piazza is a larger paved civic room.
@@ -271,6 +283,9 @@ enum CityBuilder {
             }
         }
 
+        let activity = TownActivity.Kind(era: era)
+        let metres = TownActivity.metres
+        var freightRoutes: [(SIMD2<Float>, SIMD2<Float>)] = []
         let placed = min(count, plots.count)
         let survivors = BuildingCatalog.survivors(for: era)
         let tints: [SIMD3<Float>] = [
@@ -464,6 +479,16 @@ enum CityBuilder {
                 color: SIMD4(tint, 0),
                 material: SIMD4(9, 0, 0, 0)))
 
+            if activity == .freight,
+               slot.district == .industrial || slot.district == .commercial {
+                let along = SIMD2(-front.y, front.x)
+                for edge in [Float(3), 5, 7] {
+                    let frontEdge = slot.frontPoint + front * (edge / metres)
+                    freightRoutes.append((frontEdge - along * (4 / metres),
+                                          frontEdge + along * (3 / metres)))
+                }
+            }
+
             // Medieval burgage plots keep a working garden behind the house.
             if era == .medieval, slot.ring == 0, slot.district != .civic {
                 let back = slot.center - slot.frontage * (slot.depth * 0.82)
@@ -549,9 +574,11 @@ enum CityBuilder {
             }
         }
 
-        // Dedicated landmark meshes: temples, churches and docks.
-        for landmark in plan.landmarks {
-            let g = terrain.heightAt(x: landmark.center.x, z: landmark.center.y)
+        // An older church keeps its site while the town's other monuments change.
+        let landmarks = historic.map { plan.landmarks + [$0.church] } ?? plan.landmarks
+        for (index, landmark) in landmarks.enumerated() {
+            let retained = index == plan.landmarks.count ? historic : nil
+            let g = retained?.ground ?? terrain.heightAt(x: landmark.center.x, z: landmark.center.y)
             guard g > 0.004, !terrain.isWater(x: landmark.center.x, z: landmark.center.y) else {
                 continue
             }
@@ -562,6 +589,11 @@ enum CityBuilder {
             case .cathedral: key = "__cathedral"
             case .dome:      key = "__dome"
             case .dock:      key = "__dock"
+            }
+            if let historic, retained == nil {
+                if landmark.kind == .church || landmark.kind == .cathedral { continue }
+                let extent = RiverPlacement.authoredBounds(key).map { simd_length($0) }.max() ?? 0
+                if historic.overlaps(landmark.center, radius: extent * landmark.scale) { continue }
             }
             let model = translation(SIMD3(landmark.center.x, g - 0.0003,
                                           landmark.center.y))
@@ -599,9 +631,26 @@ enum CityBuilder {
             }
         }
 
+        let fieldsStart = geometry.fields.count
         appendFields(s, all: all, era: era, year: year, terrain: terrain, seed: seed, into: &geometry)
-        if era.rawValue >= Era.classical.rawValue {
-            appendStalls(s, terrain: terrain, seed: seed, into: &geometry)
+        let stallRoutes = era.rawValue >= Era.classical.rawValue
+            ? appendStalls(s, terrain: terrain, seed: seed, river: river, into: &geometry) : []
+        let routes: [(SIMD2<Float>, SIMD2<Float>)]
+        switch activity {
+        case .fieldwork:
+            routes = geometry.fields[fieldsStart...].prefix(16).map { field in
+                let position = field.model.columns.3
+                let row = field.model.columns.2
+                let centre = SIMD2(position.x, position.z)
+                let axis = SIMD2(row.x, row.z)
+                return (centre - axis * 0.28, centre + axis * 0.28)
+            }
+        case .market: routes = stallRoutes
+        case .freight: routes = freightRoutes
+        }
+        if !routes.isEmpty {
+            geometry.activityCandidates.append(TownActivity.candidates(townID: s.id, kind: activity,
+                                                                        seed: seed, routes: routes))
         }
 
         if era == .neolithic {
@@ -954,7 +1003,9 @@ enum CityBuilder {
     private static func appendStalls(_ s: Settlement,
                                      terrain: Terrain,
                                      seed: UInt64,
-                                     into geometry: inout Geometry) {
+                                     river: RiverChannel.Field?,
+                                     into geometry: inout Geometry) -> [(SIMD2<Float>, SIMD2<Float>)] {
+        var routes: [(SIMD2<Float>, SIMD2<Float>)] = []
         var rng = SplitMix64(seed: seed
                              ^ (UInt64(bitPattern: Int64(s.id)) &* 0x9E37_79B9_7F4A_7C15)
                              ^ 0x51A1_7E3D)
@@ -987,6 +1038,22 @@ enum CityBuilder {
                 * rotationY(rotation)
                 * scaleMatrix(SIMD3(width * 1.2, 0.0006, depth * 1.3))
             let awningColour = awnings[Int(rng.nextFloat() * Float(awnings.count)) % awnings.count]
+            let metres = TownActivity.metres
+            let centre = SIMD2(x, z)
+            let front = SIMD2(sin(rotation), cos(rotation))
+            let along = SIMD2(cos(rotation), -sin(rotation))
+            let corners = RiverPlacement.transformed([
+                SIMD2(-0.5, -0.5), SIMD2(0.5, -0.5), SIMD2(0.5, 0.5), SIMD2(-0.5, 0.5)
+            ], by: awning)
+            if river?.intersectsFootprint(corners, margin: 1.5 / metres) != true {
+                for side in [Float(1), -1] {
+                    let near = centre + front * side * (5 / metres)
+                    let far = centre + front * side * (10 / metres)
+                    routes.append((far, near))
+                    routes.append((far + along * (3 / metres), near))
+                    routes.append((far - along * (3 / metres), near))
+                }
+            }
             geometry.boxes.append(InstanceData(model: awning,
                                                color: SIMD4(awningColour, 0)))
 
@@ -1013,6 +1080,7 @@ enum CityBuilder {
                                                    color: SIMD4(SIMD3(0.46, 0.35, 0.21), 0)))
             }
         }
+        return routes
     }
 
     /// Street polylines along the grid lines, split into runs of dry land so

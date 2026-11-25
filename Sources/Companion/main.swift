@@ -1,6 +1,7 @@
 import Cocoa
 import ScreenSaver
 import ImageIO
+import UniformTypeIdentifiers
 
 /// A small companion window: the current state of the world, a pace selector,
 /// and shortcuts into Screen Saver settings and the live preview. It reads the
@@ -20,6 +21,7 @@ final class CompanionApp: NSObject, NSApplicationDelegate {
     private var historyCount = -1
 
     private var store: UserDefaults!
+    private var fixtureDomain: String?
     private var config: WorldConfig?
     private var simulation: Simulation?
     private var timer: Timer?
@@ -28,7 +30,11 @@ final class CompanionApp: NSObject, NSApplicationDelegate {
         store = ScreenSaverDefaults(forModuleWithName: moduleName) ?? .standard
         buildMenu()
         buildWindow()
-        reloadWorld()
+        if CommandLine.arguments.dropFirst().first == "--check-world-transfer" {
+            runTransferFixture()
+        } else {
+            reloadWorld()
+        }
 
         let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.tick()
@@ -37,6 +43,11 @@ final class CompanionApp: NSObject, NSApplicationDelegate {
         self.timer = timer
 
         NSApp.activate(ignoringOtherApps: true)
+
+        if fixtureDomain != nil && ProcessInfo.processInfo.environment["EVOLVING_COMPANION_SHOT"] == nil {
+            NSApp.terminate(nil)
+            return
+        }
 
         // Screenshot hook for documentation and visual checks.
         if let path = ProcessInfo.processInfo.environment["EVOLVING_COMPANION_SHOT"] {
@@ -55,6 +66,10 @@ final class CompanionApp: NSObject, NSApplicationDelegate {
                 NSApp.terminate(nil)
             }
         }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        if let fixtureDomain { store.removePersistentDomain(forName: fixtureDomain) }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -93,7 +108,7 @@ final class CompanionApp: NSObject, NSApplicationDelegate {
     }
 
     private func buildWindow() {
-        let size = NSSize(width: 420, height: 600)
+        let size = NSSize(width: 420, height: 638)
         window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
                           styleMask: [.titled, .closable],
                           backing: .buffered,
@@ -150,68 +165,87 @@ final class CompanionApp: NSObject, NSApplicationDelegate {
         historyView = history
 
         let paceLabel = label("Pace", size: 13, weight: .regular, colour: .labelColor)
-        paceLabel.frame = NSRect(x: 24, y: 150, width: 50, height: 20)
+        paceLabel.frame = NSRect(x: 24, y: 188, width: 50, height: 20)
         content.addSubview(paceLabel)
 
-        pacePopup = NSPopUpButton(frame: NSRect(x: 78, y: 146, width: 180, height: 26),
+        pacePopup = NSPopUpButton(frame: NSRect(x: 78, y: 184, width: 180, height: 26),
                                   pullsDown: false)
         pacePopup.addItems(withTitles: Pace.all.map { $0.name })
         content.addSubview(pacePopup)
 
         let cameraLabel = label("Camera", size: 13, weight: .regular, colour: .labelColor)
-        cameraLabel.frame = NSRect(x: 24, y: 112, width: 54, height: 20)
+        cameraLabel.frame = NSRect(x: 24, y: 150, width: 54, height: 20)
         content.addSubview(cameraLabel)
 
-        cameraPopup = NSPopUpButton(frame: NSRect(x: 78, y: 108, width: 180, height: 26),
+        cameraPopup = NSPopUpButton(frame: NSRect(x: 78, y: 146, width: 180, height: 26),
                                     pullsDown: false)
         cameraPopup.addItems(withTitles: CameraMode.allCases.map { $0.rawValue })
         content.addSubview(cameraPopup)
 
         let apply = NSButton(title: "Apply", target: self, action: #selector(applyPace))
-        apply.frame = NSRect(x: 266, y: 108, width: 70, height: 26)
+        apply.frame = NSRect(x: 266, y: 146, width: 70, height: 26)
         apply.bezelStyle = .rounded
         content.addSubview(apply)
 
         let settings = NSButton(title: "Screen Saver Settings…",
                                 target: self, action: #selector(openSettings))
-        settings.frame = NSRect(x: 24, y: 60, width: 190, height: 30)
+        settings.frame = NSRect(x: 24, y: 61, width: 190, height: 30)
         settings.bezelStyle = .rounded
         content.addSubview(settings)
 
         let preview = NSButton(title: "Preview", target: self, action: #selector(previewSaver))
-        preview.frame = NSRect(x: 222, y: 60, width: 84, height: 30)
+        preview.frame = NSRect(x: 222, y: 61, width: 84, height: 30)
         preview.bezelStyle = .rounded
         content.addSubview(preview)
 
         let newWorld = NSButton(title: "New World", target: self, action: #selector(newWorld))
-        newWorld.frame = NSRect(x: 314, y: 60, width: 82, height: 30)
+        newWorld.frame = NSRect(x: 314, y: 61, width: 82, height: 30)
         newWorld.bezelStyle = .rounded
         content.addSubview(newWorld)
 
+        let exportButton = NSButton(title: "Export World…", target: self, action: #selector(exportWorld))
+        exportButton.bezelStyle = .rounded
+        exportButton.frame = NSRect(x: 24, y: 23, width: 140, height: 30)
+        content.addSubview(exportButton)
+
+        let importButton = NSButton(title: "Import World…", target: self, action: #selector(importWorld))
+        importButton.bezelStyle = .rounded
+        importButton.frame = NSRect(x: 171, y: 23, width: 140, height: 30)
+        content.addSubview(importButton)
+
         statusLabel = label("", size: 11, weight: .regular, colour: .secondaryLabelColor)
-        statusLabel.frame = NSRect(x: 24, y: 30, width: 372, height: 18)
+        statusLabel.frame = NSRect(x: 24, y: 3, width: 372, height: 18)
         content.addSubview(statusLabel)
 
-        let hint = label("Choose Evolving in System Settings → Screen Saver.",
-                         size: 11, weight: .regular, colour: .tertiaryLabelColor)
-        hint.frame = NSRect(x: 24, y: 8, width: 372, height: 16)
-        content.addSubview(hint)
 
         window.makeKeyAndOrderFront(nil)
     }
 
     // MARK: - World state
 
-    private func reloadWorld() {
+    private func reloadWorld(at date: Date = Date()) {
         guard let store else { return }
 
-        let config = WorldStore.load(from: store)
+        let config: WorldConfig
+        do {
+            config = try WorldStore.load(from: store)
+        } catch {
+            self.config = nil
+            simulation = nil
+            yearLabel.stringValue = "World unavailable"
+            statusLabel.stringValue = error.localizedDescription
+            let alert = NSAlert()
+            alert.messageText = "Evolving could not open this world"
+            alert.informativeText = error.localizedDescription
+            alert.beginSheetModal(for: window)
+            return
+        }
         self.config = config
 
-        let terrain = WorldGen.generate(seed: config.seed, size: 256)
-        var sim = Simulation(seed: config.seed, terrain: terrain)
-        sim.advance(to: config.simYear(at: Date()))
+        var sim = config.startReplay(on: config.replayTerrain())
+        sim.advance(to: config.simYear(at: date))
         simulation = sim
+        historyCount = -1
 
         pacePopup?.selectItem(withTitle: config.paceName)
         cameraPopup?.selectItem(withTitle: WorldStore.cameraMode(in: store).rawValue)
@@ -253,21 +287,132 @@ final class CompanionApp: NSObject, NSApplicationDelegate {
 
     // MARK: - Actions
 
+    @objc private func exportWorld() {
+        let panel = NSSavePanel()
+        panel.title = "Export Evolving World"
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "Evolving World.evolvingworld.json"
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let self, let url = panel.url else { return }
+            do {
+                let archive = try WorldArchive.capture(from: self.store,
+                    bookmarks: TimelineBookmarkStore.local(), at: Date())
+                try archive.write(to: url)
+                self.statusLabel.stringValue = "World exported at year \(Int(archive.year))."
+            } catch {
+                self.transferError("World could not be exported", error)
+            }
+        }
+    }
+
+    @objc private func importWorld() {
+        let panel = NSOpenPanel()
+        panel.title = "Import Evolving World"
+        panel.allowedContentTypes = [.json]
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let self, let url = panel.url else { return }
+            do {
+                self.confirmImport(try WorldArchive.read(from: url))
+            } catch {
+                self.transferError("World could not be read", error)
+            }
+        }
+    }
+
+    private func confirmImport(_ archive: WorldArchive) {
+        let confirm = NSAlert()
+        confirm.alertStyle = .warning
+        confirm.messageText = "Switch to the world in this file?"
+        confirm.informativeText = "The imported world resumes at year \(archive.year.formatted()). "
+            + "Evolving saves a backup of your current world before switching. "
+            + "Reopen Timeline and Player afterward to see the imported world."
+        confirm.addButton(withTitle: "Cancel")
+        confirm.addButton(withTitle: "Import World")
+        confirm.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertSecondButtonReturn, let self else { return }
+            do {
+                let bookmarks = try TimelineBookmarkStore.local()
+                let support = try FileManager.default.url(for: .applicationSupportDirectory,
+                    in: .userDomainMask, appropriateFor: nil, create: true)
+                let backups = support.appendingPathComponent("Evolving Timeline/World Backups", isDirectory: true)
+                let previous = try WorldArchive.capture(from: self.store, bookmarks: bookmarks, at: Date())
+                try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
+                let backup = backups.appendingPathComponent("Previous World " + UUID().uuidString + ".evolvingworld.json")
+                try previous.write(to: backup)
+                try self.restoreArchive(archive, bookmarks: bookmarks)
+            } catch {
+                self.transferError("World could not be imported", error)
+            }
+        }
+    }
+
+    private func restoreArchive(_ archive: WorldArchive, bookmarks: TimelineBookmarkStore) throws {
+        let now = Date()
+        try archive.restore(to: store, bookmarks: bookmarks, at: now)
+        reloadWorld(at: now)
+        statusLabel.stringValue = "World restored at year \(archive.year.formatted())."
+    }
+
+    private func transferError(_ title: String, _ error: Error) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = error.localizedDescription
+        alert.beginSheetModal(for: window)
+    }
+
+    private func runTransferFixture() {
+        let args = CommandLine.arguments
+        guard args.count == 4 else { exit(2) }
+        let domain = "com.mccullough.evolving.transfer-test." + UUID().uuidString
+        guard let fixture = UserDefaults(suiteName: domain) else { exit(2) }
+        fixtureDomain = domain
+        store = fixture
+        let bookmarks = TimelineBookmarkStore(directory: URL(fileURLWithPath: args[3], isDirectory: true))
+        do {
+            let archive = try WorldArchive.read(from: URL(fileURLWithPath: args[2]))
+            try restoreArchive(archive, bookmarks: bookmarks)
+            let restored = try WorldStore.load(from: store)
+            let savedBookmarks = try bookmarks.load()
+            guard restored.seed == archive.seed, restored.epoch == archive.epoch,
+                  simulation?.year == archive.year, simulation?.era == Era.at(archive.year),
+                  Set(savedBookmarks.map(\.id)) == Set(archive.bookmarks.map(\.id)),
+                  savedBookmarks.allSatisfy(archive.bookmarks.contains) else {
+                throw WorldArchive.TransferError.invalidArchive
+            }
+            print("PASS Companion import restored exact year, era, island and \(savedBookmarks.count) bookmarks")
+        } catch {
+            FileHandle.standardError.write(Data("FAIL Companion import: \(error)\n".utf8))
+            fixture.removePersistentDomain(forName: domain)
+            exit(1)
+        }
+    }
+
     @objc private func applyPace() {
-        guard let store, var config else { return }
-        config.paceName = pacePopup.titleOfSelectedItem ?? config.paceName
-        WorldStore.save(config, to: store)
-        let mode = CameraMode(rawValue: cameraPopup.titleOfSelectedItem ?? "") ?? .auto
-        WorldStore.setCameraMode(mode, in: store)
-        self.config = config
-        statusLabel.stringValue = "Pace \(config.paceName) · camera \(mode.rawValue)."
+        guard let store, config != nil else { return }
+        do {
+            var updated = try WorldStore.load(from: store)
+            updated.paceName = pacePopup.titleOfSelectedItem ?? updated.paceName
+            try WorldStore.save(updated, to: store)
+            let mode = CameraMode(rawValue: cameraPopup.titleOfSelectedItem ?? "") ?? .auto
+            WorldStore.setCameraMode(mode, in: store)
+            reloadWorld()
+            statusLabel.stringValue = "Pace \(updated.paceName) · camera \(mode.rawValue)."
+        } catch {
+            statusLabel.stringValue = error.localizedDescription
+        }
     }
 
     @objc private func newWorld() {
-        guard let store else { return }
-        _ = WorldStore.reset(in: store)
-        reloadWorld()
-        statusLabel.stringValue = "Started a new world."
+        guard let store, config != nil else { return }
+        do {
+            _ = try WorldStore.reset(in: store)
+            reloadWorld()
+            statusLabel.stringValue = "Started a new world."
+        } catch {
+            statusLabel.stringValue = error.localizedDescription
+        }
     }
 
     @objc private func openSettings() {

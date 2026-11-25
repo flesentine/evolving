@@ -18,7 +18,8 @@ enum ModernLayout: SettlementLayout {
         var rng = SplitMix64(seed: seed
                              ^ (UInt64(bitPattern: Int64(s.id)) &* 0x9E37_79B9_7F4A_7C15)
                              ^ 0x30DE_2A11)
-        let axis = rng.nextFloat(in: 0...(Float.pi / 2))
+        let axis = HistoricQuarter.streetAxis(for: s, seed: seed)
+            ?? rng.nextFloat(in: 0...(Float.pi / 2))
         let dir = SIMD2<Float>(cos(axis), sin(axis))
         let perp = SIMD2<Float>(-sin(axis), cos(axis))
         let cell = max(0.0118, radius * 0.16)
@@ -139,7 +140,8 @@ enum InformationLayout: SettlementLayout {
         var rng = SplitMix64(seed: seed
                              ^ (UInt64(bitPattern: Int64(s.id)) &* 0x9E37_79B9_7F4A_7C15)
                              ^ 0x1F02_7715)
-        let axis = rng.nextFloat(in: 0...(Float.pi / 2))
+        let axis = HistoricQuarter.streetAxis(for: s, seed: seed)
+            ?? rng.nextFloat(in: 0...(Float.pi / 2))
         let dir = SIMD2<Float>(cos(axis), sin(axis))
         let perp = SIMD2<Float>(-sin(axis), cos(axis))
         let cell = max(0.0118, radius * 0.15)
@@ -259,7 +261,8 @@ enum FutureLayout: SettlementLayout {
         var rng = SplitMix64(seed: seed
                              ^ (UInt64(bitPattern: Int64(s.id)) &* 0x9E37_79B9_7F4A_7C15)
                              ^ 0xF07D_2E00)
-        let axis = rng.nextFloat(in: 0...(Float.pi))
+        let axis = HistoricQuarter.streetAxis(for: s, seed: seed)
+            ?? rng.nextFloat(in: 0...Float.pi)
         let dir = SIMD2<Float>(cos(axis), sin(axis))
         let perp = SIMD2<Float>(-sin(axis), cos(axis))
         let cell = max(0.0128, radius * 0.17)

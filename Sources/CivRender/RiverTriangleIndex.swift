@@ -106,7 +106,8 @@ struct RiverTriangleIndex {
         return simd_length(d)
     }
 
-    func nearest(_ p: SIMD2<Float>, exhaustive: Bool = false) -> (water: Float, distance: Float)? {
+    func nearest(_ p: SIMD2<Float>, maximumDistance: Float = .greatestFiniteMagnitude,
+                 exhaustive: Bool = false) -> (water: Float, distance: Float)? {
         guard !surfaceIDs.isEmpty else { return nil }
         var best = Float.greatestFiniteMagnitude, bestID = Int.max, level: Float = 0
         func visit(_ id: Int) {
@@ -123,7 +124,8 @@ struct RiverTriangleIndex {
                 let node = nodes[index]
                 // A millimetre guard prevents Float rounding from pruning a
                 // mathematical tie. It does not change the resulting surface.
-                if distance(p, node) > max(best, 0) + 0.001 / RiverChannel.metresPerUnit { continue }
+                let limit = min(max(best, 0), maximumDistance)
+                if distance(p, node) > limit + 0.001 / RiverChannel.metresPerUnit { continue }
                 if node.count > 0 {
                     for offset in node.start..<(node.start + node.count) { visit(order[offset]) }
                 } else {
@@ -133,7 +135,7 @@ struct RiverTriangleIndex {
                 }
             }
         }
-        guard best < .greatestFiniteMagnitude else { return nil }
+        guard best < .greatestFiniteMagnitude, best <= maximumDistance else { return nil }
         if best > 0 {
             let support = best
             // Stable primitive order keeps floating-point accumulation byte

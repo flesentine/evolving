@@ -10,8 +10,17 @@ cd "$ROOT"
 Scripts/build.sh
 
 echo
+echo "▸ checking world upgrade compatibility"
+build/bin/civheadless worldupgradecheck
+build/bin/civheadless worldtransfercheck
+
+echo
 echo "▸ checking bundle"
 build/bin/civheadless checkbundle build/Evolving.saver 1.5
+
+echo
+echo "▸ checking world lifecycle"
+build/bin/civheadless lifecyclecheck build/Evolving.saver
 
 echo
 echo "▸ rendering the arc"

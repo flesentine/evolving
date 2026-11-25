@@ -4,6 +4,88 @@ import simd
 /// Real renderer regression: preserve the visible shot, pan in screen directions
 /// at several bearings/elevations, and reach a whole-island zoom distance.
 enum CameraCheck {
+    private enum AutomaticFailure: Error {
+        case acceptance
+    }
+
+    /// Sample fifteen minutes of the production camera at the saver's cadence.
+    /// Optional Metal captures use those same times and the live Auto path.
+    static func automatic(directory: URL, seed: UInt64, year: Float, render: Bool) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let terrain = WorldGen.generate(seed: seed)
+        var simulation = Simulation(seed: seed, terrain: terrain)
+        simulation.advance(to: year)
+        let renderer = try Renderer(context: MetalContext(), terrain: terrain,
+                                    colorPixelFormat: .bgra8Unorm_srgb, depthPixelFormat: .depth32Float)
+        renderer.hourOverride = 10
+        renderer.seasonOverride = 0.7
+        renderer.weatherOverride = 0
+        renderer.snowOverride = false
+        renderer.updateScene(simulation)
+        let metres = RiverNetwork.metresPerUnit
+        var minimumClearance = Float.infinity
+        var minimumTownSightline = Float.infinity
+        var maximumTurn: Float = 0
+        var maximumZoomStep: Float = 0
+        var previous = renderer.automaticCamera(time: 0)
+        var closeBearings: Set<Int> = []
+        var heldFieldsOfView: Set<Int> = []
+        var trace = "time_s,eye_x_km,eye_y_km,eye_z_km,target_x_km,target_y_km,target_z_km,fov_deg\n"
+
+        for frame in 0...(900 * 30) {
+            let time = Float(frame) / 30
+            let camera = renderer.automaticCamera(time: time)
+            let eye = SIMD2(camera.eye.x, camera.eye.z)
+            let target = SIMD2(camera.target.x, camera.target.z)
+            let radius = simd_distance(eye, target)
+            let ground = renderer.scene.renderedTerrainHeight(at: eye)
+            minimumClearance = min(minimumClearance, (camera.eye.y - max(ground, 0)) * metres)
+            let direction = simd_normalize(camera.target - camera.eye)
+            let previousDirection = simd_normalize(previous.target - previous.eye)
+            let angle = atan2(simd_length(simd_cross(direction, previousDirection)), simd_dot(direction, previousDirection))
+            maximumTurn = max(maximumTurn, angle * 180 / .pi)
+            let framing = simd_distance(camera.eye, camera.target) * tan(degreesToRadians(camera.fov * 0.5))
+            let previousFraming = simd_distance(previous.eye, previous.target) * tan(degreesToRadians(previous.fov * 0.5))
+            maximumZoomStep = max(maximumZoomStep, abs(log(framing / previousFraming)))
+
+            if frame.isMultiple(of: 30) {
+                let next = renderer.automaticCamera(time: time + 1)
+                if camera.fov == next.fov {
+                    heldFieldsOfView.insert(Int(camera.fov.rounded()))
+                    if radius < 800 / metres {
+                        let azimuth = atan2(eye.y - target.y, eye.x - target.x)
+                        closeBearings.insert(Int(floor((azimuth + .pi) / (.pi / 4))))
+                        for distance in stride(from: Float(30) / metres, to: radius, by: 2 / metres) {
+                            let line = camera.target + (camera.eye - camera.target) * (distance / radius)
+                            let height = renderer.scene.renderedTerrainHeight(at: SIMD2(line.x, line.z))
+                            minimumTownSightline = min(minimumTownSightline, (line.y - height) * metres)
+                        }
+                    }
+                }
+                trace += "\(time),\(camera.eye.x),\(camera.eye.y),\(camera.eye.z),"
+                trace += "\(camera.target.x),\(camera.target.y),\(camera.target.z),\(camera.fov)\n"
+            }
+            if render && frame.isMultiple(of: 60) {
+                let url = directory.appendingPathComponent(String(format: "frame-%03d.png", frame / 60))
+                _ = try Snapshot.write(renderer: renderer, width: 800, height: 500, time: time, to: url)
+                guard let shown = renderer.lastReviewView,
+                      shown.eye == [camera.eye.x, camera.eye.y, camera.eye.z],
+                      shown.target == [camera.target.x, camera.target.y, camera.target.z],
+                      shown.fov == camera.fov else { throw AutomaticFailure.acceptance }
+            }
+            previous = camera
+        }
+        try trace.write(to: directory.appendingPathComponent("camera.csv"), atomically: true, encoding: .utf8)
+        print("Auto camera seed \(seed), year \(year), 27001 poses over 900 seconds")
+        print(String(format: "min eye clearance %.2f m, min held town/valley sightline %.2f m", minimumClearance, minimumTownSightline))
+        print(String(format: "max turn %.3f°/frame, max framing change %.3f%%/frame", maximumTurn, maximumZoomStep * 100))
+        print("held FOVs \(heldFieldsOfView.sorted()), close bearing sectors \(closeBearings.sorted())")
+        guard minimumClearance >= 15, minimumTownSightline >= 0, maximumTurn <= 0.4,
+              maximumZoomStep <= 0.02, heldFieldsOfView.count >= 4,
+              closeBearings.count >= 3 else { throw AutomaticFailure.acceptance }
+        print("PASS automatic camera clearance, continuity and variety")
+    }
+
     static func run(directory: URL) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let terrain = WorldGen.generate(seed: 6393821808673518700)

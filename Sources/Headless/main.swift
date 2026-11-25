@@ -1,7 +1,10 @@
 import Foundation
 import AppKit
+import QuartzCore
 import ScreenSaver
 import simd
+
+let launchTime = CACurrentMediaTime()
 
 // A small development tool:
 //
@@ -31,6 +34,16 @@ func usage() -> Never {
       civheadless rivermaterialcheck <directory>
       civheadless riverreview <view.json> <directory> [all]
       civheadless cameracheck <directory>
+      civheadless cameraautocheck <directory> <seed> <year> [--render]
+      civheadless bridgecheck <directory> <seed> <year>
+      civheadless bridgefixtures
+      civheadless farmcheck <directory> <seed> <year>
+      civheadless farmfixtures
+      civheadless townhistorycheck <seed> <town-id>
+      civheadless worldupgradecheck
+      civheadless lifecyclecheck <saver-path> [screenshots-directory]
+      civheadless worldtransfercheck [fixture-output]
+      civheadless townactivitycheck <directory> <seed>
       civheadless bench [year] [width] [height] [frames]
       civheadless resources [seed]
       civheadless determinism [year] [seed]
@@ -92,6 +105,34 @@ let arguments = CommandLine.arguments
 guard arguments.count >= 2 else { usage() }
 
 switch arguments[1] {
+
+case "lifecyclecheck":
+    guard arguments.count == 3 || arguments.count == 4 else { usage() }
+    do {
+        let output = arguments.count == 4 ? URL(fileURLWithPath: arguments[3], isDirectory: true) : nil
+        try WorldLifecycleCheck.run(bundlePath: arguments[2], output: output)
+    } catch { fail("native lifecycle check failed — \(error)") }
+
+case "worldtransfercheck":
+    do {
+        let output = arguments.count > 2 ? URL(fileURLWithPath: arguments[2]) : nil
+        try WorldTransferCheck.run(output: output)
+    } catch { fail("world transfer check failed — \(error)") }
+
+case "worldupgradecheck":
+    do { try WorldUpgradeCheck.run() }
+    catch { fail("world upgrade check failed — \(error)") }
+
+case "townactivitycheck":
+    guard arguments.count == 4, let seed = UInt64(arguments[3]) else { usage() }
+    do {
+        try TownActivityCheck.run(directory: URL(fileURLWithPath: arguments[2]), seed: seed)
+    } catch { fail("town activity check failed — \(error)") }
+
+case "townhistorycheck":
+    guard arguments.count == 4, let seed = UInt64(arguments[2]),
+          let townID = Int32(arguments[3]) else { usage() }
+    TownHistoryCheck.run(seed: seed, townID: townID)
 
 case "info":
     print("Evolving headless tool")
@@ -564,6 +605,31 @@ case "cameracheck":
     do { try CameraCheck.run(directory: URL(fileURLWithPath: arguments[2])) }
     catch { fail("cameracheck failed — \(error)") }
 
+case "cameraautocheck":
+    guard arguments.count >= 5, let seed = UInt64(arguments[3]), let year = Float(arguments[4]) else { usage() }
+    do {
+        try CameraCheck.automatic(directory: URL(fileURLWithPath: arguments[2]), seed: seed, year: year,
+                                  render: arguments.contains("--render"))
+    } catch { fail("cameraautocheck failed — \(error)") }
+
+case "bridgecheck":
+    guard arguments.count >= 5, let seed = UInt64(arguments[3]), let year = Float(arguments[4]) else { usage() }
+    do { try BridgeCheck.run(directory: URL(fileURLWithPath: arguments[2]), seed: seed, year: year) }
+    catch { fail("bridgecheck failed — \(error)") }
+
+case "bridgefixtures":
+    do { try BridgeCheck.fixtures() }
+    catch { fail("bridgefixtures failed — \(error)") }
+
+case "farmcheck":
+    guard arguments.count >= 5, let seed = UInt64(arguments[3]), let year = Float(arguments[4]) else { usage() }
+    do { try FarmCheck.run(directory: URL(fileURLWithPath: arguments[2]), seed: seed, year: year) }
+    catch { fail("farmcheck failed — \(error)") }
+
+case "farmfixtures":
+    do { try FarmCheck.fixtures() }
+    catch { fail("farmfixtures failed — \(error)") }
+
 case "bench":
     let simYear = arguments.count >= 3 ? Float(arguments[2]) ?? 3000 : 3000
     let width = arguments.count >= 4 ? Int(arguments[3]) ?? 6016 : 6016
@@ -629,6 +695,7 @@ case "checkbundle":
     guard arguments.count >= 3 else { usage() }
     let path = arguments[2]
     let seconds = arguments.count >= 4 ? Double(arguments[3]) ?? 1.5 : 1.5
+    let measurePresentation = ProcessInfo.processInfo.environment["EVOLVING_MEASURE_PRESENTATION"] == "1"
 
     guard let bundle = Bundle(path: path) else {
         fail("not a bundle: \(path)")
@@ -662,6 +729,21 @@ case "checkbundle":
     window.orderFrontRegardless()
 
     view.startAnimation()
+    if measurePresentation {
+        guard view.responds(to: Selector(("firstFramePresentedTime"))) else {
+            fail("the saver does not support Metal presentation timing")
+        }
+        let deadline = Date().addingTimeInterval(5)
+        var presented = 0.0
+        while presented == 0, Date() < deadline {
+            RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.005))
+            presented = (view.value(forKey: "firstFramePresentedTime") as? Double) ?? 0
+        }
+        guard presented >= launchTime else { fail("Metal did not present a frame within five seconds of starting animation") }
+        print(String(format: "first_presented_s=%.6f", presented - launchTime))
+    }
+    let presentedBefore = measurePresentation ? (view.value(forKey: "presentedFrameCount") as? Int ?? 0) : 0
+    let measurementStarted = CACurrentMediaTime()
     let deadline = Date().addingTimeInterval(seconds)
     while Date() < deadline {
         RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.05))
@@ -672,6 +754,11 @@ case "checkbundle":
     window.orderOut(nil)
 
     print("frames presented in \(seconds)s: \(frames)")
+    if measurePresentation {
+        let presented = (view.value(forKey: "presentedFrameCount") as? Int ?? 0) - presentedBefore
+        let elapsed = CACurrentMediaTime() - measurementStarted
+        print(String(format: "Metal presentations=%d elapsed=%.3f fps=%.3f", presented, elapsed, Double(presented) / elapsed))
+    }
     if frames <= 0 {
         fail("the saver view did not present any frames")
     }

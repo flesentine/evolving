@@ -59,6 +59,12 @@ final class WorldScene {
     /// Rebuilt whenever the road network changes; nil until then.
     private(set) var roadMesh: Mesh?
     private(set) var streetMesh: Mesh?
+    private(set) var fieldMesh: Mesh?
+    private var roadFieldMask: FieldSurface.Mask?
+    private(set) var activityStreets = FieldSurface.Mask()
+    private(set) var roadBridges: [RoadBridge.Crossing] = []
+    private(set) var unbridgedRoadPoints: [SIMD2<Float>] = []
+    private(set) var bridgeDrivePaths: [Int: RoadBridge.DrivePath] = [:]
 
     let device: MTLDevice
 
@@ -344,12 +350,22 @@ final class WorldScene {
     /// Height of the submitted detail-2 terrain triangles, not a bilinear
     /// approximation or a reconstructed nominal bed.
     static func renderedTerrainHeight(_ p: SIMD2<Float>, terrain: Terrain, vertices: [Vertex]) -> Float {
+        renderedTerrainHeight(p, terrain: terrain) { vertices[$0].position.y }
+    }
+
+    func renderedTerrainHeight(at p: SIMD2<Float>) -> Float {
+        let vertices = terrainMesh.vertexBuffer.contents().assumingMemoryBound(to: Vertex.self)
+        return WorldScene.renderedTerrainHeight(p, terrain: terrain) { vertices[$0].position.y }
+    }
+
+    private static func renderedTerrainHeight(_ p: SIMD2<Float>, terrain: Terrain,
+                                              heightAtIndex: (Int) -> Float) -> Float {
         let n = (terrain.size - 1) * 2 + 1, spacing = terrain.cellSize / 2
         let x = min(max((p.x + 1) / spacing, 0), Float(n - 1) - 0.0001)
         let z = min(max((p.y + 1) / spacing, 0), Float(n - 1) - 0.0001)
         let i = Int(floor(x)), j = Int(floor(z)), u = x - Float(i), v = z - Float(j)
-        let a = vertices[j * n + i].position.y, b = vertices[j * n + i + 1].position.y
-        let c = vertices[(j + 1) * n + i + 1].position.y, d = vertices[(j + 1) * n + i].position.y
+        let a = heightAtIndex(j * n + i), b = heightAtIndex(j * n + i + 1)
+        let c = heightAtIndex((j + 1) * n + i + 1), d = heightAtIndex((j + 1) * n + i)
         return u >= v ? a * (1 - u) + b * (u - v) + c * v
             : a * (1 - v) + c * u + d * (v - u)
     }
@@ -582,14 +598,35 @@ final class WorldScene {
                       bridge: BridgeStyle) throws {
         var vertices: [Vertex] = []
         var indices: [UInt32] = []
+        var crossings: [RoadBridge.Crossing] = []
+        var unbridged: [SIMD2<Float>] = []
+        var drivePaths: [Int: RoadBridge.DrivePath] = [:]
 
-        for segment in segments {
-            let path = resample(segment)
+        for (segmentID, segment) in segments.enumerated() {
+            var path = resample(segment)
             guard path.count >= 2 else { continue }
             let segmentWidth = max(width * segment.widthScale, 0.0008)
             let half = segmentWidth * 0.5
+            var plan = bridge.isRaised ? RoadBridge.plan(path, half: half, scene: self) : nil
+            if let initial = plan, initial.needsLeadingApproach || initial.needsTrailingApproach {
+                var extended = segment
+                if initial.needsLeadingApproach {
+                    let approach = RoadBridge.retainedApproach(Array(segment.leadingApproach.reversed()),
+                        from: segment.points[0], half: half, field: riverField)
+                    extended.points.insert(contentsOf: approach.reversed(), at: 0)
+                }
+                if initial.needsTrailingApproach {
+                    extended.points += RoadBridge.retainedApproach(segment.trailingApproach,
+                        from: segment.points.last!, half: half, field: riverField)
+                }
+                if extended.points.count != segment.points.count {
+                    path = resample(extended)
+                    plan = RoadBridge.plan(path, half: half, scene: self)
+                }
+            }
+            let roadBase = vertices.count
 
-            if surface == .dirt {
+            if surface == .dirt && !bridge.isRaised {
                 appendRibbon(path, half: half * 0.52, lateral: -half * 1.20,
                              lift: 0.0017, camber: half * 0.10,
                              color: color, surface: surface, skipPattern: 0,
@@ -602,6 +639,7 @@ final class WorldScene {
                 appendRibbon(path, half: half, lateral: 0,
                              lift: 0.0019, camber: half * 0.12,
                              color: color, surface: surface, skipPattern: 0,
+                             minimumHeights: plan?.minimumHeights,
                              into: &vertices, indices: &indices)
             }
 
@@ -615,25 +653,44 @@ final class WorldScene {
                                  lift: bankLift, camber: 0,
                                  color: SIMD3(0.32, 0.27, 0.19),
                                  surface: .dirt, skipPattern: 0,
+                                 blockedStrips: plan?.blockedStrips ?? [],
                                  into: &vertices, indices: &indices)
                 }
             }
 
             if let marking {
                 appendMarkings(path, color: marking, width: segmentWidth,
+                               blockedStrips: plan?.blockedStrips ?? [],
                                into: &vertices, indices: &indices)
             }
 
-            appendBridges(path, color: bridgeColor, halfWidth: half,
-                          bridge: bridge, surface: surface,
-                          into: &vertices, indices: &indices)
+            if let plan {
+                if !plan.spans.isEmpty {
+                    drivePaths[segmentID] = RoadBridge.drivePath(plan, roadBase: roadBase, vertices: vertices)
+                }
+                crossings += RoadBridge.append(plan, roadBase: roadBase, half: half, style: bridge,
+                                               color: bridgeColor, scene: self, vertices: &vertices, indices: &indices)
+                unbridged += plan.wetStrips.filter { i in
+                    !plan.spans.contains { $0.rows.contains(i) && $0.rows.contains(i + 1) }
+                }.map { (path[$0] + path[$0 + 1]) * 0.5 }
+            } else {
+                appendFords(path, color: bridgeColor, halfWidth: half, into: &vertices, indices: &indices)
+            }
         }
 
         guard vertices.count >= 3, indices.count >= 3 else {
             roadMesh = nil
+            roadFieldMask = nil
+            roadBridges = []
+            unbridgedRoadPoints = []
+            bridgeDrivePaths = [:]
             return
         }
         roadMesh = try Mesh(device: device, vertices: vertices, indices: indices)
+        roadFieldMask = nil
+        roadBridges = crossings
+        unbridgedRoadPoints = unbridged
+        bridgeDrivePaths = drivePaths
     }
 
     /// A cambered five-vertex ribbon: shoulders, wheel tracks and a raised
@@ -646,6 +703,8 @@ final class WorldScene {
                               color: SIMD3<Float>,
                               surface: RoadSurface,
                               skipPattern: Int,
+                              minimumHeights: [Float]? = nil,
+                              blockedStrips: Set<Int> = [],
                               into vertices: inout [Vertex],
                               indices: inout [UInt32]) {
         let up = SIMD3<Float>(0, 1, 0)
@@ -656,13 +715,9 @@ final class WorldScene {
 
         for i in 0..<path.count {
             if i > 0 { travelled += simd_distance(path[i], path[i - 1]) }
-            let prev = path[max(i - 1, 0)]
-            let next = path[min(i + 1, path.count - 1)]
-            var dir = next - prev
-            let len = simd_length(dir)
-            if len < 1e-6 { dir = SIMD2(1, 0) } else { dir /= len }
-            let side = SIMD2(-dir.y, dir.x)
-            let centre = path[i] + side * lateral
+            let row = RoadBridge.row(path, at: i)
+            let side = row.side
+            let centre = row.edge(lateral)
 
             var highest = terrain.interpolatedHeight(x: centre.x, z: centre.y)
             for t in across {
@@ -677,7 +732,7 @@ final class WorldScene {
             for t in across {
                 let p = centre + side * (t * half)
                 let crown = 1 - pow(abs(t), 1.6)
-                let y = highest + lift + camber * crown
+                let y = max(highest + lift, minimumHeights?[i] ?? -.infinity) + camber * crown
                 vertices.append(Vertex(position: SIMD3(p.x, y, p.y),
                                        normal: up,
                                        color: SIMD4(color * shade, surfaceValue),
@@ -686,6 +741,7 @@ final class WorldScene {
             }
 
             if i == 0 { continue }
+            if blockedStrips.contains(i - 1) { continue }
             if skipPattern > 0 && (i / 5) % 3 == skipPattern - 1 { continue }
             for k in 0..<4 {
                 let a = base + UInt32((i - 1) * 5 + k)
@@ -726,17 +782,35 @@ final class WorldScene {
             }
         }
 
+        activityStreets = FieldSurface.Mask()
         guard vertices.count >= 3, indices.count >= 3 else {
             streetMesh = nil
             return
         }
+        streetMesh = nil
         streetMesh = try Mesh(device: device, vertices: vertices, indices: indices)
+        activityStreets = FieldSurface.Mask(mesh: streetMesh)
+    }
+
+    var activityRoads: FieldSurface.Mask { roadFieldMask ?? FieldSurface.Mask(mesh: roadMesh) }
+
+    func rebuildFields(_ plots: [InstanceData]) throws {
+        // A previous field mesh might cross a road rebuilt this frame.
+        fieldMesh = nil
+        guard !plots.isEmpty else { return }
+        let roads = roadFieldMask ?? FieldSurface.Mask(mesh: roadMesh)
+        roadFieldMask = roads
+        let fields = FieldSurface.build(plots, scene: self, roads: roads,
+                                        streets: activityStreets)
+        fieldMesh = fields.indices.isEmpty ? nil : try Mesh(device: device, vertices: fields.vertices,
+                                                           indices: fields.indices)
     }
 
     /// Dashed centre line for modern roads.
     private func appendMarkings(_ path: [SIMD2<Float>],
                                 color: SIMD3<Float>,
                                 width: Float,
+                                blockedStrips: Set<Int>,
                                 into vertices: inout [Vertex],
                                 indices: inout [UInt32]) {
         let lift: Float = 0.0024
@@ -759,6 +833,7 @@ final class WorldScene {
             while t + distanceToNext <= d {
                 t += distanceToNext
                 distanceToNext = dash + gap
+                if blockedStrips.contains(i) || (t + dash > d && blockedStrips.contains(i + 1)) { continue }
 
                 let p = a + dir * t
                 let y = terrain.interpolatedHeight(x: p.x, z: p.y) + lift
@@ -807,15 +882,12 @@ final class WorldScene {
         return path
     }
 
-    /// River crossings: a flat gravel ford before bridges, then an arched
-    /// deck with parapets in stone, iron or concrete.
-    private func appendBridges(_ path: [SIMD2<Float>],
-                               color: SIMD3<Float>,
-                               halfWidth: Float,
-                               bridge: BridgeStyle,
-                               surface: RoadSurface,
-                               into vertices: inout [Vertex],
-                               indices: inout [UInt32]) {
+    /// Gravel fans keep early-era fords distinct from raised bridges.
+    private func appendFords(_ path: [SIMD2<Float>],
+                             color: SIMD3<Float>,
+                             halfWidth: Float,
+                             into vertices: inout [Vertex],
+                             indices: inout [UInt32]) {
         let lift: Float = 0.0018
         let up = SIMD3<Float>(0, 1, 0)
         var i = 0
@@ -831,20 +903,6 @@ final class WorldScene {
 
         func waterAt(_ p: SIMD2<Float>) -> Float {
             riverField.nearbyLevel(at: p, margin: 2 / RiverChannel.metresPerUnit) ?? -Float.greatestFiniteMagnitude
-        }
-
-        func deckHeight(_ p: SIMD2<Float>, arch: Float) -> Float {
-            let ground = terrain.interpolatedHeight(x: p.x, z: p.y)
-            return max(ground, waterAt(p)) + lift + arch
-        }
-
-        func deckSurface() -> RoadSurface {
-            switch bridge {
-            case .ford: return .gravel
-            case .stone: return .romanStone
-            case .iron: return .sett
-            case .concrete: return .asphalt
-            }
         }
 
         while i < path.count {
@@ -872,43 +930,9 @@ final class WorldScene {
             }
             guard span < 120 / RiverChannel.metresPerUnit else { i = j; continue }
 
-            if !bridge.hasParapets {
-                // Ford: a wide, flat gravel fan across the water.
-                let base = UInt32(vertices.count)
-                let fordHalf = halfWidth * 2.0
-                for k in 0..<count {
-                    let idx = start + k
-                    let p = path[idx]
-                    let prev = path[max(idx - 1, start)]
-                    let next = path[min(idx + 1, end)]
-                    var dir = next - prev
-                    let len = simd_length(dir)
-                    if len < 1e-6 { dir = SIMD2(1, 0) } else { dir /= len }
-                    let side = SIMD2(-dir.y, dir.x)
-                    let y = max(terrain.interpolatedHeight(x: p.x, z: p.y),
-                                waterAt(p)) + lift * 0.10
-                    let l = p + side * fordHalf
-                    let r = p - side * fordHalf
-                    let value = Float(RoadSurface.gravel.rawValue)
-                    vertices.append(Vertex(position: SIMD3(l.x, y, l.y),
-                                           normal: up, color: SIMD4(color * 0.92, value),
-                                           uv: SIMD2(0, Float(k) * 0.5)))
-                    vertices.append(Vertex(position: SIMD3(r.x, y, r.y),
-                                           normal: up, color: SIMD4(color * 0.92, value),
-                                           uv: SIMD2(1, Float(k) * 0.5)))
-                }
-                for k in 0..<(count - 1) {
-                    let a = base + UInt32(k * 2)
-                    let b = a + 1
-                    let c = a + 2
-                    let d = a + 3
-                    indices.append(contentsOf: [a, c, b, b, c, d])
-                }
-                i = j
-                continue
-            }
-
+            // Ford: a wide, flat gravel fan across the water.
             let base = UInt32(vertices.count)
+            let fordHalf = halfWidth * 2.0
             for k in 0..<count {
                 let idx = start + k
                 let p = path[idx]
@@ -918,17 +942,16 @@ final class WorldScene {
                 let len = simd_length(dir)
                 if len < 1e-6 { dir = SIMD2(1, 0) } else { dir /= len }
                 let side = SIMD2(-dir.y, dir.x)
-                let t = Float(k) / Float(max(count - 1, 1))
-                let arch = sin(t * .pi) * 0.0022
-                let y = deckHeight(p, arch: arch)
-                let l = p + side * halfWidth
-                let r = p - side * halfWidth
-                let value = Float(deckSurface().rawValue)
+                let y = max(terrain.interpolatedHeight(x: p.x, z: p.y),
+                            waterAt(p)) + lift * 0.10
+                let l = p + side * fordHalf
+                let r = p - side * fordHalf
+                let value = Float(RoadSurface.gravel.rawValue)
                 vertices.append(Vertex(position: SIMD3(l.x, y, l.y),
-                                       normal: up, color: SIMD4(color, value),
+                                       normal: up, color: SIMD4(color * 0.92, value),
                                        uv: SIMD2(0, Float(k) * 0.5)))
                 vertices.append(Vertex(position: SIMD3(r.x, y, r.y),
-                                       normal: up, color: SIMD4(color, value),
+                                       normal: up, color: SIMD4(color * 0.92, value),
                                        uv: SIMD2(1, Float(k) * 0.5)))
             }
             for k in 0..<(count - 1) {
@@ -938,83 +961,6 @@ final class WorldScene {
                 let d = a + 3
                 indices.append(contentsOf: [a, c, b, b, c, d])
             }
-
-            // Parapets: stone walls, iron rails or concrete barriers.
-            let railColour: SIMD3<Float>
-            switch bridge {
-            case .stone: railColour = color * 0.82
-            case .iron: railColour = SIMD3(0.28, 0.26, 0.24)
-            case .concrete: railColour = SIMD3(0.62, 0.62, 0.60)
-            case .ford: railColour = color
-            }
-            for sideSign in [Float(-1), Float(1)] {
-                let railBase = UInt32(vertices.count)
-                for k in 0..<count {
-                    let idx = start + k
-                    let p = path[idx]
-                    let prev = path[max(idx - 1, start)]
-                    let next = path[min(idx + 1, end)]
-                    var dir = next - prev
-                    let len = simd_length(dir)
-                    if len < 1e-6 { dir = SIMD2(1, 0) } else { dir /= len }
-                    let side = SIMD2(-dir.y, dir.x)
-                    let t = Float(k) / Float(max(count - 1, 1))
-                    let arch = sin(t * .pi) * 0.0022
-                    let deck = deckHeight(p, arch: arch)
-                    let edge = p + side * (halfWidth * sideSign)
-                    let value = Float(deckSurface().rawValue)
-                    vertices.append(Vertex(position: SIMD3(edge.x, deck, edge.y),
-                                           normal: up, color: SIMD4(railColour, value)))
-                    vertices.append(Vertex(position: SIMD3(edge.x, deck + 0.0016, edge.y),
-                                           normal: up, color: SIMD4(railColour, value)))
-                }
-                for k in 0..<(count - 1) {
-                    let a = railBase + UInt32(k * 2)
-                    let b = a + 1
-                    let c = a + 2
-                    let d = a + 3
-                    indices.append(contentsOf: [a, c, b, b, c, d])
-                    indices.append(contentsOf: [a, b, c, b, d, c])
-                }
-
-                // Parapet detail: stone merlons, iron posts or concrete posts.
-                let postStride = bridge == .stone ? 3 : 2
-                for k in stride(from: 0, to: count, by: postStride) {
-                    let idx = start + k
-                    let p = path[idx]
-                    let prev = path[max(idx - 1, start)]
-                    let next = path[min(idx + 1, end)]
-                    var dir = next - prev
-                    let len = simd_length(dir)
-                    if len < 1e-6 { dir = SIMD2(1, 0) } else { dir /= len }
-                    let side = SIMD2(-dir.y, dir.x)
-                    let t = Float(k) / Float(max(count - 1, 1))
-                    let arch = sin(t * .pi) * 0.0022
-                    let deck = deckHeight(p, arch: arch)
-                    let edge = p + side * (halfWidth * sideSign)
-                    let postHalf: Float = bridge == .stone ? 0.00035 : 0.00018
-                    let top: Float = bridge == .stone ? 0.0009 : 0.0010
-                    let a = edge - dir * postHalf
-                    let b = edge + dir * postHalf
-                    let y0 = deck + 0.0016
-                    let y1 = y0 + top
-                    let vb = UInt32(vertices.count)
-                    let value = Float(deckSurface().rawValue)
-                    vertices.append(Vertex(position: SIMD3(a.x, y0, a.y), normal: up,
-                                           color: SIMD4(railColour, value)))
-                    vertices.append(Vertex(position: SIMD3(b.x, y0, b.y), normal: up,
-                                           color: SIMD4(railColour, value)))
-                    vertices.append(Vertex(position: SIMD3(a.x, y1, a.y), normal: up,
-                                           color: SIMD4(railColour, value)))
-                    vertices.append(Vertex(position: SIMD3(b.x, y1, b.y), normal: up,
-                                           color: SIMD4(railColour, value)))
-                    indices.append(contentsOf: [vb, vb + 1, vb + 2,
-                                                vb + 1, vb + 3, vb + 2])
-                    indices.append(contentsOf: [vb, vb + 2, vb + 1,
-                                                vb + 1, vb + 2, vb + 3])
-                }
-            }
-
             i = j
         }
     }

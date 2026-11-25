@@ -19,7 +19,6 @@ enum BridgeStyle {
         }
     }
 
-    var hasParapets: Bool { self != .ford }
     var isRaised: Bool { self != .ford }
 }
 
@@ -35,6 +34,9 @@ enum RoadSurface: Int, CaseIterable {
     case asphalt = 6
     case brick = 7
     case paint = 8
+    case bridgeStone = 9
+    case bridgeIron = 10
+    case bridgeConcrete = 11
 
     /// Rural road surface for an era.
     static func forRoad(_ era: Era) -> RoadSurface {
@@ -70,6 +72,10 @@ enum RoadBuilder {
         var surface: RoadSurface = .dirt
         /// 1.0 = normal lane; >1 arterial/backbone; <1 local track.
         var widthScale: Float = 1.0
+        /// Original routed town approaches, used only when the town-edge cut
+        /// would otherwise remove a dry bridge landing.
+        var leadingApproach: [SIMD2<Float>] = []
+        var trailingApproach: [SIMD2<Float>] = []
     }
 
     /// Connects settlements with an era-specific network: braided tracks,
@@ -152,7 +158,12 @@ enum RoadBuilder {
             let bRadius = SettlementMetrics.cityRadius(b.population) * 1.02
             let near = trim(path, around: SIMD2(a.x, a.z), radius: aRadius)
             let far = trim(near.reversed(), around: SIMD2(b.x, b.z), radius: bRadius).reversed()
-            if far.count >= 2 { path = Array(far) }
+            var leading: [SIMD2<Float>] = [], trailing: [SIMD2<Float>] = []
+            if far.count >= 2 {
+                leading = Array(path.prefix(path.count - near.count))
+                trailing = Array(path.suffix(near.count - far.count))
+                path = Array(far)
+            }
             guard path.count >= 2 else { visited[index] = true; return }
 
             let hubBackbone = hubsOnly || (hubSet.contains(parent) && hubSet.contains(index))
@@ -161,7 +172,8 @@ enum RoadBuilder {
             result.append(Segment(from: a.id, to: b.id, points: path,
                                   built: b.founded,
                                   surface: RoadSurface.forRoad(era),
-                                  widthScale: widthScale))
+                                  widthScale: widthScale,
+                                  leadingApproach: leading, trailingApproach: trailing))
             for p in path {
                 let idx = min(max(terrain.cellZ(p.y), 0), n - 1) * n
                     + min(max(terrain.cellX(p.x), 0), n - 1)

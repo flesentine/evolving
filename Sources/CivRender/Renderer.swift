@@ -37,6 +37,30 @@ final class InstanceBatch {
 /// Owns the render pipelines and the scene, and can draw either into an
 /// `MTKView` (screen saver) or into an offscreen texture (snapshot tooling).
 final class Renderer: NSObject, MTKViewDelegate {
+    /// Opt-in timing from Metal's presentation callback. Callbacks can run
+    /// off the main thread and Metal reports zero for a dropped presentation.
+    private final class FramePresentations {
+        private let lock = NSLock()
+        private var count = 0
+        private var first: CFTimeInterval = 0
+
+        func record(_ time: CFTimeInterval) {
+            guard time > 0 else { return }
+            lock.withLock {
+                if first == 0 || time < first { first = time }
+                count += 1
+            }
+        }
+
+        var presentedCount: Int { lock.withLock { count } }
+        var firstPresentedTime: CFTimeInterval { lock.withLock { first } }
+    }
+
+    private let presentations = ProcessInfo.processInfo.environment["EVOLVING_MEASURE_PRESENTATION"] == "1"
+        ? FramePresentations() : nil
+
+    var presentedFrameCount: Int { presentations?.presentedCount ?? 0 }
+    var firstFramePresentedTime: CFTimeInterval { presentations?.firstPresentedTime ?? 0 }
 
     /// Must stay byte-identical to `struct FrameUniforms` in Shaders.metal.
     struct FrameUniforms {
@@ -49,6 +73,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         var shadow: SIMD4<Float>
         var closeLightViewProjection: simd_float4x4
         var closeShadow: SIMD4<Float>
+        var twilight: SIMD4<Float> // dawn, dusk, unused, unused
     }
 
     /// Must stay byte-identical to `struct PostUniforms` in Shaders.metal.
@@ -73,6 +98,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         var phase: Float
         var colour: SIMD3<Float>
         var isCart: Bool
+        var bridgeRoute: RoadBridge.DrivePath?
     }
 
     private struct BoatPath {
@@ -89,6 +115,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     private let identityBatch: InstanceBatch
     private var roadIdentityBuffer: MTLBuffer?
     private var streetIdentityBuffer: MTLBuffer?
+    private var fieldIdentityBuffer: MTLBuffer?
     private var railIdentityBuffer: MTLBuffer?
     private var riverIdentityBuffer: MTLBuffer?
     private var bankIdentityBuffer: MTLBuffer?
@@ -159,7 +186,6 @@ final class Renderer: NSObject, MTKViewDelegate {
     private(set) var lastReviewView: RiverReviewView?
     private var reviewSeed: UInt64 = 1
     private var reviewYear: Float = 0
-    private var lastSunHour: Float = 12
     var riverReviewMode: String?
     /// Controlled shader-regression fixture only; normal rendering leaves both unset.
     var validationWaterMesh: Mesh?
@@ -227,6 +253,11 @@ final class Renderer: NSObject, MTKViewDelegate {
         applyFreeCamera()
     }
 
+    func restoreTimelineCamera(_ camera: Camera) {
+        freeOrbit = nil
+        cameraOverride = camera
+    }
+
     func endFreeCamera() {
         freeOrbit = nil
         cameraOverride = nil
@@ -243,6 +274,8 @@ final class Renderer: NSObject, MTKViewDelegate {
 
     /// Where the close-up shot looks, damped so it drifts rather than jumps.
     private var focusPoint = SIMD3<Float>(0, 0, 0)
+    private var autoFocusTransition: (point: SIMD3<Float>, radius: Float, time: Float)?
+    private var lastCameraTime: Float?
 
     private let meshPipeline: MTLRenderPipelineState
     private let waterPipeline: MTLRenderPipelineState
@@ -266,13 +299,14 @@ final class Renderer: NSObject, MTKViewDelegate {
     private var postWidth = 0
     private var postHeight = 0
     private var currentNight: Float = 0
-    private var currentElevation: Float = 0.5
+    private var currentTwilight: SIMD2<Float> = .zero
     private var closeAzimuth: Float = 0
     private var livingSettlements: [Settlement] = []
     private var focusRadius: Float = 0.05
     private var streetGrids: [CityBuilder.StreetGrid] = []
     private var squareAngle: Float = 0
     private var hasFocus = false
+    private(set) var townActivities: [TownActivity] = []
     private var carPaths: [CarPath] = []
     private var boatPaths: [BoatPath] = []
     private var railPoints: [SIMD2<Float>] = []
@@ -431,6 +465,7 @@ final class Renderer: NSObject, MTKViewDelegate {
                              device: device)
         roadIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 11)
         streetIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 12)
+        fieldIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 5)
         railIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 13)
         riverIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 18)
         bankIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 8)
@@ -563,7 +598,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     // MARK: - Scene updates
 
     /// Rebuilds every derived mesh from the simulation. Called once per sim year.
-    func updateScene(_ simulation: Simulation) {
+    func updateScene(_ simulation: Simulation, refreshRoads: Bool = false) {
         reviewSeed = simulation.seed; reviewYear = simulation.year
         livingSettlements = simulation.settlements.filter { $0.isAlive }
         let geometry = CityBuilder.build(settlements: simulation.settlements,
@@ -576,7 +611,6 @@ final class Renderer: NSObject, MTKViewDelegate {
         coneBatch.update(geometry.cones, device: context.device)
         gableBatch.update(geometry.gables, device: context.device)
         archBatch.update(geometry.arches, device: context.device)
-        fieldBatch.update(geometry.fields, device: context.device)
         updateTrees(for: simulation)
         smokeEmitters = geometry.smoke
         for entry in buildingBatches {
@@ -600,21 +634,27 @@ final class Renderer: NSObject, MTKViewDelegate {
 
         if let largest = simulation.largestSettlement() {
             let target = SIMD3<Float>(largest.x, 0, largest.z)
-            if hasFocus {
-                focusPoint += (target - focusPoint) * 0.25
-            } else {
-                focusPoint = target
-                hasFocus = true
+            let updatedPoint = hasFocus ? focusPoint + (target - focusPoint) * 0.25 : target
+            let updatedRadius = CityBuilder.cityRadius(largest.population)
+            if hasFocus, let time = lastCameraTime, (updatedPoint != focusPoint || updatedRadius != focusRadius) {
+                let prior = automaticFocus(at: time)
+                autoFocusTransition = (prior.point, prior.radius, time)
             }
-            focusRadius = CityBuilder.cityRadius(largest.population)
+            focusPoint = updatedPoint
+            focusRadius = updatedRadius
+            hasFocus = true
             updateCloseAzimuth()
             squareAngle = clearAngle(radius: focusRadius * 2.30 + 0.012)
+        } else {
+            hasFocus = false
+            focusPoint = .zero
+            autoFocusTransition = nil
         }
 
         // Roads only change when a settlement appears or the era (and with it
         // the road surface) changes, so the A* pass is not run every frame.
         let alive = simulation.settlements.reduce(0) { $1.isAlive ? $0 + 1 : $0 }
-        if alive != lastRoadSettlementCount || simulation.era != lastRoadEra {
+        if refreshRoads || alive != lastRoadSettlementCount || simulation.era != lastRoadEra {
             lastRoadSettlementCount = alive
             lastRoadEra = simulation.era
             let segments = RoadBuilder.segments(for: simulation, terrain: scene.terrain)
@@ -664,6 +704,12 @@ final class Renderer: NSObject, MTKViewDelegate {
         } catch {
             NSLog("Evolving: street mesh failed — \(error)")
         }
+        do {
+            try scene.rebuildFields(geometry.fields)
+        } catch {
+            NSLog("Evolving: field mesh failed — \(error)")
+        }
+        townActivities = TownActivity.choose(geometry.activityCandidates, geometry: geometry, scene: scene)
     }
 
     /// Milestones, signposts, tollhouses, cairns, ford posts and cat's eyes.
@@ -1182,8 +1228,8 @@ final class Renderer: NSObject, MTKViewDelegate {
         boatPaths.removeAll(keepingCapacity: true)
 
         if era.rawValue >= Era.modern.rawValue {
-            var candidates: [(SIMD2<Float>, SIMD2<Float>, Float)] = []
-            for segment in segments {
+            var candidates: [(SIMD2<Float>, SIMD2<Float>, Float, RoadBridge.DrivePath?)] = []
+            for (segmentID, segment) in segments.enumerated() {
                 guard segment.points.count >= 2,
                       let first = segment.points.first,
                       let last = segment.points.last else { continue }
@@ -1194,7 +1240,8 @@ final class Renderer: NSObject, MTKViewDelegate {
                 guard length > 0.02 else { continue }
                 let count = min(max(Int(length / 0.045), 1), 3)
                 for _ in 0..<count {
-                    candidates.append((first, last, length))
+                    let route = scene.bridgeDrivePaths[segmentID]
+                    candidates.append((first, last, route?.length ?? length, route))
                 }
             }
 
@@ -1213,11 +1260,12 @@ final class Renderer: NSObject, MTKViewDelegate {
                                         speed: 0.0020 + Float(i % 5) * 0.0004,
                                         phase: Float((i * 37) % 100) / 100,
                                         colour: palette[i % palette.count],
-                                        isCart: false))
+                                        isCart: false,
+                                        bridgeRoute: candidate.3))
             }
         } else if era.rawValue >= Era.bronze.rawValue {
-            var candidates: [(SIMD2<Float>, SIMD2<Float>, Float)] = []
-            for segment in segments {
+            var candidates: [(SIMD2<Float>, SIMD2<Float>, Float, RoadBridge.DrivePath?)] = []
+            for (segmentID, segment) in segments.enumerated() {
                 guard segment.points.count >= 2,
                       let first = segment.points.first,
                       let last = segment.points.last else { continue }
@@ -1228,7 +1276,8 @@ final class Renderer: NSObject, MTKViewDelegate {
                 guard length > 0.03 else { continue }
                 let count = min(max(Int(length / 0.09), 1), 2)
                 for _ in 0..<count {
-                    candidates.append((first, last, length))
+                    let route = scene.bridgeDrivePaths[segmentID]
+                    candidates.append((first, last, route?.length ?? length, route))
                 }
             }
 
@@ -1241,7 +1290,8 @@ final class Renderer: NSObject, MTKViewDelegate {
                                         speed: 0.0011 + Float(i % 4) * 0.0002,
                                         phase: Float((i * 53) % 100) / 100,
                                         colour: brown,
-                                        isCart: true))
+                                        isCart: true,
+                                        bridgeRoute: candidate.3))
             }
         }
 
@@ -1270,13 +1320,20 @@ final class Renderer: NSObject, MTKViewDelegate {
             let outbound = v < 0.5
             let u = outbound ? v * 2 : (1 - v) * 2
 
-            var dir = simd_normalize(path.end - path.start)
-            if !outbound { dir = -dir }
-            let side = SIMD2<Float>(-dir.y, dir.x) * 0.0014
-            let p = path.start + (path.end - path.start) * u + side
-
-            let h = scene.terrain.interpolatedHeight(x: p.x, z: p.y)
-            guard h > 0.006, !scene.terrain.isWater(x: p.x, z: p.y) else { continue }
+            let p: SIMD2<Float>, h: Float, dir: SIMD2<Float>
+            if let route = path.bridgeRoute {
+                let pose = route.pose(progress: u, forward: outbound)
+                p = SIMD2(pose.position.x, pose.position.z)
+                h = pose.position.y
+                dir = pose.direction
+            } else {
+                let heading = simd_normalize(path.end - path.start)
+                dir = outbound ? heading : -heading
+                let side = SIMD2<Float>(-dir.y, dir.x) * 0.0014
+                p = path.start + (path.end - path.start) * u + side
+                h = scene.terrain.interpolatedHeight(x: p.x, z: p.y)
+                guard h > 0.006, !scene.terrain.isWater(x: p.x, z: p.y) else { continue }
+            }
 
             let angle = atan2(dir.x, dir.y)
 
@@ -1319,7 +1376,7 @@ final class Renderer: NSObject, MTKViewDelegate {
                             * (0.00034 * (k == 0 ? -1 : 1) * (0.7 + wobble * 0.2)
                                + ripple * 0.00006)
                         let q = back + spread + dir * (0.00022 * Float(k))
-                        let hh = scene.terrain.interpolatedHeight(x: q.x, z: q.y)
+                        let hh = path.bridgeRoute == nil ? scene.terrain.interpolatedHeight(x: q.x, z: q.y) : h
                         guard hh > 0.004 else { continue }
                         let size = (0.00052 + 0.00016 * abs(wobble))
                             * (1.0 + 0.15 * ripple)
@@ -1538,66 +1595,69 @@ final class Renderer: NSObject, MTKViewDelegate {
                 }
             }
         }
-        // A couple of people standing at the stalls, facing the square.
-        for (si, settlement) in livingSettlements.enumerated() {
-            let grid = si < streetGrids.count
-                ? streetGrids[si]
-                : CityBuilder.StreetGrid(x: settlement.x, z: settlement.z, angle: 0,
-                                         cell: max(CityBuilder.cityRadius(settlement.population) * 0.5, 0.008),
-                                         radius: CityBuilder.cityRadius(settlement.population))
-            for k in 0..<2 {
-                let h = hash01(si * 91 + k * 13 + 5)
-                let h2 = hash01(si * 47 + k * 29 + 77)
-                let angle = h * 2 * Float.pi
-                let radius = grid.radius * (0.28 + 0.10 * h2)
-                let x = grid.x + cos(angle) * radius
-                let z = grid.z + sin(angle) * radius
-                let ground = scene.terrain.interpolatedHeight(x: x, z: z)
-                guard ground > 0.006, !scene.terrain.isWater(x: x, z: z),
-                      scene.riverField.waterLevel(at: SIMD2(x, z)) == nil
-                else { continue }
+        for activity in townActivities {
+            let pose = activity.sample(time: time)
+            let p = pose.position
+            let ground = max(scene.renderedTerrainHeight(at: p), scene.activityStreets.height(at: p) ?? 0)
+            let metres = TownActivity.metres
+            let scale: Float = 4.4 / metres
+            let coat = activity.kind.coat
+            let bob = abs(pose.stride) * (0.23 / metres)
+            let base = translation(SIMD3(p.x, ground + bob, p.y)) * rotationY(pose.facing)
+            let lean = activity.kind == .fieldwork ? 0.18 * pose.reach : 0
+            let model = base * scaleMatrix(SIMD3(repeating: scale)) * rotationX(lean)
+            let cratePitch = -0.89 + pose.reach * 0.55
+            people.append(InstanceData(model: model, color: SIMD4(coat, 0)))
+            brims.append(InstanceData(model: model, color: SIMD4(SIMD3(repeating: 1), 0)))
 
-                let scale: Float = 0.0044 * (0.94 + h2 * 0.10)
-                let facing = angle + Float.pi * 0.5
-                let coat = clothing[(si * 5 + k + 2) % clothing.count]
-                let base = SIMD3<Float>(x, ground, z)
-                let body = translation(base)
-                    * rotationY(facing)
-                    * scaleMatrix(SIMD3(repeating: scale))
-                people.append(InstanceData(model: body, color: SIMD4(coat, 0)))
-                if h2 > 0.58 {
-                    brims.append(InstanceData(model: body, color: SIMD4(SIMD3(repeating: 1), 0)))
-                } else {
-                    heads.append(InstanceData(model: body, color: SIMD4(SIMD3(repeating: 1), 0)))
-                }
+            for side in [Float(-1), 1] {
+                let leg = model * translation(SIMD3(side * 0.085, 0.49, 0))
+                    * rotationX(side * pose.stride * 0.50)
+                legs.append(InstanceData(model: leg, color: SIMD4(coat * 0.45, 0)))
 
-                let c = cos(facing), sn = sin(facing)
-                func localPoint(_ lx: Float, _ ly: Float, _ lz: Float) -> SIMD3<Float> {
-                    SIMD3(base.x + (lx * c + lz * sn) * scale,
-                          base.y + ly * scale,
-                          base.z + (-lx * sn + lz * c) * scale)
+                let swing = side * pose.stride * 0.42
+                let handPitch: Float
+                switch activity.kind {
+                case .fieldwork: handPitch = side > 0 ? -0.15 - pose.reach * 0.65 : swing
+                case .market: handPitch = side > 0 ? -0.35 - pose.reach * 1.05 : swing
+                case .freight: handPitch = cratePitch
                 }
-                for (side, swingSign) in [(Float(-1), Float(1)), (Float(1), Float(-1))] {
-                    let hip = localPoint(side * 0.085, 0.49, 0)
-                    let model = translation(hip)
-                        * rotationY(facing)
-                        * rotationX(0.10 * swingSign)
-                        * scaleMatrix(SIMD3(repeating: scale))
-                    legs.append(InstanceData(model: model, color: SIMD4(coat * 0.45, 0)))
+                let arm = model * translation(SIMD3(side * 0.205, 0.845, 0))
+                    * rotationX(handPitch)
+                arms.append(InstanceData(model: arm, color: SIMD4(coat, 0)))
+
+                if side > 0, activity.kind != .freight {
+                    let hand = arm * translation(SIMD3(0, -0.41, 0))
+                    if activity.kind == .fieldwork {
+                        let handle = hand * rotationX(-handPitch + 0.10 - pose.reach * 0.70)
+                        carried.append(InstanceData(
+                            model: handle * translation(SIMD3(0, -0.16, 0))
+                                * scaleMatrix(SIMD3(0.045, 0.49, 0.045)),
+                            color: SIMD4(0.48, 0.33, 0.20, 0)))
+                        carried.append(InstanceData(
+                            model: handle * translation(SIMD3(0, -0.39, 0.03))
+                                * scaleMatrix(SIMD3(0.23, 0.055, 0.125)),
+                            color: SIMD4(0.34, 0.36, 0.38, 0)))
+                    } else {
+                        carried.append(InstanceData(
+                            model: hand * rotationX(-handPitch)
+                                * scaleMatrix(SIMD3(0.31, 0.22, 0.28)),
+                            color: SIMD4(0.66, 0.47, 0.25, 0)))
+                    }
                 }
-                for (side, swingSign) in [(Float(-1), Float(-1)), (Float(1), Float(1))] {
-                    let shoulder = localPoint(side * 0.205, 0.845, 0)
-                    let model = translation(shoulder)
-                        * rotationY(facing)
-                        * rotationX(0.08 * swingSign)
-                        * scaleMatrix(SIMD3(repeating: scale))
-                    arms.append(InstanceData(model: model, color: SIMD4(coat, 0)))
-                }
-                let hand = localPoint(0.21, 0.50, 0.02)
+            }
+            if activity.kind == .freight {
+                let hand = rotationX(cratePitch) * SIMD4<Float>(0, -0.41, 0, 1)
+                let load = model * translation(SIMD3(0, 0.845 + hand.y, hand.z + 0.12))
                 carried.append(InstanceData(
-                    model: translation(hand) * rotationY(facing)
-                        * scaleMatrix(SIMD3(scale * 0.34, scale * 0.26, scale * 0.28)),
-                    color: SIMD4(SIMD3(0.52, 0.40, 0.24), 0)))
+                    model: load * scaleMatrix(SIMD3(0.53, 0.31, 0.33)),
+                    color: SIMD4(0.54, 0.37, 0.22, 0)))
+                for side in [Float(-1), 1] {
+                    carried.append(InstanceData(
+                        model: load * translation(SIMD3(side * 0.18, 0, 0))
+                            * scaleMatrix(SIMD3(0.037, 0.32, 0.34)),
+                        color: SIMD4(0.23, 0.25, 0.26, 0)))
+                }
             }
         }
 
@@ -1827,11 +1887,6 @@ final class Renderer: NSObject, MTKViewDelegate {
         InstanceBatch(mesh: scene.cartMesh, device: context.device, capacity: 128)
     }()
 
-    /// Farmland plots; drawn before the buildings so they sit on the ground.
-    private lazy var fieldBatch: InstanceBatch = {
-        InstanceBatch(mesh: scene.cubeMesh, device: context.device, capacity: 512)
-    }()
-
     /// Pitched roofs for the pre-industrial eras.
     private lazy var archBatch: InstanceBatch = {
         InstanceBatch(mesh: scene.archMesh, device: context.device, capacity: 128)
@@ -1961,11 +2016,13 @@ final class Renderer: NSObject, MTKViewDelegate {
                     model: model,
                     color: SIMD4(SIMD3(0.92, 0.94, 0.97), 0.85 * weatherIntensity)))
             } else {
-                let model = translation(SIMD3(x, y, z))
-                    * scaleMatrix(SIMD3(0.0004, 0.009, 0.0004))
+                let metres = RiverGraph.metresPerUnit
+                let model = translation(SIMD3(x + phase * 58 / metres, y, z))
+                    * rotationZ(0.13)
+                    * scaleMatrix(SIMD3(0.18, 6, 0.18) / metres)
                 instances.append(InstanceData(
                     model: model,
-                    color: SIMD4(SIMD3(0.60, 0.70, 0.80), 0.32 * weatherIntensity)))
+                    color: SIMD4(SIMD3(0.62, 0.72, 0.82), 0.28 * weatherIntensity)))
             }
         }
 
@@ -1980,13 +2037,7 @@ final class Renderer: NSObject, MTKViewDelegate {
 
     // MARK: - Camera + sun
 
-    /// Two shots on a ~110 s cycle: a wide orbital hero shot, then a slow push
-    /// toward the largest settlement, then back out. The transitions are eased
-    /// so the camera never snaps.
-    /// Three shots on a ~160 s cycle: wide hero orbit, low coastal drift, then
-    /// a slow push toward the largest settlement. The orbit angle uses one
-    /// constant speed so blending between shots never snaps the heading.
-    private func automaticCamera(time: Float, aspect: Float) -> Camera {
+    func automaticCamera(time: Float) -> Camera {
         switch cameraMode {
         case .wide:  return wideCamera(time: time)
         case .coast: return coastCamera(time: time)
@@ -2162,59 +2213,127 @@ final class Renderer: NSObject, MTKViewDelegate {
                       fov: 46)
     }
 
-    private func cyclingCamera(time: Float) -> Camera {
-        let cycle = time.truncatingRemainder(dividingBy: 160)
-
-        let low: Float
-        switch cycle {
-        case ..<38:  low = 0
-        case ..<50:  low = smoothstep(38, 50, cycle)
-        case ..<84:  low = 1
-        case ..<96:  low = 1 - smoothstep(84, 96, cycle)
-        default:     low = 0
-        }
-
-        let close: Float
-        switch cycle {
-        case ..<108: close = 0
-        case ..<122: close = smoothstep(108, 122, cycle)
-        case ..<148: close = 1
-        default:     close = 1 - smoothstep(148, 160, cycle)
-        }
-
-        let wideWeight = max(1 - low - close, 0)
-        let orbit = time * 0.016 + 0.55
-        let closeCam = cityCamera(time: time)
-
-        let wideEye = SIMD3<Float>(cos(orbit) * 1.66,
-                                   0.48 + sin(time * 0.031) * 0.04,
-                                   sin(orbit) * 1.66)
-        let lowEye = SIMD3<Float>(cos(orbit) * 1.80,
-                                  0.20 + sin(time * 0.023) * 0.03,
-                                  sin(orbit) * 1.80)
-
-        let eye = wideEye * wideWeight + lowEye * low + closeCam.eye * close
-        let fov = 36 * wideWeight + 40 * low + closeCam.fov * close
-        let wideTarget = SIMD3<Float>(0, 0.10, 0)
-        let lowTarget = SIMD3<Float>(0, 0.02, 0)
-        let target = wideTarget * wideWeight + lowTarget * low + closeCam.target * close
-        return Camera(eye: eye, target: target, fov: fov)
+    private enum AutomaticShot {
+        case island, coast, valley, town
     }
 
-    private func sun(for time: Float) -> (direction: SIMD3<Float>, elevation: Float, night: Float) {
+    private struct CameraFraming {
+        // Polar framing: distance and elevation are metres, FOV is degrees.
+        let radius: Float
+        let elevation: Float
+        let fov: Float
+        let focus: Float
+        let islandAim: Float
+    }
+
+    // Vary the order and dwell, while the bearing continues through every
+    // transition and through the wrap. Times are in seconds.
+    private static let automaticShots: [(shot: AutomaticShot, hold: Float, move: Float)] = [
+        (.island, 34, 16), (.coast, 26, 19), (.valley, 29, 14), (.town, 25, 21),
+        (.island, 28, 20), (.town, 23, 17), (.valley, 31, 19), (.coast, 24, 15),
+        (.island, 36, 18), (.valley, 26, 19), (.coast, 30, 21), (.town, 27, 22),
+        (.coast, 24, 19), (.island, 33, 20), (.town, 32, 16), (.valley, 25, 20),
+        (.island, 29, 14), (.coast, 28, 16), (.town, 26, 18), (.valley, 32, 18)
+    ]
+    private static let automaticDuration = automaticShots.reduce(Float(0)) { $0 + $1.hold + $1.move }
+
+    private static func cameraEase(_ progress: Float) -> Float {
+        let t = min(max(progress, 0), 1)
+        return t * t * t * (t * (t * 6 - 15) + 10)
+    }
+
+    private func automaticFocus(at time: Float) -> (point: SIMD3<Float>, radius: Float) {
+        guard let old = autoFocusTransition else { return (focusPoint, focusRadius) }
+        // A newly dominant town or changing population can alter framing
+        // at a simulation tick. Keep the visible focus and glide to its update.
+        let t = Renderer.cameraEase((time - old.time) / 12)
+        return (old.point + (focusPoint - old.point) * t, old.radius + (focusRadius - old.radius) * t)
+    }
+
+    private func framing(_ shot: AutomaticShot, focusRadius: Float) -> CameraFraming {
+        switch shot {
+        case .island: return CameraFraming(radius: 1900, elevation: 610, fov: 46, focus: 0, islandAim: 90)
+        case .coast: return CameraFraming(radius: 1750, elevation: 265, fov: 42, focus: 0, islandAim: 65)
+        case .valley where hasFocus: return CameraFraming(radius: 700, elevation: 350, fov: 39, focus: 1, islandAim: 0)
+        case .town where hasFocus:
+            let town = focusRadius * RiverNetwork.metresPerUnit
+            return CameraFraming(radius: max(245, town * 3.5), elevation: max(155, town * 2.2),
+                                 fov: 50, focus: 1, islandAim: 0)
+        default: return CameraFraming(radius: 1560, elevation: 450, fov: 48, focus: 0, islandAim: 95)
+        }
+    }
+
+    private func cyclingCamera(time: Float) -> Camera {
+        let shots = Renderer.automaticShots
+        var phase = max(time, 0).truncatingRemainder(dividingBy: Renderer.automaticDuration)
+        var index = 0
+        while phase >= shots[index].hold + shots[index].move {
+            phase -= shots[index].hold + shots[index].move
+            index += 1
+        }
+        let shot = shots[index]
+        let focus = automaticFocus(at: time)
+        let a = framing(shot.shot, focusRadius: focus.radius)
+        let b = framing(shots[(index + 1) % shots.count].shot, focusRadius: focus.radius)
+        let eased = Renderer.cameraEase((phase - shot.hold) / shot.move)
+        func blend(_ lhs: Float, _ rhs: Float) -> Float { lhs + (rhs - lhs) * eased }
+
+        let metres = RiverNetwork.metresPerUnit
+        let weight = blend(a.focus, b.focus)
+        let focusXZ = SIMD2(focus.point.x, focus.point.z)
+        let centre = focusXZ * weight
+        let townAim = scene.renderedTerrainHeight(at: focusXZ) + max(28 / metres, focus.radius * 0.38)
+        let targetY = weight * townAim + blend(a.islandAim, b.islandAim) / metres
+        let radius = blend(a.radius, b.radius) / metres
+        // Orbit the changing subject in polar coordinates. Cartesian blending
+        // between opposite viewpoints could take a chord directly into town.
+        let bearing = 0.55 + time * 0.011 + 0.18 * sin(time * 0.006)
+        let offset = SIMD2(cos(bearing), sin(bearing)) * radius
+        let eye = centre + offset
+        let preferredY = targetY + blend(a.elevation, b.elevation) / metres
+        var eyeY = max(preferredY, scene.renderedTerrainHeight(at: eye) + 24 / metres)
+        if weight > 0 {
+            var sightlineY = eyeY
+            // Check the approach outside the immediate roofs/banks around
+            // the subject. Solve for the eye height that clears each sample.
+            let start = min(0.5, 30 / metres / radius)
+            let samples = Int(ceil(radius * metres / 8))
+            for i in 0..<samples {
+                let u = start + (1 - start) * Float(i) / Float(samples)
+                let ground = scene.renderedTerrainHeight(at: centre + offset * u)
+                sightlineY = max(sightlineY, targetY + (ground + 8 / metres - targetY) / u)
+            }
+            eyeY += (sightlineY - eyeY) * weight
+        }
+        return Camera(eye: SIMD3(eye.x, eyeY, eye.y),
+                      target: SIMD3(centre.x, targetY, centre.y), fov: blend(a.fov, b.fov))
+    }
+
+    private struct SolarLight {
+        let hour: Float
+        let direction: SIMD3<Float>
+        let elevation: Float
+        let night: Float
+        let twilight: SIMD2<Float>
+    }
+
+    private func solarLight() -> SolarLight {
         let hour: Float
         if let override = hourOverride {
             hour = override
         } else {
             let comps = Calendar.current.dateComponents([.hour, .minute, .second], from: Date())
-            hour = Float(comps.hour ?? 12) + Float(comps.minute ?? 0) / 60
+            hour = Float(comps.hour ?? 12) + Float(comps.minute ?? 0) / 60 + Float(comps.second ?? 0) / 3600
         }
-        lastSunHour = hour
         let a = (hour / 24) * 2 * Float.pi - .pi / 2
         let elevation = sin(a)
-        let dir = simd_normalize(SIMD3<Float>(cos(a) * 0.86, elevation, 0.38))
-        let night = smoothstep(0.06, -0.14, elevation)
-        return (dir, elevation, night)
+        let azimuth = cos(a)
+        let direction = simd_normalize(SIMD3<Float>(azimuth * 0.86, elevation, 0.38))
+        let night = 1 - smoothstep(-0.22, 0.07, elevation)
+        let window = smoothstep(-0.32, -0.055, elevation) * (1 - smoothstep(0.025, 0.37, elevation))
+        let morning = smoothstep(-0.22, 0.22, azimuth)
+        return SolarLight(hour: hour, direction: direction, elevation: elevation, night: night,
+                          twilight: SIMD2(window * morning, window * (1 - morning)))
     }
 
     /// Season as 0 (midsummer) … 1 (midwinter), derived from the real date.
@@ -2283,7 +2402,8 @@ final class Renderer: NSObject, MTKViewDelegate {
                                      night: .zero,
                                      shadow: .zero,
                                      closeLightViewProjection: matrix_identity_float4x4,
-                                     closeShadow: .zero)
+                                     closeShadow: .zero,
+                                     twilight: .zero)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<FrameUniforms>.stride, index: 1)
 
         encoder.setVertexBuffer(identityBatch.buffer, offset: 0, index: 2)
@@ -2349,12 +2469,12 @@ final class Renderer: NSObject, MTKViewDelegate {
         scenePass.depthAttachment.storeAction = .dontCare
         scenePass.depthAttachment.clearDepth = 1.0
 
-        let (shadowSunDir, shadowElevation, _) = sun(for: time)
-        currentLightVP = lightMatrix(sunDir: shadowSunDir)
-        currentCloseLightVP = lightMatrix(sunDir: shadowSunDir,
+        let light = solarLight()
+        currentLightVP = lightMatrix(sunDir: light.direction)
+        currentCloseLightVP = lightMatrix(sunDir: light.direction,
                                           centre: SIMD3<Float>(focusPoint.x, 0.03, focusPoint.z),
                                           extent: 0.30)
-        if shadowElevation > 0.02 {
+        if light.elevation > 0.02 {
             encodeShadow(commandBuffer: commandBuffer, map: shadowMap,
                          lightVP: currentLightVP, includeTerrain: true)
             if let closeShadowMap {
@@ -2366,7 +2486,8 @@ final class Renderer: NSObject, MTKViewDelegate {
         encodeScene(commandBuffer: commandBuffer,
                     passDescriptor: scenePass,
                     size: CGSize(width: sceneWidth, height: sceneHeight),
-                    time: time)
+                    time: time,
+                    light: light)
 
         if sceneScale >= 0.999 {
             // Native or near-native: composite straight into the drawable.
@@ -2514,14 +2635,15 @@ final class Renderer: NSObject, MTKViewDelegate {
         // The blur radius is expressed in pixels at 1000 px tall, so the look is
         // identical whether we are drawing a 1600×1000 still or a 6 MP display.
         let scale = max(height / 1000.0, 0.5)
-        let warmth = smoothstep(0.35, 0.0, abs(currentElevation))
-        let saturation = 1.06 - currentNight * 0.08
+        let warmth = currentTwilight.y - currentTwilight.x * 0.45
+        let saturation = 1.04 - currentNight * 0.07 - weatherIntensity * 0.19
+        let contrast = 1.03 - currentNight * 0.045 - weatherIntensity * 0.065
 
         var uniforms = PostUniforms(
             params: SIMD4(0.50, 0.25, 0.30, 3.2 * scale),
             extra: SIMD4(time, 0.30, 0.62 * currentNight, 0),
             view: SIMD4(sceneScale, 0.0025, 0, 0),
-            grade: SIMD4(warmth, 1.06, saturation, 0.34)
+            grade: SIMD4(warmth, contrast, saturation, 0.29)
         )
 
         encoder.setRenderPipelineState(postPipeline)
@@ -2534,19 +2656,20 @@ final class Renderer: NSObject, MTKViewDelegate {
     private func encodeScene(commandBuffer: MTLCommandBuffer,
                              passDescriptor: MTLRenderPassDescriptor,
                              size: CGSize,
-                             time: Float) {
+                             time: Float,
+                             light: SolarLight) {
         guard size.width > 0, size.height > 0 else { return }
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: passDescriptor) else { return }
         encoder.label = "Evolving frame"
 
         let aspect = Float(size.width / size.height)
-        let cam = cameraOverride ?? automaticCamera(time: time, aspect: aspect)
+        let cam = cameraOverride ?? automaticCamera(time: time)
+        lastCameraTime = time
         lastRenderedCamera = cam
         let view = lookAt(eye: cam.eye, center: cam.target, up: SIMD3(0, 1, 0))
         let projection = perspective(fovyRadians: degreesToRadians(cam.fov),
                                      aspect: aspect, near: 0.004, far: 30)
 
-        let (sunDir, sunElevation, night) = sun(for: time)
         let weather = weatherState()
         weatherIntensity = weather.intensity
         weatherIsSnow = weather.snow
@@ -2572,19 +2695,20 @@ final class Renderer: NSObject, MTKViewDelegate {
             lightViewProjection: currentLightVP,
             inverseViewProjection: simd_inverse(projection * view),
             cameraAndTime: SIMD4(cam.eye.x, cam.eye.y, cam.eye.z, time),
-            sunAndPad: SIMD4(sunDir, sunElevation),
-            night: SIMD4(night, season(), 1, weather.intensity),
+            sunAndPad: SIMD4(light.direction, light.elevation),
+            night: SIMD4(light.night, season(), 1, weather.intensity),
             shadow: SIMD4(1.0 / Float(shadowSize), 0.0015, 0.00012, debugShadow),
             closeLightViewProjection: currentCloseLightVP,
-            closeShadow: SIMD4(1.0 / Float(closeShadowSize), 0.00070, 0.00010, validationLegacyWaterDepth ? 1 : 0)
+            closeShadow: SIMD4(1.0 / Float(closeShadowSize), 0.00070, 0.00010, validationLegacyWaterDepth ? 1 : 0),
+            twilight: SIMD4(light.twilight.x, light.twilight.y, 0, 0)
         )
-        lastReviewView = RiverReviewView(seed: reviewSeed, year: reviewYear, hour: lastSunHour,
+        lastReviewView = RiverReviewView(seed: reviewSeed, year: reviewYear, hour: light.hour,
             season: uniforms.night.y, precipitation: weather.intensity, snow: weather.snow,
             animationTime: time, eye: [cam.eye.x, cam.eye.y, cam.eye.z],
             target: [cam.target.x, cam.target.y, cam.target.z], fov: cam.fov,
             width: reviewViewport.width, height: reviewViewport.height)
-        currentNight = night
-        currentElevation = sunElevation
+        currentNight = light.night
+        currentTwilight = light.twilight
 
         updateTraffic(time: time, camera: cam)
         updateWeather(time: time, camera: cam)
@@ -2625,6 +2749,10 @@ final class Renderer: NSObject, MTKViewDelegate {
         }
 
         if riverView.isEmpty {
+        if let fields = scene.fieldMesh, let buffer = fieldIdentityBuffer {
+            encoder.setVertexBuffer(buffer, offset: 0, index: 2)
+            draw(fields, with: encoder, instances: 1)
+        }
         // Roads sit just above the terrain and below the buildings.
         if let streets = scene.streetMesh {
             if let buffer = streetIdentityBuffer {
@@ -2673,7 +2801,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             draw(townSignBatch.mesh, with: encoder, instances: townSignBatch.count)
         }
 
-        for batch in [fieldBatch, boxBatch, gableBatch, archBatch, roadPropBatch, roadPropGableBatch, catEyeBatch, crestBatch, emblemBatch, trafficLightBatch, treeBatch, broadleafBatch, coneBatch, lampBatch, carBatch, cartBatch, boatHullBatch, boatSailBatch, trainBatch, birdBatch, personBatch, personHeadBatch, personHeadBrimBatch, personLegBatch, personArmBatch, carryBatch, animalBatch] where batch.count > 0 {
+        for batch in [boxBatch, gableBatch, archBatch, roadPropBatch, roadPropGableBatch, catEyeBatch, crestBatch, emblemBatch, trafficLightBatch, treeBatch, broadleafBatch, coneBatch, lampBatch, carBatch, cartBatch, boatHullBatch, boatSailBatch, trainBatch, birdBatch, personBatch, personHeadBatch, personHeadBrimBatch, personLegBatch, personArmBatch, carryBatch, animalBatch] where batch.count > 0 {
             encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
             draw(batch.mesh, with: encoder, instances: batch.count)
         }
@@ -2778,6 +2906,9 @@ final class Renderer: NSObject, MTKViewDelegate {
                 let ms = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
                 NSLog("Evolving gpu: %.2f ms", ms)
             }
+        }
+        if let presentations {
+            drawable.addPresentedHandler { presentations.record($0.presentedTime) }
         }
         commandBuffer.present(drawable)
         commandBuffer.commit()

@@ -15,8 +15,7 @@ enum MedievalLayout: SettlementLayout {
         let radius = CityBuilder.cityRadius(population)
         let target = Int(Float(CityBuilder.buildingCount(population)) * 1.45)
 
-        var rng = SplitMix64(seed: seed
-                             ^ (UInt64(bitPattern: Int64(s.id)) &* 0x2545_F491_4F6C_DD1D))
+        var rng = HistoricQuarter.streetRandom(for: s, seed: seed)
 
         // The market street runs across the prevailing slope, which is where
         // historic high streets sit: flat frontage, drainage to the sides.
