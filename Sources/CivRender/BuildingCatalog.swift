@@ -16,6 +16,10 @@ enum BuildingCatalog {
         BuildingAsset(path: "variants/neolithic-" + $0, scale: 1 / 0.88)
     }
 
+    static let neolithicStone = ["stone-turf", "stone-passage"].map {
+        BuildingAsset(path: "variants/neolithic-" + $0, scale: 1 / 0.88)
+    }
+
     private static let legacyNeolithic: [BuildingAsset] = (1...30).map {
         BuildingAsset(path: String(format: "variants/neolithic-%02d", $0), scale: 1.12)
     }
@@ -152,6 +156,6 @@ enum BuildingCatalog {
                 }
             }
         }
-        return paths
+        return paths + neolithicStone.map(\.path)
     }()
 }

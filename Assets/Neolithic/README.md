@@ -3,7 +3,7 @@
 Open [neolithic.blend](neolithic.blend) in Blender. It contains the editable
 timber-and-daub house, the kneeling worker and quern, and the pig from the
 [NEO-01 reference hamlet](../../review/neolithic/neo-01/README.md), along with
-the three production inland house forms. The .blend
+the three production inland house forms and two exposed stone homes. The .blend
 uses the existing building atlas through a relative path within the checkout.
 
 - Edit the meshes in the **Evolving Neolithic Exports** collection. Blender uses
@@ -44,3 +44,6 @@ build consumes the checked-in .civmesh files.
   [English Heritage's experimental houses](https://www.english-heritage.org.uk/visit/places/stonehenge/things-to-do/neolithic-houses/)
 - Neolithic cereals, livestock, tools, and pottery.
   [Ashmolean Museum's Neolithic collection](https://britisharchaeology.ashmus.ox.ac.uk/collections/neolithic.html)
+- Slab construction, sheltered passages, and low walls for the exposed stone
+  homes. The turf roofs and coastal setting are interpretations.
+  [Historic Environment Scotland's Skara Brae guide](https://www.historicenvironment.scot/visit/all/skara-brae/history-and-stories/)
