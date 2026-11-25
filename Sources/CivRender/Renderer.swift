@@ -148,6 +148,9 @@ final class Renderer: NSObject, MTKViewDelegate {
 
     /// 0…1 precipitation override for stills; `nil` follows the real weather.
     var weatherOverride: Float?
+    var referenceAnimationTime: Float?
+    var showsNeolithicReference = false
+    private(set) var neolithicReferenceStage: NeolithicReference.Stage?
     var snowOverride: Bool?
 
     /// `auto` cycles the shots; the others pin one framing.
@@ -601,12 +604,17 @@ final class Renderer: NSObject, MTKViewDelegate {
     func updateScene(_ simulation: Simulation, refreshRoads: Bool = false) {
         reviewSeed = simulation.seed; reviewYear = simulation.year
         livingSettlements = simulation.settlements.filter { $0.isAlive }
-        let geometry = CityBuilder.build(settlements: simulation.settlements,
+        var geometry = CityBuilder.build(settlements: simulation.settlements,
                                          era: simulation.era,
                                          year: simulation.year,
                                          terrain: scene.terrain,
                                          seed: simulation.seed,
                                          riverField: scene.riverField)
+        neolithicReferenceStage = nil
+        if showsNeolithicReference, simulation.seed == NeolithicReference.seed,
+           simulation.year == NeolithicReference.year, let settlement = simulation.largestSettlement() {
+            neolithicReferenceStage = NeolithicReference.stage(&geometry, scene: scene, settlement: settlement)
+        }
         boxBatch.update(geometry.boxes, device: context.device)
         coneBatch.update(geometry.cones, device: context.device)
         gableBatch.update(geometry.gables, device: context.device)
@@ -1528,9 +1536,11 @@ final class Renderer: NSObject, MTKViewDelegate {
                 let lz = axis == 0 ? offset + lateral : along
                 let x = grid.x + dir.x * lx + perp.x * lz
                 let z = grid.z + dir.y * lx + perp.y * lz
+                let position = SIMD2(x, z)
+                guard neolithicReferenceStage?.containsStagedYard(position) != true else { continue }
                 let ground = scene.terrain.interpolatedHeight(x: x, z: z)
                 guard ground > 0.006, !scene.terrain.isWater(x: x, z: z),
-                      scene.riverField.waterLevel(at: SIMD2(x, z)) == nil
+                      scene.riverField.waterLevel(at: position) == nil
                 else { continue }
 
                 let walkAngle = axis == 0 ? grid.angle : grid.angle + Float.pi / 2
@@ -1598,6 +1608,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         for activity in townActivities {
             let pose = activity.sample(time: time)
             let p = pose.position
+            guard neolithicReferenceStage?.containsStagedYard(p) != true else { continue }
             let ground = max(scene.renderedTerrainHeight(at: p), scene.activityStreets.height(at: p) ?? 0)
             let metres = TownActivity.metres
             let scale: Float = 4.4 / metres
@@ -1678,9 +1689,11 @@ final class Renderer: NSObject, MTKViewDelegate {
                 let radius = base * (0.8 + 0.5 * h2)
                 let x = settlement.x + cos(angle) * radius
                 let z = settlement.z + sin(angle) * radius
+                let position = SIMD2(x, z)
+                guard neolithicReferenceStage?.containsStagedYard(position) != true else { continue }
                 let ground = scene.terrain.interpolatedHeight(x: x, z: z)
                 guard ground > 0.006, !scene.terrain.isWater(x: x, z: z),
-                      scene.riverField.waterLevel(at: SIMD2(x, z)) == nil
+                      scene.riverField.waterLevel(at: position) == nil
                 else { continue }
 
                 let scale: Float = 0.0034
@@ -2893,7 +2906,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             return
         }
 
-        let time = Float(CACurrentMediaTime() - startTime)
+        let time = referenceAnimationTime ?? Float(CACurrentMediaTime() - startTime)
         encodeFrame(commandBuffer: commandBuffer,
                     target: drawable.texture,
                     time: time)
