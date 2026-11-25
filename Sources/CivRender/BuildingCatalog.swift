@@ -12,7 +12,11 @@ enum BuildingCatalog {
     static let roundhouse = BuildingAsset(path: "roundhouse", scale: 0.85)
     static let roundhouseLarge = BuildingAsset(path: "roundhouse", scale: 1.0)
 
-    static let neolithic: [BuildingAsset] = (1...30).map {
+    static let neolithic = ["square-hip", "long-gable", "clipped-thatched"].map {
+        BuildingAsset(path: "variants/neolithic-" + $0, scale: 1 / 0.88)
+    }
+
+    private static let legacyNeolithic: [BuildingAsset] = (1...30).map {
         BuildingAsset(path: String(format: "variants/neolithic-%02d", $0), scale: 1.12)
     }
     static let bronze: [BuildingAsset] = (1...30).map {
@@ -89,6 +93,7 @@ enum BuildingCatalog {
     static func assets(for era: Era, district: District) -> [BuildingAsset] {
         let pool = assets(for: era)
         guard !pool.isEmpty else { return pool }
+        if era == .neolithic { return district == .park ? [] : pool }
 
         let range: Range<Int>
         switch district {
@@ -118,7 +123,7 @@ enum BuildingCatalog {
         case .neolithic:
             return []
         case .bronze:
-            return neolithic
+            return legacyNeolithic
         case .classical:
             return bronze
         case .medieval:

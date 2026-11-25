@@ -58,8 +58,8 @@ era-specific and procedurally shaded: braided earth tracks with hollow-way banks
   cambered Roman paving with kerbs, cobbles, setts, macadam and asphalt, with fords
   giving way to stone, iron and concrete bridges.
 - **Blender building set.** Every house in a town is a Blender-authored mesh from a pool of
-  **30 variants per era** across all nine eras (huts, roundhouses, villas, timber-framed
-  houses, townhouses, brick terraces, modern houses and towers) — 270 buildings in total. Variants vary width, depth, storeys, roof type, frontage and
+  three timber-and-daub house forms in the Neolithic and 30 variants per later era
+  (roundhouses, villas, timber-framed houses, townhouses, brick terraces, modern houses and towers). Variants vary width, depth, storeys, roof type, frontage and
   detail (porticoes, timber frames, shopfronts, balconies, dormers, quoins, chimneys). Houses are
   picked with a neighbour rule that avoids repeats, carry a small per-instance colour palette,
   and some sit back behind low garden walls. A share of older housing survives into each era.

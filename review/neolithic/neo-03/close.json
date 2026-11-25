@@ -1,0 +1,24 @@
+{
+  "animationTime" : 24,
+  "eye" : [
+    -0.16348849,
+    0.03103228,
+    0.15206198
+  ],
+  "fov" : 42,
+  "height" : 900,
+  "hour" : 15,
+  "precipitation" : 0,
+  "provenance" : "NEO-03 neighboring production houses",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    -0.14254639,
+    0.024632279,
+    0.15050372
+  ],
+  "width" : 1440,
+  "year" : 450
+}

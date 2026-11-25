@@ -30,6 +30,7 @@ enum CityBuilder {
         var streetLines: [StreetLine] = []
         var buildings: [String: [InstanceData]] = [:]
         var activityCandidates: [[TownActivity]] = []
+        fileprivate var neolithicHouseFootprints: [[SIMD2<Float>]] = []
     }
 
     /// One street ribbon, clipped to dry land.
@@ -93,7 +94,8 @@ enum CityBuilder {
                       year: Float,
                       terrain: Terrain,
                       seed: UInt64,
-                      riverField: RiverChannel.Field? = nil) -> Geometry {
+                      riverField: RiverChannel.Field? = nil,
+                      renderedGround: ((SIMD2<Float>) -> Float)? = nil) -> Geometry {
         var geometry = Geometry()
         let style = Style.forEra(era)
         // One resource field per frame; sampling is cheap and deterministic.
@@ -114,6 +116,7 @@ enum CityBuilder {
                                  seed: seed,
                                  resources: resources,
                                  river: riverField,
+                                 renderedGround: renderedGround,
                                  into: &geometry)
             } else {
                 appendRuins(settlement, terrain: terrain, seed: seed, into: &geometry)
@@ -161,6 +164,7 @@ enum CityBuilder {
                                          seed: UInt64,
                                          resources: ResourceMap,
                                          river: RiverChannel.Field?,
+                                         renderedGround: ((SIMD2<Float>) -> Float)?,
                                          into geometry: inout Geometry) {
         let population = max(s.population, 1)
         var count = buildingCount(population)
@@ -422,12 +426,18 @@ enum CityBuilder {
             }
             guard !choices.isEmpty else { continue }
 
-            // Avoid repeating the last two houses on the same street.
-            var asset = choices[Int(rng.nextFloat() * Float(choices.count))]
-            var attempts = 0
-            while recent.contains(asset.path) && attempts < 5 {
-                asset = choices[Int(rng.nextFloat() * Float(choices.count))]
-                attempts += 1
+            // Prefer distinct houses around the yard without rerolling
+            // through the whole three-house pool.
+            let pool = era == .neolithic
+                ? choices.filter { !recent.suffix(2).contains($0.path) } : choices
+            let available = pool.isEmpty ? choices : pool
+            var asset = available[Int(rng.nextFloat() * Float(available.count))]
+            if era != .neolithic {
+                var attempts = 0
+                while recent.contains(asset.path) && attempts < 5 {
+                    asset = choices[Int(rng.nextFloat() * Float(choices.count))]
+                    attempts += 1
+                }
             }
             recent.append(asset.path)
             if recent.count > 3 { recent.removeFirst() }
@@ -469,11 +479,28 @@ enum CityBuilder {
                     material: SIMD4(2, 0, 0, 0)))
             }
 
-            let model = translation(SIMD3(hx, ground + slot.podium - 0.0002, hz))
-                * rotationY(facing + rng.nextFloat(in: -0.05...0.05))
-                * scaleMatrix(SIMD3(baseScale * fit,
-                                    baseScale * heightScale,
-                                    baseScale * fit))
+            let facingTransform = rotationY(facing + rng.nextFloat(in: -0.05...0.05))
+                * scaleMatrix(SIMD3(baseScale * fit, baseScale * heightScale, baseScale * fit))
+            var model = translation(SIMD3(hx, ground + slot.podium - 0.0002, hz)) * facingTransform
+            if era == .neolithic {
+                let footprint = RiverPlacement.transformed(RiverPlacement.authoredBounds(asset.path), by: model)
+                guard footprint.count == 4,
+                      footprint.allSatisfy({ !terrain.isWater(x: $0.x, z: $0.y) }),
+                      river?.intersectsFootprint(footprint, margin: 2 / metres) != true,
+                      !geometry.neolithicHouseFootprints.contains(where: {
+                          RiverPlacement.rectanglesOverlap(footprint, $0, clearance: 0.25 / metres)
+                      }) else { continue }
+                let edges = footprint.indices.map { (footprint[$0] + footprint[($0 + 1) % 4]) * 0.5 }
+                let samples = (footprint + edges + [SIMD2(hx, hz)]).map { p in
+                    renderedGround?(p) ?? terrain.originalTriangleHeight(at: p)
+                }
+                let highest = samples.max()!
+                let lowest = samples.min()!
+                // All three authored stone skirts extend 1.55 m below the floor origin.
+                guard highest - lowest <= (1.55 * baseScale * heightScale) else { continue }
+                model.columns.3.y = highest
+                geometry.neolithicHouseFootprints.append(footprint)
+            }
             geometry.buildings[asset.path, default: []].append(InstanceData(
                 model: model,
                 color: SIMD4(tint, 0),

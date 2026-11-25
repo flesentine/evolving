@@ -75,20 +75,6 @@ enum NeolithicReference {
                 return centre + SIMD2(cos(angle), sin(angle)) * (radius / metres)
             }
         }
-        func overlaps(_ a: [SIMD2<Float>], _ b: [SIMD2<Float>]) -> Bool {
-            guard a.count == 4, b.count == 4 else { return false }
-            for rectangle in [a, b] {
-                for index in [1, 3] {
-                    let axis = rectangle[index] - rectangle[0]
-                    let projectedA = a.map { simd_dot($0, axis) }
-                    let projectedB = b.map { simd_dot($0, axis) }
-                    if projectedA.max()! < projectedB.min()! || projectedB.max()! < projectedA.min()! {
-                        return false
-                    }
-                }
-            }
-            return true
-        }
         var reliefRejected = 0, waterRejected = 0, collisionRejected = 0
 
         for base in anchors {
@@ -113,8 +99,8 @@ enum NeolithicReference {
                     waterRejected += 1
                     break
                 }
-                guard !houses.contains(where: { overlaps(footprint, $0) }),
-                      !fitted.contains(where: { overlaps(footprint, $0.2) }) else {
+                guard !houses.contains(where: { RiverPlacement.rectanglesOverlap(footprint, $0) }),
+                      !fitted.contains(where: { RiverPlacement.rectanglesOverlap(footprint, $0.2) }) else {
                     collisionRejected += 1
                     break
                 }

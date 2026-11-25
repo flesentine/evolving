@@ -43,6 +43,24 @@ enum RiverPlacement {
             return SIMD2(p.x,p.z)
         }
     }
+    /// Test transformed rectangular footprints on both sets of edge axes.
+    static func rectanglesOverlap(_ a: [SIMD2<Float>], _ b: [SIMD2<Float>],
+                                  clearance: Float = 0) -> Bool {
+        guard a.count == 4, b.count == 4 else { return false }
+        for rectangle in [a, b] {
+            for index in [1, 3] {
+                let axis = simd_normalize(rectangle[index] - rectangle[0])
+                let projectedA = a.map { simd_dot($0, axis) }
+                let projectedB = b.map { simd_dot($0, axis) }
+                if projectedA.max()! + clearance < projectedB.min()!
+                    || projectedB.max()! + clearance < projectedA.min()! {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
     static func dry(_ instance: InstanceData, bounds: [SIMD2<Float>], field: RiverChannel.Field, setbackMetres: Float = 1.5) -> Bool {
         !field.intersectsFootprint(transformed(bounds,by:instance.model), margin:setbackMetres / RiverGraph.metresPerUnit)
     }
