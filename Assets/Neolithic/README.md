@@ -2,7 +2,8 @@
 
 Open [neolithic.blend](neolithic.blend) in Blender. It contains the editable
 timber-and-daub house, the kneeling worker and quern, and the pig from the
-[NEO-01 reference hamlet](../../review/neolithic/neo-01/README.md). The .blend
+[NEO-01 reference hamlet](../../review/neolithic/neo-01/README.md), along with
+the three production inland house forms. The .blend
 uses the existing building atlas through a relative path within the checkout.
 
 - Edit the meshes in the **Evolving Neolithic Exports** collection. Blender uses
@@ -14,7 +15,9 @@ uses the existing building atlas through a relative path within the checkout.
   rotation and scale and clear parenting before export. Keep ordinary scene
   helpers outside the export collection.
 - Keep the house's stone skirt beneath its ground-level origin. It fills the
-  downhill side of the foundation in Timeline.
+  downhill side of the foundation in Timeline. The production square hip, long
+  gable and clipped-hip models each have a 1.55 m skirt below the floor origin.
+  Their roof forms extrapolate from the excavated house plans.
 
 From the repository root, update the runtime assets and regenerate the
 [contact sheet](contact-sheet.png).
