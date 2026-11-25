@@ -16,9 +16,8 @@ mkdir -p "$DEST_DIR"
 rm -rf "$DEST"
 cp -R "$SRC" "$DEST"
 
-# Drop the cached copy so System Settings picks up the new build.
+# Restart the legacy host so it reloads the bundle. Preferences hold the saved world.
 killall ScreenSaverEngine 2>/dev/null || true
-defaults delete com.apple.screensaver.Evolving 2>/dev/null || true
 
 APP_SRC="$ROOT/build/Evolving Companion.app"
 APP_DIR="$HOME/Applications"

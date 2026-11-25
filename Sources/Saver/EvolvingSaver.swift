@@ -98,11 +98,6 @@ final class EvolvingSaver: ScreenSaverView {
         defaults = store
 
 
-        if let awayText = ProcessInfo.processInfo.environment["EVOLVING_AWAY_HOURS"],
-           let hours = Double(awayText), hours > 0 {
-            WorldStore.markSeen(Date().addingTimeInterval(-hours * 3600), in: store)
-        }
-
         buildWorld()
     }
 
@@ -114,9 +109,20 @@ final class EvolvingSaver: ScreenSaverView {
 
         teardownWorld()
 
-        let worldConfig = developmentOverride(WorldStore.load(from: store))
+        config = nil
+        let worldConfig: WorldConfig
+        do {
+            worldConfig = developmentOverride(try WorldStore.load(from: store))
+        } catch {
+            showStatus(error.localizedDescription)
+            return
+        }
         config = worldConfig
 
+        if let awayText = ProcessInfo.processInfo.environment["EVOLVING_AWAY_HOURS"],
+           let hours = Double(awayText), hours > 0 {
+            WorldStore.markSeen(Date().addingTimeInterval(-hours * 3600), in: store)
+        }
 
         do {
             let context: MetalContext
@@ -140,8 +146,9 @@ final class EvolvingSaver: ScreenSaverView {
             view.layer?.isOpaque = true
 
             let started = CACurrentMediaTime()
-            let terrain = WorldGen.generate(seed: worldConfig.seed,
-                                            size: isPreview ? 256 : 384)
+            let replayTerrain = worldConfig.replayTerrain()
+            let terrain = isPreview
+                ? WorldGen.generate(seed: worldConfig.seed, size: 256) : replayTerrain
             NSLog("Evolving: terrain \(terrain.size)² in \(Int((CACurrentMediaTime() - started) * 1000)) ms")
 
             let renderer = try Renderer(context: context,
@@ -180,7 +187,7 @@ final class EvolvingSaver: ScreenSaverView {
             let targetYear = worldConfig.simYear(at: now)
             let previousSeen = WorldStore.lastSeen(in: store)
 
-            var sim = Simulation(seed: worldConfig.seed, terrain: terrain)
+            var sim = worldConfig.startReplay(on: replayTerrain)
             let replayStart = CACurrentMediaTime()
 
             var before: WorldSnapshot?
@@ -421,6 +428,7 @@ final class EvolvingSaver: ScreenSaverView {
     override var hasConfigureSheet: Bool { true }
 
     override var configureSheet: NSWindow? {
+        guard config != nil else { return nil }
         if settingsWindow == nil {
             settingsWindow = makeSettingsSheet()
         }
@@ -431,8 +439,7 @@ final class EvolvingSaver: ScreenSaverView {
     /// The sheet is built once and reused, so refresh it from the store every
     /// time it is shown (the world may have been reset since last time).
     private func syncSettingsControls() {
-        guard let store = defaults else { return }
-        let stored = WorldStore.load(from: store)
+        guard let store = defaults, let stored = try? WorldStore.load(from: store) else { return }
         pacePopup?.selectItem(withTitle: stored.paceName)
         seedField?.stringValue = String(stored.seed)
         resetCheckbox?.state = .off
@@ -542,7 +549,13 @@ final class EvolvingSaver: ScreenSaverView {
             return
         }
 
-        var updated = WorldStore.load(from: store)
+        var updated: WorldConfig
+        do {
+            updated = try WorldStore.load(from: store)
+        } catch {
+            settingsFailure(error)
+            return
+        }
         updated.paceName = pacePopup?.titleOfSelectedItem ?? updated.paceName
 
         let seedText = seedField?.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -553,13 +566,21 @@ final class EvolvingSaver: ScreenSaverView {
         let wantsNewWorld = resetCheckbox?.state == .on
         if seedChanged || wantsNewWorld {
             updated.epoch = Date()
-            WorldStore.markSeen(Date(), in: store)
+            updated.historyVersion = .current
+        }
+        do {
+            try WorldStore.save(updated, to: store)
+        } catch {
+            settingsFailure(error)
+            return
+        }
+        if seedChanged || wantsNewWorld {
+            WorldStore.markSeen(updated.epoch, in: store)
         }
 
         WorldStore.setSouthernHemisphere(hemisphereCheckbox?.state == .on, in: store)
         let mode = CameraMode(rawValue: cameraPopup?.titleOfSelectedItem ?? "") ?? .auto
         WorldStore.setCameraMode(mode, in: store)
-        WorldStore.save(updated, to: store)
         closeSettings(.OK)
 
         // Rebuild against the new config so the preview updates immediately.
@@ -567,6 +588,14 @@ final class EvolvingSaver: ScreenSaverView {
         if isAnimating {
             startRenderLoop()
         }
+    }
+
+    private func settingsFailure(_ error: Error) {
+        guard let window = settingsWindow else { return }
+        let alert = NSAlert()
+        alert.messageText = "World settings could not be saved"
+        alert.informativeText = error.localizedDescription
+        alert.beginSheetModal(for: window)
     }
 
     private func closeSettings(_ response: NSApplication.ModalResponse) {
@@ -682,7 +711,7 @@ final class EvolvingSaver: ScreenSaverView {
         let year = bookmark.mode == .live ? config.simYear(at: Date()) : view.year
         timelineYearOverride = bookmark.mode == .historical ? year : nil
         if year < sim.year {
-            sim = Simulation(seed: config.seed, terrain: sim.terrain)
+            sim = config.startReplay(on: sim.terrain)
         }
         sim.advance(to: year)
         simulation = sim
@@ -745,7 +774,7 @@ final class EvolvingSaver: ScreenSaverView {
     private func rebuildSimulation(to year: Float) {
         guard let config, let renderer else { return }
         guard let terrain = simulation?.terrain else { return }
-        var sim = Simulation(seed: config.seed, terrain: terrain)
+        var sim = config.startReplay(on: terrain)
         sim.advance(to: max(year, 0))
         simulation = sim
         lastSceneYear = sim.year
@@ -787,7 +816,7 @@ final class EvolvingSaver: ScreenSaverView {
     private func persistLastSeen() {
         // Viewing the preview in System Settings must not count as spending
         // time with the world, or it would erase the "while you were away" gap.
-        guard !isPreviewPane, let store = defaults else { return }
+        guard !isPreviewPane, simulation != nil, let store = defaults else { return }
         WorldStore.markSeen(Date(), in: store)
     }
 }

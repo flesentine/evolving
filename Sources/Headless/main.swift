@@ -40,6 +40,7 @@ func usage() -> Never {
       civheadless farmcheck <directory> <seed> <year>
       civheadless farmfixtures
       civheadless townhistorycheck <seed> <town-id>
+      civheadless worldupgradecheck
       civheadless townactivitycheck <directory> <seed>
       civheadless bench [year] [width] [height] [frames]
       civheadless resources [seed]
@@ -102,6 +103,10 @@ let arguments = CommandLine.arguments
 guard arguments.count >= 2 else { usage() }
 
 switch arguments[1] {
+
+case "worldupgradecheck":
+    do { try WorldUpgradeCheck.run() }
+    catch { fail("world upgrade check failed — \(error)") }
 
 case "townactivitycheck":
     guard arguments.count == 4, let seed = UInt64(arguments[3]) else { usage() }
