@@ -27,6 +27,7 @@ final class WorldScene {
     let riverMesh: Mesh?
     let coastalRiverMesh: Mesh?
     let riverBankMesh: Mesh?
+    private(set) lazy var riverBankFootprint = FieldSurface.Mask(mesh: riverBankMesh)
     /// Water polygons used to keep trees and houses out of the channel.
     let riverField: RiverChannel.Field
     let cubeMesh: Mesh

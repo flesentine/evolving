@@ -156,6 +156,6 @@ enum BuildingCatalog {
                 }
             }
         }
-        return paths + neolithicStone.map(\.path)
+        return paths + neolithicStone.map(\.path) + NeolithicProps.paths
     }()
 }

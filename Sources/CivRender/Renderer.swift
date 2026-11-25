@@ -623,7 +623,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         archBatch.update(geometry.arches, device: context.device)
         updateTrees(for: simulation)
         smokeEmitters = geometry.smoke
-        for entry in buildingBatches {
+        for entry in buildingBatches where !NeolithicProps.paths.contains(entry.path) {
             entry.batch.update(geometry.buildings[entry.path] ?? [], device: context.device)
         }
 
@@ -727,7 +727,26 @@ final class Renderer: NSObject, MTKViewDelegate {
         } catch {
             NSLog("Evolving: field mesh failed — \(error)")
         }
+        let householdProps = simulation.era == .neolithic
+            ? NeolithicProps.place(in: scene, geometry: geometry) : [:]
+        for entry in buildingBatches where NeolithicProps.paths.contains(entry.path) {
+            let instances = householdProps[entry.path, default: []]
+            entry.batch.update(instances, device: context.device)
+            if !instances.isEmpty {
+                geometry.buildings[entry.path] = instances
+                nearbyBuildings.insert(entry.path)
+            }
+        }
         townActivities = TownActivity.choose(geometry.activityCandidates, geometry: geometry, scene: scene)
+    }
+
+    /// Read the same instance buffer that the building pass draws.
+    func submittedHouseholdProps(_ path: String) -> [InstanceData] {
+        guard buildingAtlas != nil,
+              let batch = buildingBatches.first(where: { $0.path == path })?.batch,
+              batch.count > 0 else { return [] }
+        let instances = batch.buffer.contents().assumingMemoryBound(to: InstanceData.self)
+        return Array(UnsafeBufferPointer(start: instances, count: batch.count))
     }
 
     /// Milestones, signposts, tollhouses, cairns, ford posts and cat's eyes.
