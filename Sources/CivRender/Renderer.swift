@@ -723,7 +723,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         }
         boxBatch.update(geometry.boxes, device: context.device)
         do {
-            try scene.rebuildFields(geometry.fields)
+            try scene.rebuildFields(geometry.fields, recordFootprint: simulation.era == .neolithic)
         } catch {
             NSLog("Evolving: field mesh failed — \(error)")
         }
@@ -1689,33 +1689,43 @@ final class Renderer: NSObject, MTKViewDelegate {
         personLegBatch.update(legs, device: context.device)
         personArmBatch.update(arms, device: context.device)
 
-        var animals: [InstanceData] = []
-        for (si, settlement) in livingSettlements.enumerated() {
-            let base = max(CityBuilder.cityRadius(settlement.population) * 1.65 + 0.012, 0.028)
-            for k in 0..<5 {
-                let h = hash01(si * 53 + k * 17 + 500)
-                let h2 = hash01(si * 29 + k * 7 + 900)
-                let angle = h * 2 * Float.pi + time * 0.00005
-                let radius = base * (0.8 + 0.5 * h2)
-                let x = settlement.x + cos(angle) * radius
-                let z = settlement.z + sin(angle) * radius
-                let position = SIMD2(x, z)
-                guard neolithicReferenceStage?.containsStagedYard(position) != true else { continue }
-                let ground = scene.terrain.interpolatedHeight(x: x, z: z)
-                guard ground > 0.006, !scene.terrain.isWater(x: x, z: z),
-                      scene.riverField.waterLevel(at: position) == nil
-                else { continue }
-
-                let scale: Float = 0.0034
-                let model = translation(SIMD3(x, ground, z))
-                    * rotationY(angle + .pi / 2)
-                    * scaleMatrix(SIMD3(scale, scale, scale))
-                let coat: SIMD3<Float> = h2 < 0.5 ? SIMD3(0.78, 0.74, 0.66)
-                                                 : SIMD3(0.42, 0.30, 0.20)
-                animals.append(InstanceData(model: model, color: SIMD4(coat, 0)))
+        if Era.at(reviewYear) == .neolithic {
+            let placements = NeolithicLivestock.placements(in: scene, settlements: livingSettlements,
+                seed: reviewSeed, time: time, reference: neolithicReferenceStage)
+            let byPose = Dictionary(grouping: placements, by: { $0.pose.index })
+            for (pose, batch) in neolithicLivestockBatches {
+                batch.update(byPose[pose.index, default: []].map(\.instance), device: context.device)
             }
+            animalBatch.update([], device: context.device)
+        } else {
+            var animals: [InstanceData] = []
+            for (si, settlement) in livingSettlements.enumerated() {
+                let base = max(CityBuilder.cityRadius(settlement.population) * 1.65 + 0.012, 0.028)
+                for k in 0..<5 {
+                    let h = hash01(si * 53 + k * 17 + 500)
+                    let h2 = hash01(si * 29 + k * 7 + 900)
+                    let angle = h * 2 * Float.pi + time * 0.00005
+                    let radius = base * (0.8 + 0.5 * h2)
+                    let x = settlement.x + cos(angle) * radius
+                    let z = settlement.z + sin(angle) * radius
+                    let position = SIMD2(x, z)
+                    guard neolithicReferenceStage?.containsStagedYard(position) != true else { continue }
+                    let ground = scene.terrain.interpolatedHeight(x: x, z: z)
+                    guard ground > 0.006, !scene.terrain.isWater(x: x, z: z),
+                          scene.riverField.waterLevel(at: position) == nil
+                    else { continue }
+
+                    let scale: Float = 0.0034
+                    let model = translation(SIMD3(x, ground, z))
+                        * rotationY(angle + .pi / 2)
+                        * scaleMatrix(SIMD3(scale, scale, scale))
+                    let coat: SIMD3<Float> = h2 < 0.5 ? SIMD3(0.78, 0.74, 0.66)
+                                                     : SIMD3(0.42, 0.30, 0.20)
+                    animals.append(InstanceData(model: model, color: SIMD4(coat, 0)))
+                }
+            }
+            animalBatch.update(animals, device: context.device)
         }
-        animalBatch.update(animals, device: context.device)
 
         var birds: [InstanceData] = []
         for i in 0..<18 {
@@ -1958,6 +1968,23 @@ final class Renderer: NSObject, MTKViewDelegate {
     private lazy var carryBatch: InstanceBatch = {
         InstanceBatch(mesh: scene.cubeMesh, device: context.device, capacity: 512)
     }()
+
+    private lazy var neolithicLivestockBatches: [(NeolithicLivestock.Pose, InstanceBatch)] =
+        NeolithicLivestock.poses.compactMap { pose in
+            guard let asset = try? CivMesh.load(named: pose.path + ".civmesh"),
+                  let mesh = try? Mesh(device: context.device, vertices: asset.vertices, indices: asset.indices)
+            else { return nil }
+            return (pose, InstanceBatch(mesh: mesh, device: context.device, capacity: 64))
+        }
+
+    func submittedNeolithicLivestockCounts() -> [Int] {
+        guard buildingAtlas != nil, Era.at(reviewYear) == .neolithic else {
+            return Array(repeating: 0, count: NeolithicLivestock.poses.count)
+        }
+        var counts = Array(repeating: 0, count: NeolithicLivestock.poses.count)
+        for (pose, batch) in neolithicLivestockBatches { counts[pose.index] = batch.count }
+        return counts
+    }
 
     private lazy var animalBatch: InstanceBatch = {
         InstanceBatch(mesh: scene.animalMesh, device: context.device, capacity: 512)
@@ -2840,6 +2867,12 @@ final class Renderer: NSObject, MTKViewDelegate {
             for entry in buildingBatches where entry.batch.count > 0 {
                 encoder.setVertexBuffer(entry.batch.buffer, offset: 0, index: 2)
                 draw(entry.batch.mesh, with: encoder, instances: entry.batch.count)
+            }
+            if Era.at(reviewYear) == .neolithic {
+                for (_, batch) in neolithicLivestockBatches where batch.count > 0 {
+                    encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
+                    draw(batch.mesh, with: encoder, instances: batch.count)
+                }
             }
         }
 
