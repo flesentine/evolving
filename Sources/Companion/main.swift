@@ -205,11 +205,23 @@ final class CompanionApp: NSObject, NSApplicationDelegate {
     private func reloadWorld() {
         guard let store else { return }
 
-        let config = WorldStore.load(from: store)
+        let config: WorldConfig
+        do {
+            config = try WorldStore.load(from: store)
+        } catch {
+            self.config = nil
+            simulation = nil
+            yearLabel.stringValue = "World unavailable"
+            statusLabel.stringValue = error.localizedDescription
+            let alert = NSAlert()
+            alert.messageText = "Evolving could not open this world"
+            alert.informativeText = error.localizedDescription
+            alert.beginSheetModal(for: window)
+            return
+        }
         self.config = config
 
-        let terrain = WorldGen.generate(seed: config.seed, size: 256)
-        var sim = Simulation(seed: config.seed, terrain: terrain)
+        var sim = config.startReplay(on: config.replayTerrain())
         sim.advance(to: config.simYear(at: Date()))
         simulation = sim
 
@@ -254,20 +266,29 @@ final class CompanionApp: NSObject, NSApplicationDelegate {
     // MARK: - Actions
 
     @objc private func applyPace() {
-        guard let store, var config else { return }
-        config.paceName = pacePopup.titleOfSelectedItem ?? config.paceName
-        WorldStore.save(config, to: store)
-        let mode = CameraMode(rawValue: cameraPopup.titleOfSelectedItem ?? "") ?? .auto
-        WorldStore.setCameraMode(mode, in: store)
-        self.config = config
-        statusLabel.stringValue = "Pace \(config.paceName) · camera \(mode.rawValue)."
+        guard let store, config != nil else { return }
+        do {
+            var updated = try WorldStore.load(from: store)
+            updated.paceName = pacePopup.titleOfSelectedItem ?? updated.paceName
+            try WorldStore.save(updated, to: store)
+            let mode = CameraMode(rawValue: cameraPopup.titleOfSelectedItem ?? "") ?? .auto
+            WorldStore.setCameraMode(mode, in: store)
+            reloadWorld()
+            statusLabel.stringValue = "Pace \(updated.paceName) · camera \(mode.rawValue)."
+        } catch {
+            statusLabel.stringValue = error.localizedDescription
+        }
     }
 
     @objc private func newWorld() {
-        guard let store else { return }
-        _ = WorldStore.reset(in: store)
-        reloadWorld()
-        statusLabel.stringValue = "Started a new world."
+        guard let store, config != nil else { return }
+        do {
+            _ = try WorldStore.reset(in: store)
+            reloadWorld()
+            statusLabel.stringValue = "Started a new world."
+        } catch {
+            statusLabel.stringValue = error.localizedDescription
+        }
     }
 
     @objc private func openSettings() {

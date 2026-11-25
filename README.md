@@ -198,6 +198,13 @@ era-specific and procedurally shaded: braided earth tracks with hollow-way banks
 State lives in `ScreenSaverDefaults`:
 `~/Library/Preferences/ByHost/com.mccullough.evolving.<uuid>.plist`.
 
+Updates preserve the saved seed, founding date, and pace. An existing world
+without a history version is recorded as version 1. Future changes to replay
+rules need an explicit new version and must retain the rules for older worlds.
+The saver, preview, and Companion replay the same history from that version.
+If a version is unsupported or the saved identity is unreadable, Evolving
+shows an error and keeps the saved data in place.
+
 The System Settings preview is read-only: it never updates `lastSeen` and never shows the
 "while you were away" recap, so previewing cannot erase a real absence.
 

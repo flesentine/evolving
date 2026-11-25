@@ -10,6 +10,10 @@ cd "$ROOT"
 Scripts/build.sh
 
 echo
+echo "▸ checking world upgrade compatibility"
+build/bin/civheadless worldupgradecheck
+
+echo
 echo "▸ checking bundle"
 build/bin/civheadless checkbundle build/Evolving.saver 1.5
 
