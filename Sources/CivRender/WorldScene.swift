@@ -27,6 +27,7 @@ final class WorldScene {
     let riverMesh: Mesh?
     let coastalRiverMesh: Mesh?
     let riverBankMesh: Mesh?
+    private(set) lazy var riverBankFootprint = FieldSurface.Mask(mesh: riverBankMesh)
     /// Water polygons used to keep trees and houses out of the channel.
     let riverField: RiverChannel.Field
     let cubeMesh: Mesh
@@ -64,6 +65,7 @@ final class WorldScene {
     private(set) var fieldMesh: Mesh?
     private var roadFieldMask: FieldSurface.Mask?
     private(set) var activityStreets = FieldSurface.Mask()
+    private(set) var activityFields = FieldSurface.Mask()
     private(set) var roadBridges: [RoadBridge.Crossing] = []
     private(set) var unbridgedRoadPoints: [SIMD2<Float>] = []
     private(set) var bridgeDrivePaths: [Int: RoadBridge.DrivePath] = [:]
@@ -807,9 +809,10 @@ final class WorldScene {
 
     var activityRoads: FieldSurface.Mask { roadFieldMask ?? FieldSurface.Mask(mesh: roadMesh) }
 
-    func rebuildFields(_ plots: [InstanceData]) throws {
+    func rebuildFields(_ plots: [InstanceData], recordFootprint: Bool = false) throws {
         // A previous field mesh might cross a road rebuilt this frame.
         fieldMesh = nil
+        activityFields = FieldSurface.Mask()
         guard !plots.isEmpty else { return }
         let roads = roadFieldMask ?? FieldSurface.Mask(mesh: roadMesh)
         roadFieldMask = roads
@@ -817,6 +820,7 @@ final class WorldScene {
                                         streets: activityStreets)
         fieldMesh = fields.indices.isEmpty ? nil : try Mesh(device: device, vertices: fields.vertices,
                                                            indices: fields.indices)
+        if recordFootprint { activityFields = FieldSurface.Mask(mesh: fieldMesh) }
     }
 
     /// Dashed centre line for modern roads.
