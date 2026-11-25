@@ -36,11 +36,13 @@ enum WorldUpgradeCheck {
         guard try WorldStore.load(from: unmarked) == migrated else {
             fail("missing initialization marker replaced a valid legacy world")
         }
-        let firstLaunch = FixtureDefaults()
-        let fresh = try WorldStore.load(from: firstLaunch)
-        let nextLaunch = try WorldStore.load(from: firstLaunch)
-        guard fresh.seed != 0, firstLaunch.values["worldHistoryVersion"] as? Int == 1,
-              fresh == nextLaunch else { fail("fresh world identity was not persisted") }
+        for _ in 0..<64 {
+            let firstLaunch = FixtureDefaults()
+            let fresh = try WorldStore.load(from: firstLaunch)
+            let nextLaunch = try WorldStore.load(from: firstLaunch)
+            guard fresh.seed != 0, firstLaunch.values["worldHistoryVersion"] as? Int == 1,
+                  fresh == nextLaunch else { fail("fresh world identity was not persisted") }
+        }
 
         let unreadable = FixtureDefaults(original.filter { $0.key != "worldEpoch" })
         let originalUnreadable = NSDictionary(dictionary: unreadable.values)

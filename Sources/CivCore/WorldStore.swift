@@ -134,7 +134,7 @@ enum WorldStore {
             || savedSeed != nil || savedEpoch != nil || savedAnchor != nil
 
         if !hasWorld {
-            let fresh = WorldConfig(seed: makeSeed(), epoch: Date(), paceName: Pace.standard.name)
+            let fresh = freshConfig()
             try save(fresh, to: defaults)
             return fresh
         }
@@ -201,9 +201,15 @@ enum WorldStore {
 
     /// Replaces the world with a fresh one, starting now.
     static func reset(in defaults: KeyValueStore) throws -> WorldConfig {
-        let config = WorldConfig(seed: makeSeed(), epoch: Date(), paceName: Pace.standard.name)
+        let config = freshConfig()
         try save(config, to: defaults)
         return config
+    }
+
+    private static func freshConfig() -> WorldConfig {
+        // Use the same epoch precision as the persisted Unix timestamp.
+        let epoch = Date(timeIntervalSince1970: Date().timeIntervalSince1970)
+        return WorldConfig(seed: makeSeed(), epoch: epoch, paceName: Pace.standard.name)
     }
 
     static func makeSeed() -> UInt64 {
