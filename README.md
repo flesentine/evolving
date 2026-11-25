@@ -205,8 +205,11 @@ The saver, preview, and Companion replay the same history from that version.
 If a version is unsupported or the saved identity is unreadable, Evolving
 shows an error and keeps the saved data in place.
 
-The System Settings preview is read-only: it never updates `lastSeen` and never shows the
-"while you were away" recap, so previewing cannot erase a real absence.
+Only Live frames update the last-seen time. The System Settings preview and
+historical Timeline views leave it alone. A running saver catches up when
+it wakes and shows the “while you were away” recap for gaps over an hour.
+If the Mac clock moves back, Live holds its last recorded progress until
+the clock catches up. Timeline still allows deliberate rewinds.
 
 ## Move a world to another Mac
 

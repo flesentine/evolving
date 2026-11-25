@@ -19,6 +19,10 @@ echo "▸ checking bundle"
 build/bin/civheadless checkbundle build/Evolving.saver 1.5
 
 echo
+echo "▸ checking world lifecycle"
+build/bin/civheadless lifecyclecheck build/Evolving.saver
+
+echo
 echo "▸ rendering the arc"
 for year in 500 5000 10000; do
   build/bin/civheadless sim "build/verify-$year.png" "$year" 10 1

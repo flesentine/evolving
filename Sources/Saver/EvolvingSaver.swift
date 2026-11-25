@@ -39,7 +39,13 @@ final class EvolvingSaver: ScreenSaverView {
     private var lastSceneYear: Float = -1
     private var lastSceneEra: Era?
     private var timelineYearOverride: Float?
-    private var lastSeenSave: CFTimeInterval = 0
+    private var previousLiveDate: Date?
+    private var lastLiveFrame: Date?
+    private var lastSeenCheckpoint: Date?
+    private var workspaceObservers: [NSObjectProtocol] = []
+    private var fixtureDate: Date?
+
+    private var wallDate: Date { fixtureDate ?? Date() }
     private var lastHUDUpdate: CFTimeInterval = 0
 
     // Overlay
@@ -82,6 +88,9 @@ final class EvolvingSaver: ScreenSaverView {
     deinit {
         renderTimer?.invalidate()
         persistLastSeen()
+        for observer in workspaceObservers {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
     }
 
     // MARK: - Setup
@@ -94,10 +103,26 @@ final class EvolvingSaver: ScreenSaverView {
 
         // ScreenSaverDefaults keeps our state separate from the host's.
         let bundleID = Bundle(for: EvolvingSaver.self).bundleIdentifier ?? "com.mccullough.evolving"
-        let store = ScreenSaverDefaults(forModuleWithName: bundleID) ?? UserDefaults.standard
-        defaults = store
+        let env = ProcessInfo.processInfo.environment
+        if env["EVOLVING_DEV"] == "1", let suite = env["EVOLVING_LIFECYCLE_SUITE"],
+           suite.hasPrefix("com.mccullough.evolving.lifecycle-test."),
+           let seconds = env["EVOLVING_LIFECYCLE_DATE"].flatMap(Double.init),
+           seconds.isFinite, seconds > 0, let fixture = UserDefaults(suiteName: suite) {
+            fixtureDate = Date(timeIntervalSince1970: seconds)
+            defaults = fixture
+        } else {
+            defaults = ScreenSaverDefaults(forModuleWithName: bundleID) ?? UserDefaults.standard
+        }
 
-
+        let workspace = NSWorkspace.shared.notificationCenter
+        workspaceObservers = [
+            workspace.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) {
+                [weak self] _ in self?.prepareForSleep()
+            },
+            workspace.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) {
+                [weak self] _ in self?.resumeFromSleep()
+            }
+        ]
         buildWorld()
     }
 
@@ -118,11 +143,6 @@ final class EvolvingSaver: ScreenSaverView {
             return
         }
         config = worldConfig
-
-        if let awayText = ProcessInfo.processInfo.environment["EVOLVING_AWAY_HOURS"],
-           let hours = Double(awayText), hours > 0 {
-            WorldStore.markSeen(Date().addingTimeInterval(-hours * 3600), in: store)
-        }
 
         do {
             let context: MetalContext
@@ -180,27 +200,19 @@ final class EvolvingSaver: ScreenSaverView {
                 }
             }
 
-            // Replay the world to the present moment. When there is a real gap
-            // since the last visit, replay to that moment first so the recap can
-            // describe what actually changed.
-            let now = Date()
-            let targetYear = worldConfig.simYear(at: now)
-            let previousSeen = WorldStore.lastSeen(in: store)
-
+            let now = wallDate
+            let wallYear = worldConfig.simYear(at: now)
+            let awayHours = ProcessInfo.processInfo.environment["EVOLVING_AWAY_HOURS"].flatMap(Double.init)
+            let recorded = WorldStore.lastSeen(in: store)
+            let recordedYear = recorded.map { worldConfig.simYear(at: $0) } ?? wallYear
+            let targetYear = recordedYear.isFinite && recordedYear <= WorldArchive.maximumYear
+                ? max(wallYear, recordedYear) : wallYear
+            let previous = awayHours.flatMap { hours in
+                hours.isFinite && hours > 0 ? now.addingTimeInterval(-hours * 3600) : nil
+            } ?? recorded
             var sim = worldConfig.startReplay(on: replayTerrain)
             let replayStart = CACurrentMediaTime()
-
-            var before: WorldSnapshot?
-            if !isPreview, let previousSeen {
-                let previousYear = worldConfig.simYear(at: previousSeen)
-                if targetYear - previousYear > 0.5 {
-                    sim.advance(to: previousYear)
-                    before = WorldSnapshot(sim)
-                }
-            }
-
             sim.advance(to: targetYear)
-            let after = WorldSnapshot(sim)
             NSLog("Evolving: replayed \(Int(sim.year)) years in \(Int((CACurrentMediaTime() - replayStart) * 1000)) ms")
 
             renderer.updateScene(sim)
@@ -211,15 +223,12 @@ final class EvolvingSaver: ScreenSaverView {
             self.simulation = sim
             self.lastSceneYear = sim.year
             self.lastSceneEra = sim.era
-            self.lastSeenSave = 0
+            self.previousLiveDate = previous
+            self.lastLiveFrame = nil
+            self.lastSeenCheckpoint = nil
             self.recapUntil = 0
 
             buildHUD()
-            if !isPreview {
-                configureRecap(before: before, after: after, chronicle: sim.chronicle,
-                               now: now, previousSeen: previousSeen)
-                WorldStore.markSeen(now, in: store)
-            }
             updateHUD(force: true, now: CACurrentMediaTime())
             NSLog("Evolving: Metal up on \(context.device.name), preview=\(isPreview), year \(Int(sim.year)), \(sim.settlements.count) settlements")
         } catch {
@@ -229,6 +238,7 @@ final class EvolvingSaver: ScreenSaverView {
     }
 
     private func teardownWorld() {
+        persistLastSeen()
         renderTimer?.invalidate()
         renderTimer = nil
         metalView?.removeFromSuperview()
@@ -635,6 +645,7 @@ final class EvolvingSaver: ScreenSaverView {
             startRenderLoop()
         } else if window == nil {
             stopRenderLoop()
+            persistLastSeen()
         }
     }
 
@@ -642,6 +653,34 @@ final class EvolvingSaver: ScreenSaverView {
         super.layout()
         metalView?.frame = bounds
         layoutHUD()
+    }
+
+    private func prepareForSleep() {
+        persistLastSeen()
+    }
+
+    private func resumeFromSleep() {
+        if isAnimating && window != nil { drawIfDue(force: true) }
+    }
+
+    // The native verifier drives the same sleep/wake handlers with a fixed
+    // clock and a separate preferences suite, without sleeping the host Mac.
+    @objc func setLifecycleFixtureDate(_ value: NSDate) {
+        guard fixtureDate != nil else { return }
+        fixtureDate = value as Date
+    }
+
+    @objc func lifecycleFixtureSleep() {
+        if fixtureDate != nil { prepareForSleep() }
+    }
+
+    @objc func lifecycleFixtureWake() {
+        if fixtureDate != nil { resumeFromSleep() }
+    }
+
+    @objc func lifecycleFixtureRecap() -> NSString? {
+        guard fixtureDate != nil, let label = recapLabel, !label.isHidden else { return nil }
+        return label.stringValue as NSString
     }
 
     // MARK: - Render loop
@@ -669,15 +708,37 @@ final class EvolvingSaver: ScreenSaverView {
         let now = CACurrentMediaTime()
         guard force || now - lastDrawTime > 1.0 / 120.0 else { return }
         lastDrawTime = now
-        tickWorld(now: now)
+        let date = wallDate
+        let live = !isPreviewPane && timelineYearOverride == nil
+        let previous = lastLiveFrame.map { max($0, previousLiveDate ?? $0) } ?? previousLiveDate
+        let returning = live && (previous.map { date.timeIntervalSince($0) > 3600 } ?? false)
+        tickWorld(at: date, catchUp: force || returning)
+        let frames = framesDrawn
         metalView?.draw()
+        if live, framesDrawn != frames {
+            if returning, let previous, let config, let sim = simulation {
+                var before = config.startReplay(on: sim.terrain)
+                before.advance(to: min(config.simYear(at: previous), sim.year))
+                configureRecap(before: WorldSnapshot(before), after: WorldSnapshot(sim),
+                               chronicle: sim.chronicle, now: date, previousSeen: previous)
+            }
+            if (lastLiveFrame ?? .distantPast) < date {
+                lastLiveFrame = date
+                if date.timeIntervalSince(lastSeenCheckpoint ?? .distantPast) >= 30 {
+                    persistLastSeen()
+                }
+            }
+        }
         updateHUD(force: false, now: now)
     }
 
     /// Timeline-scrubbing API used by the standalone Timeline app.
     @objc func setTimelineYear(_ value: NSNumber) {
         let year = min(max(value.floatValue, 0), 12000)
+        persistLastSeen()
         timelineYearOverride = year
+        recapUntil = 0
+        recapLabel?.isHidden = true
         guard let config, let renderer, let sim = simulation else { return }
         if year < sim.year - 0.5 || year < 0 {
             rebuildSimulation(to: year)
@@ -695,7 +756,13 @@ final class EvolvingSaver: ScreenSaverView {
     }
 
     @objc func clearTimelineOverride() {
+        guard timelineYearOverride != nil else { return }
         timelineYearOverride = nil
+        if let config, let simulation {
+            let target = config.simYear(at: wallDate)
+            if target < simulation.year { rebuildSimulation(to: target) }
+        }
+        drawIfDue(force: true)
     }
 
     @objc func isTimelineLive() -> NSNumber {
@@ -710,8 +777,13 @@ final class EvolvingSaver: ScreenSaverView {
               bookmark.view.seed == config.seed else { return NSNumber(value: false) }
 
         let view = bookmark.view
-        let year = bookmark.mode == .live ? config.simYear(at: Date()) : view.year
+        let year = bookmark.mode == .live ? config.simYear(at: wallDate) : view.year
+        persistLastSeen()
         timelineYearOverride = bookmark.mode == .historical ? year : nil
+        if timelineYearOverride != nil {
+            recapUntil = 0
+            recapLabel?.isHidden = true
+        }
         if year < sim.year {
             sim = config.startReplay(on: sim.terrain)
         }
@@ -785,40 +857,29 @@ final class EvolvingSaver: ScreenSaverView {
         updateHUD(force: true, now: CACurrentMediaTime())
     }
 
-    /// Catches the civilisation up to real time. The mapping from wall-clock
-    /// time to simulated years lives entirely in `Pace`, so a month asleep is
-    /// just a bigger jump here.
-    private func tickWorld(now: CFTimeInterval) {
-        guard let config, var sim = simulation else { return }
+    /// Advance Live after a gap. A backward wall-clock correction holds the
+    /// active replay until the clock catches up; Timeline still rewinds explicitly.
+    private func tickWorld(at date: Date, catchUp: Bool) {
+        guard timelineYearOverride == nil, let config, var sim = simulation else { return }
+        let target = config.simYear(at: date)
+        guard target > sim.year, catchUp || target - sim.year >= 0.25
+                || Era.at(target) != sim.era else { return }
+        sim.advance(to: target)
+        simulation = sim
 
-        let target = timelineYearOverride ?? config.simYear(at: Date())
-        if target < sim.year - 0.5 {
-            rebuildSimulation(to: target)
-            return
-        }
-        if target - sim.year >= 0.25 {
-            sim.advance(to: target)
-            simulation = sim
-
-            let yearChanged = abs(sim.year - lastSceneYear) >= 0.99
-            let eraChanged = sim.era != lastSceneEra
-            if yearChanged || eraChanged {
-                lastSceneYear = sim.year
-                lastSceneEra = sim.era
-                renderer?.updateScene(sim)
-            }
-        }
-
-        if now - lastSeenSave > 30 {
-            lastSeenSave = now
-            persistLastSeen()
+        let yearChanged = sim.year.rounded(.down) > lastSceneYear.rounded(.down)
+        let eraChanged = sim.era != lastSceneEra
+        if yearChanged || eraChanged {
+            lastSceneYear = sim.year
+            lastSceneEra = sim.era
+            renderer?.updateScene(sim, refreshRoads: catchUp && yearChanged)
         }
     }
 
     private func persistLastSeen() {
-        // Viewing the preview in System Settings must not count as spending
-        // time with the world, or it would erase the "while you were away" gap.
-        guard !isPreviewPane, simulation != nil, let store = defaults else { return }
-        WorldStore.markSeen(Date(), in: store)
+        guard let store = defaults, let config, let frame = lastLiveFrame,
+              frame > (lastSeenCheckpoint ?? .distantPast) else { return }
+        WorldStore.recordLiveFrame(frame, for: config, in: store)
+        lastSeenCheckpoint = frame
     }
 }

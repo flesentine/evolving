@@ -241,11 +241,32 @@ enum WorldStore {
         defaults.synchronize()
     }
 
+    /// A renderer from an earlier world (or before an import of the same
+    /// island) must not change the active world's absence record.
+    static func recordLiveFrame(_ date: Date, for config: WorldConfig, in defaults: KeyValueStore) {
+        guard let rawSeed = defaults.object(forKey: Key.seed) as? Int64,
+              UInt64(bitPattern: rawSeed) == config.seed,
+              defaults.object(forKey: Key.epoch) as? Double == config.epoch.timeIntervalSince1970,
+              (try? readHistoryVersion(defaults)) == config.historyVersion,
+              (defaults.string(forKey: Key.pace) ?? Pace.standard.name) == config.paceName,
+              lastSeen(in: defaults).map({ date > $0 }) ?? true else { return }
+        if let rawAnchor = defaults.object(forKey: Key.clockAnchor) {
+            guard let data = rawAnchor as? Data,
+                  let anchor = try? JSONDecoder().decode(WorldClockAnchor.self, from: data),
+                  anchor.valid else { return }
+            let activeAnchor = anchor.seed == config.seed && anchor.epoch == config.epoch ? anchor : nil
+            guard activeAnchor == config.clockAnchor else { return }
+        } else if config.clockAnchor != nil {
+            return
+        }
+        markSeen(date, in: defaults)
+    }
+
     /// When the world was last on screen. Used for the "while you were away"
     /// recap; it never affects the simulation itself.
     static func lastSeen(in defaults: KeyValueStore) -> Date? {
         let interval = defaults.double(forKey: Key.lastSeen)
-        return interval > 0 ? Date(timeIntervalSince1970: interval) : nil
+        return interval.isFinite && interval > 0 ? Date(timeIntervalSince1970: interval) : nil
     }
 
     static func markSeen(_ date: Date, in defaults: KeyValueStore) {
