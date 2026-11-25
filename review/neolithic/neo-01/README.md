@@ -31,6 +31,5 @@ Use `overhead.json` or `island.json` for the other views. Use
 `EVOLVING_NEO01=0` for the baseline. The opt-in launch uses a separate simulated
 view and does not checkpoint visits to your saved world.
 
-For Blender authoring, run
-`/Applications/Blender.app/Contents/MacOS/Blender -b --python-exit-code 1 --python Scripts/build_neolithic_reference.py`.
-This rebuilds the three reference meshes using the existing building atlas.
+See the [Blender workflow](../../../Assets/Neolithic/README.md) to edit the
+reference meshes, export them, and generate a contact sheet.
