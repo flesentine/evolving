@@ -41,6 +41,7 @@ func usage() -> Never {
       civheadless farmfixtures
       civheadless townhistorycheck <seed> <town-id>
       civheadless worldupgradecheck
+      civheadless worldtransfercheck [fixture-output]
       civheadless townactivitycheck <directory> <seed>
       civheadless bench [year] [width] [height] [frames]
       civheadless resources [seed]
@@ -103,6 +104,12 @@ let arguments = CommandLine.arguments
 guard arguments.count >= 2 else { usage() }
 
 switch arguments[1] {
+
+case "worldtransfercheck":
+    do {
+        let output = arguments.count > 2 ? URL(fileURLWithPath: arguments[2]) : nil
+        try WorldTransferCheck.run(output: output)
+    } catch { fail("world transfer check failed — \(error)") }
 
 case "worldupgradecheck":
     do { try WorldUpgradeCheck.run() }

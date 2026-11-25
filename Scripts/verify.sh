@@ -12,6 +12,7 @@ Scripts/build.sh
 echo
 echo "▸ checking world upgrade compatibility"
 build/bin/civheadless worldupgradecheck
+build/bin/civheadless worldtransfercheck
 
 echo
 echo "▸ checking bundle"

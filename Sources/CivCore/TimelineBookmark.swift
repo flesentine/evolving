@@ -90,6 +90,37 @@ struct TimelineBookmarkStore {
         }
     }
 
+    /// Keep existing bookmark files intact. A complete temporary file is
+    /// linked into place exclusively, so simultaneous imports cannot replace it.
+    func importBookmarks(_ bookmarks: [TimelineBookmark]) throws -> [TimelineBookmark] {
+        guard !bookmarks.isEmpty else { return [] }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var added: [TimelineBookmark] = []
+        do {
+            for bookmark in bookmarks {
+                let url = file(for: bookmark.id)
+                let temporary = directory.appendingPathComponent(".import-" + UUID().uuidString)
+                defer { try? FileManager.default.removeItem(at: temporary) }
+                try bookmark.encoded().write(to: temporary, options: .atomic)
+                do {
+                    try FileManager.default.linkItem(at: temporary, to: url)
+                    added.append(bookmark)
+                } catch CocoaError.fileWriteFileExists {
+                    let existing = try JSONDecoder().decode(TimelineBookmark.self, from: Data(contentsOf: url))
+                    guard existing == bookmark else {
+                        throw CocoaError(.fileWriteFileExists, userInfo: [
+                            NSLocalizedDescriptionKey: "A different bookmark conflicts with “\(bookmark.name)”. Existing bookmarks were kept."
+                        ])
+                    }
+                }
+            }
+        } catch {
+            for bookmark in added { try? remove(bookmark) }
+            throw error
+        }
+        return added
+    }
+
     func remove(_ bookmark: TimelineBookmark) throws {
         try FileManager.default.removeItem(at: file(for: bookmark.id))
     }
