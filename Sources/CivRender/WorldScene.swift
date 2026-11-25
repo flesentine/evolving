@@ -59,6 +59,8 @@ final class WorldScene {
     /// Rebuilt whenever the road network changes; nil until then.
     private(set) var roadMesh: Mesh?
     private(set) var streetMesh: Mesh?
+    private(set) var yardMesh: Mesh?
+    private(set) var neolithicYards = NeolithicYards.Layout()
     private(set) var fieldMesh: Mesh?
     private var roadFieldMask: FieldSurface.Mask?
     private(set) var activityStreets = FieldSurface.Mask()
@@ -790,6 +792,17 @@ final class WorldScene {
         streetMesh = nil
         streetMesh = try Mesh(device: device, vertices: vertices, indices: indices)
         activityStreets = FieldSurface.Mask(mesh: streetMesh)
+    }
+
+    func rebuildNeolithicYards(_ entrances: [NeolithicYards.Entrance], boxes: [InstanceData]) throws {
+        yardMesh = nil
+        neolithicYards = NeolithicYards.build(entrances, boxes: boxes, scene: self)
+        guard !neolithicYards.surfaces.isEmpty else { return }
+        let mesh = FieldSurface.drape(neolithicYards.surfaces, scene: self,
+                                     roads: activityRoads, streets: activityStreets)
+        guard !mesh.indices.isEmpty else { return }
+        yardMesh = try Mesh(device: device, vertices: mesh.vertices, indices: mesh.indices)
+        activityStreets = FieldSurface.Mask(mesh: yardMesh)
     }
 
     var activityRoads: FieldSurface.Mask { roadFieldMask ?? FieldSurface.Mask(mesh: roadMesh) }

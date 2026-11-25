@@ -1,0 +1,24 @@
+{
+  "animationTime" : 27,
+  "eye" : [
+    0.1781374,
+    0.04032193,
+    -0.22777964
+  ],
+  "fov" : 45,
+  "height" : 900,
+  "hour" : 14,
+  "precipitation" : 0,
+  "provenance" : "NEO-05 shared inland yard and door paths",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    0.18578547,
+    0.01732193,
+    -0.21932346
+  ],
+  "width" : 1440,
+  "year" : 450
+}

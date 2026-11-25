@@ -30,6 +30,7 @@ enum CityBuilder {
         var streetLines: [StreetLine] = []
         var buildings: [String: [InstanceData]] = [:]
         var activityCandidates: [[TownActivity]] = []
+        var neolithicEntrances: [NeolithicYards.Entrance] = []
         fileprivate var neolithicHouseFootprints: [[SIMD2<Float>]] = []
     }
 
@@ -508,6 +509,15 @@ enum CityBuilder {
                     guard highest - lowest <= 1.55 * model.columns.1.y else { continue }
                     model.columns.3.y = highest
                     geometry.neolithicHouseFootprints.append(footprint)
+                    if let yard = slot.yard, let lip = RiverPlacement.authoredBounds(candidate.path).map(\.y).max() {
+                        // Start just inside the outer step, beneath the eave or passage lip.
+                        let entry = model * SIMD4(0, 0.17, lip - 0.18, 1)
+                        let forward = simd_normalize(SIMD2(model.columns.2.x, model.columns.2.z))
+                        geometry.neolithicEntrances.append(NeolithicYards.Entrance(
+                            settlement: s.id, cluster: slot.ring, yard: yard, door: SIMD3(entry.x, entry.y, entry.z),
+                            forward: forward, footprint: footprint,
+                            stone: BuildingCatalog.neolithicStone.contains { $0.path == candidate.path }))
+                    }
                     geometry.buildings[candidate.path, default: []].append(InstanceData(
                         model: model, color: SIMD4(tint, 0), material: SIMD4(9, 0, 0, 0)))
                     placedHouse = true

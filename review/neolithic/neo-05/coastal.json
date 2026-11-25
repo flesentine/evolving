@@ -1,0 +1,24 @@
+{
+  "animationTime" : 27,
+  "eye" : [
+    0.600299,
+    0.039214216,
+    0.18133307
+  ],
+  "fov" : 45,
+  "height" : 900,
+  "hour" : 14,
+  "precipitation" : 0,
+  "provenance" : "NEO-05 shared coastal yard and door paths",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 8,
+  "snow" : false,
+  "target" : [
+    0.6089722,
+    0.016214216,
+    0.1887341
+  ],
+  "width" : 1440,
+  "year" : 790
+}

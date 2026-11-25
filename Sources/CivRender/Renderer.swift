@@ -114,6 +114,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     let coneBatch: InstanceBatch
     private let identityBatch: InstanceBatch
     private var roadIdentityBuffer: MTLBuffer?
+    private var yardIdentityBuffer: MTLBuffer?
     private var streetIdentityBuffer: MTLBuffer?
     private var fieldIdentityBuffer: MTLBuffer?
     private var railIdentityBuffer: MTLBuffer?
@@ -467,6 +468,7 @@ final class Renderer: NSObject, MTKViewDelegate {
                                            material: SIMD4<Float>(8, 0, 0, 0))],
                              device: device)
         roadIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 11)
+        yardIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 19)
         streetIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 12)
         fieldIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 5)
         railIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 13)
@@ -616,7 +618,6 @@ final class Renderer: NSObject, MTKViewDelegate {
            simulation.year == NeolithicReference.year, let settlement = simulation.largestSettlement() {
             neolithicReferenceStage = NeolithicReference.stage(&geometry, scene: scene, settlement: settlement)
         }
-        boxBatch.update(geometry.boxes, device: context.device)
         coneBatch.update(geometry.cones, device: context.device)
         gableBatch.update(geometry.gables, device: context.device)
         archBatch.update(geometry.arches, device: context.device)
@@ -713,6 +714,14 @@ final class Renderer: NSObject, MTKViewDelegate {
         } catch {
             NSLog("Evolving: street mesh failed — \(error)")
         }
+        do {
+            try scene.rebuildNeolithicYards(geometry.neolithicEntrances, boxes: geometry.boxes)
+            geometry.boxes.append(contentsOf: scene.neolithicYards.fences)
+            geometry.boxes.append(contentsOf: scene.neolithicYards.steps)
+        } catch {
+            NSLog("Evolving: yard mesh failed — \(error)")
+        }
+        boxBatch.update(geometry.boxes, device: context.device)
         do {
             try scene.rebuildFields(geometry.fields)
         } catch {
@@ -2763,6 +2772,10 @@ final class Renderer: NSObject, MTKViewDelegate {
         }
 
         if riverView.isEmpty {
+        if let yards = scene.yardMesh, let buffer = yardIdentityBuffer {
+            encoder.setVertexBuffer(buffer, offset: 0, index: 2)
+            draw(yards, with: encoder, instances: 1)
+        }
         if let fields = scene.fieldMesh, let buffer = fieldIdentityBuffer {
             encoder.setVertexBuffer(buffer, offset: 0, index: 2)
             draw(fields, with: encoder, instances: 1)
