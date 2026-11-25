@@ -188,6 +188,9 @@ struct Plot {
     /// Height of a stone platform under the building (temples, civic halls).
     var podium: Float = 0
 
+    /// Shared work area for a Neolithic cluster.
+    var yard: SIMD2<Float>? = nil
+
     /// Front edge midpoint, where a door would sit.
     var frontPoint: SIMD2<Float> {
         center + frontage * (depth * 0.5)

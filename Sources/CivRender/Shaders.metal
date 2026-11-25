@@ -629,6 +629,13 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
             n = normalize(n + float3(edge * ripple * 0.22 * puddle, 0.0,
                                      ripple * 0.10 * puddle));
         }
+    } else if (in.material > 18.5 && in.material < 19.5) {
+        // Worn earth in a footpath or work yard, with none of the cart ruts.
+        float2 p = in.world.xz * 1000.0;
+        float wear = valueNoise(p * 0.9);
+        float grit = valueNoise(p * 14.0);
+        albedo *= (0.84 + 0.22 * wear + 0.12 * grit) * mix(1.0, 0.70, saturate(u.night.w));
+        surfaceRough = 0.92;
     } else if (in.material > 8.5 && in.material < 9.5) {
         // Imported hero asset: the atlas carries colour and surface detail.
         albedo = albedoTexture.sample(albedoSampler, in.uv).rgb;

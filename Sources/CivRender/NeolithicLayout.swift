@@ -2,8 +2,8 @@ import Foundation
 import simd
 
 /// Neolithic hamlets are clusters of huts around a shared yard, with no
-/// streets at all. Movement happens between clusters and across open ground,
-/// as at Çatalhöyük.
+/// streets. A plot retains its cluster's yard so the renderer can fit a
+/// dry footpath to the actual doorway of the house that was placed.
 enum NeolithicLayout: SettlementLayout {
 
     static func plan(settlement s: Settlement,
@@ -64,7 +64,8 @@ enum NeolithicLayout: SettlementLayout {
                                   frontageRank: 2,
                                   ring: cluster,
                                   cellIndex: SIMD2(hut, cluster),
-                                  axis: axis))
+                                  axis: axis,
+                                  yard: yard))
             }
         }
 

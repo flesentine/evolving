@@ -153,35 +153,55 @@ enum FieldSurface {
         return result
     }
 
+    struct GroundPatch {
+        let outline: [SIMD2<Float>]
+        let colour: SIMD4<Float>
+        let centre: SIMD2<Float>
+        let across: SIMD2<Float>
+    }
+
     /// Preserve each parcel's placement and crop rotation. Chamfer the
     /// corners and turn furrows across the fall line on inclined ground.
     static func build(_ plots: [InstanceData], scene: WorldScene, roads: Mask, streets: Mask)
+        -> (vertices: [Vertex], indices: [UInt32]) {
+        let outline: [SIMD2<Float>] = [SIMD2(-0.44, -0.50), SIMD2(0.40, -0.50), SIMD2(0.50, -0.40),
+            SIMD2(0.50, 0.44), SIMD2(0.44, 0.50), SIMD2(-0.40, 0.50),
+            SIMD2(-0.50, 0.40), SIMD2(-0.50, -0.44)]
+
+        let patches = plots.map { plot in
+            let centre = SIMD2(plot.model.columns.3.x, plot.model.columns.3.z)
+            let gradient = scene.terrain.gradientAt(x: centre.x, z: centre.y)
+            let axis = SIMD2(plot.model.columns.0.x, plot.model.columns.0.z)
+            let across = simd_length(gradient) > 0.08 ? simd_normalize(gradient) : simd_normalize(axis)
+            return GroundPatch(outline: RiverPlacement.transformed(outline, by: plot.model),
+                               colour: plot.color, centre: centre, across: across)
+        }
+        return drape(patches, scene: scene, roads: roads, streets: streets)
+    }
+
+    /// Clip proposed ground patches against the submitted terrain triangles.
+    /// Resolve overlap in input order so surfaces cannot fight for depth.
+    static func drape(_ patches: [GroundPatch], scene: WorldScene, roads: Mask, streets: Mask)
         -> (vertices: [Vertex], indices: [UInt32]) {
         let grid = (scene.terrain.size - 1) * 2 + 1
         let spacing = scene.terrain.cellSize / 2
         let ground = scene.terrainMesh.vertexBuffer.contents().assumingMemoryBound(to: Vertex.self)
         var vertices: [Vertex] = []
         var indices: [UInt32] = []
-        // Resolve intersecting proposals in stable generation order so
-        // two parcels cannot leave coplanar crop surfaces fighting for depth.
-        var cultivated = Mask()
-        let outline: [SIMD2<Float>] = [SIMD2(-0.44, -0.50), SIMD2(0.40, -0.50), SIMD2(0.50, -0.40),
-            SIMD2(0.50, 0.44), SIMD2(0.44, 0.50), SIMD2(-0.40, 0.50),
-            SIMD2(-0.50, 0.40), SIMD2(-0.50, -0.44)]
+        var occupied = Mask()
 
         func cell(_ x: Float) -> Int { min(max(Int(floor((x + 1) / spacing)), 0), grid - 2) }
 
-        for plot in plots {
-            let parcel = RiverPlacement.transformed(outline, by: plot.model).map(projection)
+        for patch in patches {
+            let parcel = patch.outline.map(projection)
             let water = scene.riverField.nearbyTriangles(parcel).filter {
                 RiverPolygon.area($0) < 0 && RiverPolygon.overlaps(parcel, $0)
             }
-            let pieces = cut(parcel, around: water + roads.nearby(parcel) + streets.nearby(parcel) + cultivated.nearby(parcel))
-            let centre = SIMD2(plot.model.columns.3.x, plot.model.columns.3.z)
-            let gradient = scene.terrain.gradientAt(x: centre.x, z: centre.y)
-            let axis = SIMD2(plot.model.columns.0.x, plot.model.columns.0.z)
-            let across = simd_length(gradient) > 0.08 ? simd_normalize(gradient) : simd_normalize(axis)
+            let pieces = cut(parcel, around: water + roads.nearby(parcel) + streets.nearby(parcel) + occupied.nearby(parcel))
+            let centre = patch.centre
+            let across = patch.across
             let along = SIMD2(-across.y, across.x)
+            let colour = patch.colour
 
             for piece in pieces {
                 let box = Bounds(piece)
@@ -207,7 +227,7 @@ enum FieldSurface {
                                 let local = (xz(vertex) - centre) * metres
                                 vertex.position.y += cropLift
                                 vertex.uv = SIMD2(simd_dot(local, across), simd_dot(local, along))
-                                vertex.color = plot.color
+                                vertex.color = colour
                                 vertices.append(vertex)
                             }
                             for i in 1..<(patch.count - 1) {
@@ -219,7 +239,7 @@ enum FieldSurface {
                         }
                     }
                 }
-                if vertices.count > first { cultivated.insert(piece) }
+                if vertices.count > first { occupied.insert(piece) }
             }
         }
         return (vertices, indices)
