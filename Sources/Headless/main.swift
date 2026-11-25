@@ -41,6 +41,7 @@ func usage() -> Never {
       civheadless farmfixtures
       civheadless townhistorycheck <seed> <town-id>
       civheadless worldupgradecheck
+      civheadless lifecyclecheck <saver-path> [screenshots-directory]
       civheadless worldtransfercheck [fixture-output]
       civheadless townactivitycheck <directory> <seed>
       civheadless bench [year] [width] [height] [frames]
@@ -104,6 +105,13 @@ let arguments = CommandLine.arguments
 guard arguments.count >= 2 else { usage() }
 
 switch arguments[1] {
+
+case "lifecyclecheck":
+    guard arguments.count == 3 || arguments.count == 4 else { usage() }
+    do {
+        let output = arguments.count == 4 ? URL(fileURLWithPath: arguments[3], isDirectory: true) : nil
+        try WorldLifecycleCheck.run(bundlePath: arguments[2], output: output)
+    } catch { fail("native lifecycle check failed — \(error)") }
 
 case "worldtransfercheck":
     do {
