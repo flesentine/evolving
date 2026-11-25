@@ -15,7 +15,7 @@ protocol KeyValueStore: AnyObject {
 extension UserDefaults: KeyValueStore {}
 
 /// Which camera the saver should use. `auto` cycles through the shots.
-enum CameraMode: String, CaseIterable {
+enum CameraMode: String, CaseIterable, Codable {
     case auto = "Auto"
     case wide = "Wide"
     case coast = "Coast"
@@ -50,12 +50,25 @@ enum WorldHistoryVersion: Int {
     }
 }
 
+struct WorldClockAnchor: Codable, Equatable {
+    let seed: UInt64
+    let epoch: Date
+    let restoredAt: Date
+    let year: Float
+
+    var valid: Bool {
+        year.isFinite && year >= 0 && year <= WorldArchive.maximumYear
+            && restoredAt.timeIntervalSince1970.isFinite && restoredAt.timeIntervalSince1970 > 0
+    }
+}
+
 struct WorldConfig: Equatable {
     var seed: UInt64
     var epoch: Date
     var paceName: String
 
     var historyVersion: WorldHistoryVersion = .current
+    var clockAnchor: WorldClockAnchor?
 
     var pace: Pace { historyVersion.pace(named: paceName) }
 
@@ -69,6 +82,14 @@ struct WorldConfig: Equatable {
 
     /// Simulated year for the given moment.
     func simYear(at date: Date) -> Float {
+        if let anchor = clockAnchor, anchor.seed == seed, anchor.epoch == epoch {
+            let elapsedDays = Float(date.timeIntervalSince(anchor.restoredAt) / 86_400)
+            guard elapsedDays > 0 else { return anchor.year }
+            let reference = pace.realDays(atSimYear: anchor.year)
+            let advance = pace.simYear(atRealDays: reference + elapsedDays)
+                - pace.simYear(atRealDays: reference)
+            return anchor.year + max(advance, 0)
+        }
         let days = Float(date.timeIntervalSince(epoch) / 86_400)
         return pace.simYear(atRealDays: max(days, 0))
     }
@@ -87,6 +108,7 @@ enum WorldStore {
         static let hemisphere = "southernHemisphere"
         static let camera = "cameraMode"
         static let historyVersion = "worldHistoryVersion"
+        static let clockAnchor = "worldClockAnchor"
     }
 
     enum LoadError: LocalizedError {
@@ -107,11 +129,12 @@ enum WorldStore {
         let version = try readHistoryVersion(defaults)
         let savedSeed = defaults.object(forKey: Key.seed)
         let savedEpoch = defaults.object(forKey: Key.epoch)
+        let savedAnchor = defaults.object(forKey: Key.clockAnchor)
         let hasWorld = version != nil || defaults.bool(forKey: Key.initialised)
-            || savedSeed != nil || savedEpoch != nil
+            || savedSeed != nil || savedEpoch != nil || savedAnchor != nil
 
         if !hasWorld {
-            let fresh = WorldConfig(seed: makeSeed(), epoch: Date(), paceName: Pace.standard.name)
+            let fresh = freshConfig()
             try save(fresh, to: defaults)
             return fresh
         }
@@ -122,10 +145,20 @@ enum WorldStore {
         }
 
         let historyVersion = version ?? .original
-        let config = WorldConfig(seed: UInt64(bitPattern: rawSeed),
+        var config = WorldConfig(seed: UInt64(bitPattern: rawSeed),
                                  epoch: Date(timeIntervalSince1970: seconds),
                                  paceName: defaults.string(forKey: Key.pace) ?? Pace.standard.name,
                                  historyVersion: historyVersion)
+        if let savedAnchor {
+            guard let data = savedAnchor as? Data,
+                  let anchor = try? JSONDecoder().decode(WorldClockAnchor.self, from: data),
+                  anchor.valid else { throw LoadError.unreadableWorld }
+            // Older builds may change the legacy seed or epoch. Only an
+            // anchor belonging to the current identity can drive its clock.
+            if anchor.seed == config.seed, anchor.epoch == config.epoch {
+                config.clockAnchor = anchor
+            }
+        }
         if version == nil {
             // Adopt unversioned worlds under the rules they were created with.
             // Their original seed, epoch, pace and preferences stay byte-for-byte.
@@ -146,19 +179,37 @@ enum WorldStore {
 
     static func save(_ config: WorldConfig, to defaults: KeyValueStore) throws {
         _ = try readHistoryVersion(defaults)
+        let anchorData: Data?
+        if let anchor = config.clockAnchor, anchor.seed == config.seed, anchor.epoch == config.epoch {
+            guard anchor.valid else { throw LoadError.unreadableWorld }
+            anchorData = try JSONEncoder().encode(anchor)
+        } else {
+            anchorData = nil
+        }
         defaults.set(Int64(bitPattern: config.seed), forKey: Key.seed)
         defaults.set(config.epoch.timeIntervalSince1970, forKey: Key.epoch)
         defaults.set(config.paceName, forKey: Key.pace)
         defaults.set(config.historyVersion.rawValue, forKey: Key.historyVersion)
         defaults.set(true, forKey: Key.initialised)
+        if let anchorData {
+            defaults.set(anchorData, forKey: Key.clockAnchor)
+        } else {
+            defaults.removeObject(forKey: Key.clockAnchor)
+        }
         defaults.synchronize()
     }
 
     /// Replaces the world with a fresh one, starting now.
     static func reset(in defaults: KeyValueStore) throws -> WorldConfig {
-        let config = WorldConfig(seed: makeSeed(), epoch: Date(), paceName: Pace.standard.name)
+        let config = freshConfig()
         try save(config, to: defaults)
         return config
+    }
+
+    private static func freshConfig() -> WorldConfig {
+        // Use the same epoch precision as the persisted Unix timestamp.
+        let epoch = Date(timeIntervalSince1970: Date().timeIntervalSince1970)
+        return WorldConfig(seed: makeSeed(), epoch: epoch, paceName: Pace.standard.name)
     }
 
     static func makeSeed() -> UInt64 {

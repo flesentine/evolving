@@ -208,6 +208,19 @@ shows an error and keeps the saved data in place.
 The System Settings preview is read-only: it never updates `lastSeen` and never shows the
 "while you were away" recap, so previewing cannot erase a real absence.
 
+## Move a world to another Mac
+
+Use **Export World…** in Evolving Companion to save an `.evolvingworld.json`
+file. Transfer the file to the destination Mac and use **Import World…** in
+Companion. The world resumes at the exported year when you import it. The
+file carries its history revision, seed, founding date, pace, camera and
+hemisphere settings, and bookmarks for that island.
+
+Import saves a backup of the current world under
+`~/Library/Application Support/Evolving Timeline/World Backups/` before switching.
+Reopen Timeline and Player after importing. Existing bookmarks for other
+worlds stay available when you revisit those worlds.
+
 ## Options
 
 - **Pace** — Chronicle / Standard / Time-lapse

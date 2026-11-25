@@ -269,6 +269,7 @@ final class EvolvingSaver: ScreenSaverView {
         }
         if let text = env["EVOLVING_AGE_DAYS"], let days = Double(text) {
             result.epoch = Date().addingTimeInterval(-days * 86_400)
+            result.clockAnchor = nil
         }
         if let pace = env["EVOLVING_PACE"], !pace.isEmpty {
             result.paceName = pace
@@ -566,6 +567,7 @@ final class EvolvingSaver: ScreenSaverView {
         let wantsNewWorld = resetCheckbox?.state == .on
         if seedChanged || wantsNewWorld {
             updated.epoch = Date()
+            updated.clockAnchor = nil
             updated.historyVersion = .current
         }
         do {
