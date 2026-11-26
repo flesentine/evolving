@@ -46,6 +46,7 @@ func usage() -> Never {
       civheadless neolithicstone <directory>
       civheadless neolithicyards <directory>
       civheadless neolithicprops <directory>
+      civheadless neolithicpeople <directory>
       civheadless lifecyclecheck <saver-path> [screenshots-directory]
       civheadless worldtransfercheck [fixture-output]
       civheadless townactivitycheck <directory> <seed>
@@ -110,6 +111,12 @@ let arguments = CommandLine.arguments
 guard arguments.count >= 2 else { usage() }
 
 switch arguments[1] {
+
+case "neolithicpeople":
+    guard arguments.count == 3 else { usage() }
+    do {
+        try NeolithicPeopleCheck.run(directory: URL(fileURLWithPath: arguments[2], isDirectory: true))
+    } catch { fail("Neolithic people check failed — \(error)") }
 
 case "neolithicprops":
     guard arguments.count == 3 else { usage() }
