@@ -1,0 +1,24 @@
+{
+  "animationTime" : 7.819497,
+  "eye" : [
+    0.19593695,
+    0.020562261,
+    -0.20728612
+  ],
+  "fov" : 32,
+  "height" : 900,
+  "hour" : 18.5,
+  "precipitation" : 0,
+  "provenance" : "NEO-08 matched work hearth and tender",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    0.20164669,
+    0.018712262,
+    -0.20516741
+  ],
+  "width" : 1440,
+  "year" : 450
+}
