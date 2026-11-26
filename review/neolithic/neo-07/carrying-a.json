@@ -1,0 +1,24 @@
+{
+  "animationTime" : 12.507509,
+  "eye" : [
+    -0.16539669,
+    0.02418956,
+    0.15941855
+  ],
+  "fov" : 32,
+  "height" : 900,
+  "hour" : 14,
+  "precipitation" : 0,
+  "provenance" : "NEO-07 production carrying routine",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    -0.15936697,
+    0.02233956,
+    0.15856276
+  ],
+  "width" : 1440,
+  "year" : 450
+}

@@ -156,6 +156,6 @@ enum BuildingCatalog {
                 }
             }
         }
-        return paths + neolithicStone.map(\.path) + NeolithicProps.paths
+        return paths + neolithicStone.map(\.path) + NeolithicProps.paths + [NeolithicPeople.Part.quernBed.path]
     }()
 }
