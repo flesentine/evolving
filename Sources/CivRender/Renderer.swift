@@ -314,6 +314,9 @@ final class Renderer: NSObject, MTKViewDelegate {
     private(set) var townActivities: [TownActivity] = []
     private(set) var neolithicPeople: [NeolithicPeople.Routine] = []
     private(set) var neolithicHarvest = NeolithicHarvest.Layout()
+    private var inheritedHomeFootprints = FieldSurface.Mask()
+    private var bronzeWalksClear: [Int: Bool] = [:]
+    private var neolithicHomesAtBronzeBoundary: [NeolithicInheritance.Home]?
     private(set) var neolithicBarrow: NeolithicBarrow.Placement?
     private(set) var neolithicHerds: [NeolithicHerds.Herd] = []
     private(set) var neolithicHerdClearance: NeolithicHerds.Clearance?
@@ -633,23 +636,6 @@ final class Renderer: NSObject, MTKViewDelegate {
         archBatch.update(geometry.arches, device: context.device)
         updateTrees(for: simulation)
         smokeEmitters = geometry.smoke
-        for entry in buildingBatches where !NeolithicProps.paths.contains(entry.path) {
-            entry.batch.update(geometry.buildings[entry.path] ?? [], device: context.device)
-        }
-
-        // Only houses near the camera's town need to cast shadows; distant
-        // towns are outside the visible frame and would cost 30-50 extra draws.
-        var nearby = Set<String>()
-        for (path, list) in geometry.buildings {
-            for instance in list {
-                let p = instance.model.columns.3
-                if simd_distance(SIMD3(p.x, p.y, p.z), focusPoint) < 0.65 {
-                    nearby.insert(path)
-                    break
-                }
-            }
-        }
-        nearbyBuildings = nearby
         streetGrids = geometry.streets
 
         if let largest = simulation.largestSettlement() {
@@ -737,6 +723,33 @@ final class Renderer: NSObject, MTKViewDelegate {
         } catch {
             NSLog("Evolving: field mesh failed — \(error)")
         }
+        inheritedHomeFootprints = FieldSurface.Mask()
+        bronzeWalksClear.removeAll(keepingCapacity: true)
+        if simulation.era == .bronze {
+            if neolithicHomesAtBronzeBoundary == nil {
+                neolithicHomesAtBronzeBoundary = NeolithicInheritance.boundaryHomes(for: simulation, in: scene)
+            }
+            inheritedHomeFootprints = NeolithicInheritance.place(neolithicHomesAtBronzeBoundary ?? [],
+                settlements: livingSettlements, geometry: &geometry, scene: scene,
+                trees: readInstances(treeBatch) + readInstances(broadleafBatch))
+        }
+        for entry in buildingBatches where !NeolithicProps.paths.contains(entry.path) {
+            entry.batch.update(geometry.buildings[entry.path] ?? [], device: context.device)
+        }
+
+        // Only houses near the camera's town need to cast shadows; distant
+        // towns are outside the visible frame and would cost 30-50 extra draws.
+        var nearby = Set<String>()
+        for (path, list) in geometry.buildings {
+            for instance in list {
+                let p = instance.model.columns.3
+                if simd_distance(SIMD3(p.x, p.y, p.z), focusPoint) < 0.65 {
+                    nearby.insert(path)
+                    break
+                }
+            }
+        }
+        nearbyBuildings = nearby
         let neolithic = simulation.era == .neolithic
         var householdProps = neolithic ? NeolithicProps.place(in: scene, geometry: geometry) : [:]
         if neolithic {
@@ -798,6 +811,17 @@ final class Renderer: NSObject, MTKViewDelegate {
             neolithicHerdClearance = nil
             neolithicHerds = []
         }
+    }
+
+    func submittedBuildings() -> [(path: String, instance: InstanceData)] {
+        guard buildingAtlas != nil else { return [] }
+        return buildingBatches.flatMap { entry in
+            readInstances(entry.batch).map { (entry.path, $0) }
+        }
+    }
+
+    func submittedPersonOrigins() -> [SIMD2<Float>] {
+        readInstances(personBatch).map { NeolithicPeople.xz($0.model.columns.3) }
     }
 
     func submittedBarrow() -> (instances: [InstanceData], vertices: [Vertex]) {
@@ -1634,7 +1658,8 @@ final class Renderer: NSObject, MTKViewDelegate {
         var legs: [InstanceData] = []
         var arms: [InstanceData] = []
         var carried: [InstanceData] = []
-        for (si, settlement) in livingSettlements.enumerated() where Era.at(reviewYear) != .neolithic {
+        let currentEra = Era.at(reviewYear)
+        for (si, settlement) in livingSettlements.enumerated() where currentEra != .neolithic {
             let fallbackRadius = CityBuilder.cityRadius(settlement.population)
             let grid = si < streetGrids.count
                 ? streetGrids[si]
@@ -1661,6 +1686,22 @@ final class Renderer: NSObject, MTKViewDelegate {
 
                 let lane = Float(k) - floor(Float(k) / lanes) * lanes - (lanes - 1) * 0.5
                 let lateral = lane * grid.cell * 0.22
+                if currentEra == .bronze {
+                    let key = si * 16 + k
+                    if bronzeWalksClear[key] == nil {
+                        let along = axis == 0 ? dir : perp
+                        let across = axis == 0 ? perp : dir
+                        let centre = SIMD2(grid.x, grid.z) + across * (offset + lateral)
+                        let reach = 1.5 / RiverGraph.metresPerUnit // Room for arm and leg motion.
+                        let width = across * reach
+                        // The return leg of the ambient walk reaches -2 × span.
+                        let start = centre - along * (2 * span + reach)
+                        let end = centre + along * (span + reach)
+                        bronzeWalksClear[key] = !inheritedHomeFootprints.intersectsFootprint(
+                            [start - width, end - width, end + width, start + width])
+                    }
+                    if bronzeWalksClear[key] == false { continue }
+                }
                 let speed = 0.010 + h2 * 0.014
                 let t = (time * speed / span + h3).truncatingRemainder(dividingBy: 2)
                 let travelling = t <= 1

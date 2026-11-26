@@ -31,7 +31,7 @@ enum CityBuilder {
         var buildings: [String: [InstanceData]] = [:]
         var activityCandidates: [[TownActivity]] = []
         var neolithicEntrances: [NeolithicYards.Entrance] = []
-        fileprivate var neolithicHouseFootprints: [[SIMD2<Float>]] = []
+        var neolithicHomes: [NeolithicInheritance.Home] = []
     }
 
     /// One street ribbon, clipped to dry land.
@@ -414,7 +414,7 @@ enum CityBuilder {
                 continue
             }
 
-            // A few older houses survive into each era.
+            // Later eras mix some older styles into their new plots.
             let useOlder = !survivors.isEmpty && rng.nextFloat() < 0.12
             let districtPool = BuildingCatalog.assets(for: era, district: slot.district)
             let choices: [BuildingAsset]
@@ -496,8 +496,8 @@ enum CityBuilder {
                     guard footprint.count == 4,
                           footprint.allSatisfy({ !terrain.isWater(x: $0.x, z: $0.y) }),
                           river?.intersectsFootprint(footprint, margin: 2 / metres) != true,
-                          !geometry.neolithicHouseFootprints.contains(where: {
-                              RiverPlacement.rectanglesOverlap(footprint, $0, clearance: 0.25 / metres)
+                          !geometry.neolithicHomes.contains(where: {
+                              RiverPlacement.rectanglesOverlap(footprint, $0.footprint, clearance: 0.25 / metres)
                           }) else { continue }
                     let edges = footprint.indices.map { (footprint[$0] + footprint[($0 + 1) % 4]) * 0.5 }
                     let samples = (footprint + edges + [SIMD2(hx, hz)]).map { p in
@@ -508,7 +508,6 @@ enum CityBuilder {
                     // The authored stone skirts extend 1.55 m below the floor origin.
                     guard highest - lowest <= 1.55 * model.columns.1.y else { continue }
                     model.columns.3.y = highest
-                    geometry.neolithicHouseFootprints.append(footprint)
                     if let yard = slot.yard, let lip = RiverPlacement.authoredBounds(candidate.path).map(\.y).max() {
                         // Start just inside the outer step, beneath the eave or passage lip.
                         let entry = model * SIMD4(0, 0.17, lip - 0.18, 1)
@@ -518,8 +517,11 @@ enum CityBuilder {
                             forward: forward, footprint: footprint,
                             stone: BuildingCatalog.neolithicStone.contains { $0.path == candidate.path }))
                     }
-                    geometry.buildings[candidate.path, default: []].append(InstanceData(
-                        model: model, color: SIMD4(tint, 0), material: SIMD4(9, 0, 0, 0)))
+                    let instance = InstanceData(model: model, color: SIMD4(tint, 0), material: SIMD4(9, 0, 0, 0))
+                    geometry.buildings[candidate.path, default: []].append(instance)
+                    geometry.neolithicHomes.append(NeolithicInheritance.Home(
+                        settlement: s.id, court: slot.ring, path: candidate.path, instance: instance,
+                        footprint: footprint))
                     placedHouse = true
                     break
                 }
