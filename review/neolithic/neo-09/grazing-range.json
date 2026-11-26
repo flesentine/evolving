@@ -1,0 +1,24 @@
+{
+  "animationTime" : 12,
+  "eye" : [
+    -0.12571278,
+    0.08141647,
+    0.18682505
+  ],
+  "fov" : 52,
+  "height" : 900,
+  "hour" : 14,
+  "precipitation" : 0,
+  "provenance" : "NEO-09 matched inland grazing range",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    -0.16971278,
+    0.021416472,
+    0.14882505
+  ],
+  "width" : 1440,
+  "year" : 450
+}
