@@ -625,7 +625,8 @@ final class Renderer: NSObject, MTKViewDelegate {
                                          terrain: scene.terrain,
                                          seed: simulation.seed,
                                          riverField: scene.riverField,
-                                         renderedGround: scene.renderedTerrainHeight(at:))
+                                         renderedGround: scene.renderedTerrainHeight(at:),
+                                         renderedTint: scene.renderedTerrainTint(at:))
         neolithicReferenceStage = nil
         if showsNeolithicReference, simulation.seed == NeolithicReference.seed,
            simulation.year == NeolithicReference.year, let settlement = simulation.largestSettlement() {

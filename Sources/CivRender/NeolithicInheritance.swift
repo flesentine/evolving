@@ -20,7 +20,8 @@ enum NeolithicInheritance {
         replay.advance(to: boundaryYear)
         let geometry = CityBuilder.build(settlements: replay.settlements, era: replay.era, year: replay.year,
             terrain: scene.terrain, seed: replay.seed, riverField: scene.riverField,
-            renderedGround: scene.renderedTerrainHeight(at:))
+            renderedGround: scene.renderedTerrainHeight(at:),
+            renderedTint: scene.renderedTerrainTint(at:))
         return geometry.neolithicHomes
     }
 

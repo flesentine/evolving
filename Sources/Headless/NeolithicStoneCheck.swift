@@ -77,6 +77,12 @@ enum NeolithicStoneCheck {
             for path in paths {
                 let bounds = RiverPlacement.authoredBounds(path)
                 let instances = geometry.buildings[path, default: []]
+                let submitted = renderer.submittedBuildings().filter { $0.path == path }.map(\.instance)
+                guard submitted.map(\.model) == instances.map(\.model),
+                      submitted.allSatisfy({ item in
+                          let tint = scene.renderedTerrainTint(at: NeolithicPeople.xz(item.model.columns.3))
+                          return item.material.x == 22 && item.color == SIMD4(tint, 0)
+                      }) else { throw Failure("Submitted stone roofs must use the local terrain tint") }
                 for item in instances {
                     let model = item.model
                     let base = model.columns.3

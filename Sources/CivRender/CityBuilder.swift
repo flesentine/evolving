@@ -96,7 +96,8 @@ enum CityBuilder {
                       terrain: Terrain,
                       seed: UInt64,
                       riverField: RiverChannel.Field? = nil,
-                      renderedGround: ((SIMD2<Float>) -> Float)? = nil) -> Geometry {
+                      renderedGround: ((SIMD2<Float>) -> Float)? = nil,
+                      renderedTint: ((SIMD2<Float>) -> SIMD3<Float>)? = nil) -> Geometry {
         var geometry = Geometry()
         let style = Style.forEra(era)
         // One resource field per frame; sampling is cheap and deterministic.
@@ -118,6 +119,7 @@ enum CityBuilder {
                                  resources: resources,
                                  river: riverField,
                                  renderedGround: renderedGround,
+                                 renderedTint: renderedTint,
                                  into: &geometry)
             } else {
                 appendRuins(settlement, terrain: terrain, seed: seed, into: &geometry)
@@ -166,6 +168,7 @@ enum CityBuilder {
                                          resources: ResourceMap,
                                          river: RiverChannel.Field?,
                                          renderedGround: ((SIMD2<Float>) -> Float)?,
+                                         renderedTint: ((SIMD2<Float>) -> SIMD3<Float>)?,
                                          into geometry: inout Geometry) {
         let population = max(s.population, 1)
         var count = buildingCount(population)
@@ -508,6 +511,7 @@ enum CityBuilder {
                     // The authored stone skirts extend 1.55 m below the floor origin.
                     guard highest - lowest <= 1.55 * model.columns.1.y else { continue }
                     model.columns.3.y = highest
+                    let stone = BuildingCatalog.neolithicStone.contains { $0.path == candidate.path }
                     if let yard = slot.yard, let lip = RiverPlacement.authoredBounds(candidate.path).map(\.y).max() {
                         // Start just inside the outer step, beneath the eave or passage lip.
                         let entry = model * SIMD4(0, 0.17, lip - 0.18, 1)
@@ -515,9 +519,13 @@ enum CityBuilder {
                         geometry.neolithicEntrances.append(NeolithicYards.Entrance(
                             settlement: s.id, cluster: slot.ring, yard: yard, door: SIMD3(entry.x, entry.y, entry.z),
                             forward: forward, footprint: footprint,
-                            stone: BuildingCatalog.neolithicStone.contains { $0.path == candidate.path }))
+                            stone: stone))
                     }
-                    let instance = InstanceData(model: model, color: SIMD4(tint, 0), material: SIMD4(9, 0, 0, 0))
+                    // Roof turf uses the rendered ground tint. The stone walls
+                    // and recessed entrance keep the building atlas.
+                    let turf = stone ? renderedTint?(SIMD2(hx, hz)) : nil
+                    let instance = InstanceData(model: model, color: SIMD4(turf ?? tint, 0),
+                                                material: SIMD4(turf == nil ? 9 : 22, 0, 0, 0))
                     geometry.buildings[candidate.path, default: []].append(instance)
                     geometry.neolithicHomes.append(NeolithicInheritance.Home(
                         settlement: s.id, court: slot.ring, path: candidate.path, instance: instance,

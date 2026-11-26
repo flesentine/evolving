@@ -1,0 +1,24 @@
+{
+  "animationTime": 27,
+  "eye": [
+    0.6129722,
+    0.089214216,
+    0.2017341
+  ],
+  "fov": 47,
+  "height": 900,
+  "hour": 14,
+  "precipitation": 0.85,
+  "provenance": "NEO-13 matched coastal overhead rain",
+  "schemaVersion": 1,
+  "season": 0.68,
+  "seed": 8,
+  "snow": false,
+  "target": [
+    0.6089722,
+    0.016214216,
+    0.1887341
+  ],
+  "width": 1440,
+  "year": 790
+}

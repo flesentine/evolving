@@ -1,0 +1,24 @@
+{
+  "animationTime": 27,
+  "eye": [
+    0.18978547,
+    0.09032193,
+    -0.20632346
+  ],
+  "fov": 47,
+  "height": 900,
+  "hour": 14,
+  "precipitation": 0,
+  "provenance": "NEO-13 matched inland overhead daylight",
+  "schemaVersion": 1,
+  "season": 0.68,
+  "seed": 1,
+  "snow": false,
+  "target": [
+    0.18578547,
+    0.01732193,
+    -0.21932346
+  ],
+  "width": 1440,
+  "year": 450
+}
