@@ -20,9 +20,6 @@ enum BuildingCatalog {
         BuildingAsset(path: "variants/neolithic-" + $0, scale: 1 / 0.88)
     }
 
-    private static let legacyNeolithic: [BuildingAsset] = (1...30).map {
-        BuildingAsset(path: String(format: "variants/neolithic-%02d", $0), scale: 1.12)
-    }
     static let bronze: [BuildingAsset] = (1...30).map {
         BuildingAsset(path: String(format: "variants/bronze-%02d", $0), scale: 1.0)
     }
@@ -127,7 +124,8 @@ enum BuildingCatalog {
         case .neolithic:
             return []
         case .bronze:
-            return legacyNeolithic
+            // The renderer carries original late-Neolithic homes forward.
+            return []
         case .classical:
             return bronze
         case .medieval:
