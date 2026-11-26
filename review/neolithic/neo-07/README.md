@@ -35,7 +35,8 @@ normally and select Neolithic to see the routines loop live.
 The [matched before-and-after view](before-after.jpg) shows the quern at the
 same camera before and after adding the grinder. The [six-frame gallery](activities.jpg)
 shows two animation times each, with grinding, carrying, and tending from top
-to bottom. The new routines use checked routes in place of the old ambient
+to bottom. The installed app was also captured at [the matched grinding camera](native-before-after.jpg)
+and at [all three routines](native-activities.jpg). The new routines use checked routes in place of the old ambient
 street-grid walkers during the Neolithic. Existing fieldwork still runs with
 figures scaled to the buildings.
 
