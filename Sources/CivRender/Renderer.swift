@@ -117,6 +117,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     private var yardIdentityBuffer: MTLBuffer?
     private var streetIdentityBuffer: MTLBuffer?
     private var fieldIdentityBuffer: MTLBuffer?
+    private var cerealIdentityBuffer: MTLBuffer?
     private var railIdentityBuffer: MTLBuffer?
     private var riverIdentityBuffer: MTLBuffer?
     private var bankIdentityBuffer: MTLBuffer?
@@ -312,6 +313,10 @@ final class Renderer: NSObject, MTKViewDelegate {
     private var hasFocus = false
     private(set) var townActivities: [TownActivity] = []
     private(set) var neolithicPeople: [NeolithicPeople.Routine] = []
+    private(set) var neolithicHarvest = NeolithicHarvest.Layout()
+    private var hearthSources: [NeolithicHearth.Source] = []
+    private(set) var submittedHearthLights: [SIMD4<Float>] = []
+    private var submittedHearthPuffCount = 0
     private var carPaths: [CarPath] = []
     private var boatPaths: [BoatPath] = []
     private var railPoints: [SIMD2<Float>] = []
@@ -472,6 +477,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         yardIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 19)
         streetIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 12)
         fieldIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 5)
+        cerealIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 21)
         railIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 13)
         riverIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 18)
         bankIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 8)
@@ -753,6 +759,25 @@ final class Renderer: NSObject, MTKViewDelegate {
             }
         }
         townActivities = TownActivity.choose(geometry.activityCandidates, geometry: geometry, scene: scene)
+        hearthSources = NeolithicHearth.sources(neolithicPeople)
+        neolithicHarvest = neolithic
+            ? NeolithicHarvest.plan(in: scene, geometry: geometry, routines: neolithicPeople,
+                trees: readInstances(treeBatch) + readInstances(broadleafBatch), seed: simulation.seed,
+                reference: neolithicReferenceStage) : NeolithicHarvest.Layout()
+        do {
+            try scene.rebuildCerealBeds(neolithicHarvest.plots)
+            if neolithic {
+                let soil = FieldSurface.Mask(mesh: scene.cerealMesh)
+                NeolithicHarvest.plant(neolithicHarvest.plots, on: soil, into: &neolithicHarvest)
+            }
+        } catch {
+            NSLog("Evolving: Neolithic cereal beds failed — \(error)")
+        }
+        if neolithic {
+            for (part, batch) in neolithicHarvestBatches {
+                batch.update(neolithicHarvest.props[part, default: []], device: context.device)
+            }
+        }
     }
 
     /// Read the same instance buffers that the building pass draws.
@@ -774,12 +799,23 @@ final class Renderer: NSObject, MTKViewDelegate {
         return readInstances(batch)
     }
 
+    func submittedHarvest(_ part: NeolithicHarvest.Part) -> [InstanceData] {
+        guard Era.at(reviewYear) == .neolithic, buildingAtlas != nil,
+              let batch = neolithicHarvestBatches.first(where: { $0.0 == part })?.1 else { return [] }
+        return readInstances(batch)
+    }
+
+    func submittedHearthSmoke() -> [InstanceData] {
+        guard submittedHearthPuffCount > 0 else { return [] }
+        return Array(readInstances(smokeBatch).suffix(submittedHearthPuffCount))
+    }
+
     private func updateNeolithicPeople(time: Float) {
         var instances = Array(repeating: [InstanceData](), count: NeolithicPeople.Part.allCases.count)
         for routine in neolithicPeople {
             NeolithicPeople.sample(routine, time: time, scene: scene) { part, model in
                 instances[part.rawValue].append(InstanceData(model: model, color: SIMD4(1, 1, 1, 0),
-                                                            material: SIMD4(9, 0, 0, 0)))
+                    material: SIMD4(part == .hearth ? 20 : 9, 0, 0, 0)))
             }
         }
         for (part, batch) in neolithicPeopleBatches {
@@ -1553,6 +1589,9 @@ final class Renderer: NSObject, MTKViewDelegate {
                                           color: SIMD4(SIMD3(0.68, 0.68, 0.69), alpha)))
             }
         }
+        let hearthSmoke = NeolithicHearth.smoke(hearthSources, eye: camera.eye, time: time, rain: weatherIntensity)
+        submittedHearthPuffCount = hearthSmoke.count
+        puffs.append(contentsOf: hearthSmoke)
         smokeBatch.update(puffs, device: context.device)
 
         let clothing: [SIMD3<Float>] = [
@@ -1993,6 +2032,14 @@ final class Renderer: NSObject, MTKViewDelegate {
     private lazy var smokeBatch: InstanceBatch = {
         InstanceBatch(mesh: scene.smokeMesh, device: context.device, capacity: 256)
     }()
+
+    private lazy var neolithicHarvestBatches: [(NeolithicHarvest.Part, InstanceBatch)] =
+        NeolithicHarvest.Part.allCases.compactMap { part in
+            guard let asset = try? CivMesh.load(named: part.path + ".civmesh"),
+                  let mesh = try? Mesh(device: context.device, vertices: asset.vertices, indices: asset.indices)
+            else { return nil }
+            return (part, InstanceBatch(mesh: mesh, device: context.device, capacity: 128))
+        }
 
     private lazy var neolithicPeopleBatches: [(NeolithicPeople.Part, InstanceBatch)] =
         NeolithicPeople.Part.allCases.compactMap { part in
@@ -2825,6 +2872,13 @@ final class Renderer: NSObject, MTKViewDelegate {
         encoder.setFrontFacing(.counterClockwise)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<FrameUniforms>.stride, index: 1)
         encoder.setFragmentBytes(&uniforms, length: MemoryLayout<FrameUniforms>.stride, index: 1)
+        submittedHearthLights = NeolithicHearth.lights(hearthSources, eye: cam.eye, time: time,
+            dusk: smoothstep(0.07, 0.80, light.night), rain: weatherIntensity)
+        var lights = [SIMD4<Float>(Float(submittedHearthLights.count), 0, 0, 0)] + submittedHearthLights
+        lights += Array(repeating: .zero, count: 5 - lights.count)
+        lights.withUnsafeBytes { bytes in
+            encoder.setFragmentBytes(bytes.baseAddress!, length: bytes.count, index: 3)
+        }
         encoder.setFragmentTexture(shadowMap, index: 1)
         encoder.setFragmentTexture(closeShadowMap, index: 4)
 
@@ -2855,6 +2909,10 @@ final class Renderer: NSObject, MTKViewDelegate {
         if let fields = scene.fieldMesh, let buffer = fieldIdentityBuffer {
             encoder.setVertexBuffer(buffer, offset: 0, index: 2)
             draw(fields, with: encoder, instances: 1)
+        }
+        if let beds = scene.cerealMesh, let buffer = cerealIdentityBuffer {
+            encoder.setVertexBuffer(buffer, offset: 0, index: 2)
+            draw(beds, with: encoder, instances: 1)
         }
         // Roads sit just above the terrain and below the buildings.
         if let streets = scene.streetMesh {
@@ -2918,6 +2976,10 @@ final class Renderer: NSObject, MTKViewDelegate {
                 draw(entry.batch.mesh, with: encoder, instances: entry.batch.count)
             }
             if Era.at(reviewYear) == .neolithic {
+                for (_, batch) in neolithicHarvestBatches where batch.count > 0 {
+                    encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
+                    draw(batch.mesh, with: encoder, instances: batch.count)
+                }
                 for (_, batch) in neolithicPeopleBatches where batch.count > 0 {
                     encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
                     draw(batch.mesh, with: encoder, instances: batch.count)

@@ -63,6 +63,7 @@ final class WorldScene {
     private(set) var yardMesh: Mesh?
     private(set) var neolithicYards = NeolithicYards.Layout()
     private(set) var fieldMesh: Mesh?
+    private(set) var cerealMesh: Mesh?
     private var roadFieldMask: FieldSurface.Mask?
     private(set) var activityStreets = FieldSurface.Mask()
     private(set) var roadBridges: [RoadBridge.Crossing] = []
@@ -818,6 +819,16 @@ final class WorldScene {
                                         streets: activityStreets)
         fieldMesh = fields.indices.isEmpty ? nil : try Mesh(device: device, vertices: fields.vertices,
                                                            indices: fields.indices)
+    }
+
+    func rebuildCerealBeds(_ plots: [NeolithicHarvest.Plot]) throws {
+        cerealMesh = nil
+        guard !plots.isEmpty else { return }
+        let fields = FieldSurface.drape(plots.map(\.soil), scene: self, roads: activityRoads,
+                                       streets: activityStreets)
+        if !fields.indices.isEmpty {
+            cerealMesh = try Mesh(device: device, vertices: fields.vertices, indices: fields.indices)
+        }
     }
 
     /// Dashed centre line for modern roads.
