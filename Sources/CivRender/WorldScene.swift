@@ -363,6 +363,18 @@ final class WorldScene {
         return WorldScene.renderedTerrainHeight(p, terrain: terrain) { vertices[$0].position.y }
     }
 
+    /// The ground albedo at the nearest submitted terrain vertex.
+    func renderedTerrainTint(at p: SIMD2<Float>) -> SIMD3<Float> {
+        let detail = 2
+        let side = (terrain.size - 1) * detail + 1
+        let spacing = terrain.cellSize / Float(detail)
+        let x = Int(min(max(((p.x + 1) / spacing).rounded(), 0), Float(side - 1)))
+        let z = Int(min(max(((p.y + 1) / spacing).rounded(), 0), Float(side - 1)))
+        let vertices = terrainMesh.vertexBuffer.contents().assumingMemoryBound(to: Vertex.self)
+        let c = vertices[z * side + x].color
+        return SIMD3(c.x, c.y, c.z)
+    }
+
     private static func renderedTerrainHeight(_ p: SIMD2<Float>, terrain: Terrain,
                                               heightAtIndex: (Int) -> Float) -> Float {
         let n = (terrain.size - 1) * 2 + 1, spacing = terrain.cellSize / 2

@@ -314,6 +314,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     private(set) var townActivities: [TownActivity] = []
     private(set) var neolithicPeople: [NeolithicPeople.Routine] = []
     private(set) var neolithicHarvest = NeolithicHarvest.Layout()
+    private(set) var neolithicBarrow: NeolithicBarrow.Placement?
     private(set) var neolithicHerds: [NeolithicHerds.Herd] = []
     private(set) var neolithicHerdClearance: NeolithicHerds.Clearance?
     private var hearthSources: [NeolithicHearth.Source] = []
@@ -775,6 +776,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         } catch {
             NSLog("Evolving: Neolithic cereal beds failed — \(error)")
         }
+        neolithicBarrow = nil
         if neolithic {
             for (part, batch) in neolithicHarvestBatches {
                 batch.update(neolithicHarvest.props[part, default: []], device: context.device)
@@ -785,10 +787,26 @@ final class Renderer: NSObject, MTKViewDelegate {
             neolithicHerdClearance = clearance
             neolithicHerds = NeolithicHerds.plan(in: scene, settlements: livingSettlements, seed: simulation.seed,
                                                 clearance: clearance, reference: neolithicReferenceStage)
+            if let entry = buildingBatches.first(where: { $0.path == NeolithicBarrow.path }),
+               let barrow = NeolithicBarrow.place(year: simulation.year, in: scene, settlements: livingSettlements,
+                                                  clearance: clearance, herds: neolithicHerds) {
+                neolithicBarrow = barrow
+                entry.batch.update([barrow.instance], device: context.device)
+                nearbyBuildings.insert(entry.path)
+            }
         } else {
             neolithicHerdClearance = nil
             neolithicHerds = []
         }
+    }
+
+    func submittedBarrow() -> (instances: [InstanceData], vertices: [Vertex]) {
+        guard buildingAtlas != nil,
+              let entry = buildingBatches.first(where: { $0.path == NeolithicBarrow.path }),
+              entry.batch.count > 0 else { return ([], []) }
+        let mesh = entry.batch.mesh
+        let vertices = mesh.vertexBuffer.contents().assumingMemoryBound(to: Vertex.self)
+        return (readInstances(entry.batch), Array(UnsafeBufferPointer(start: vertices, count: mesh.vertexCount)))
     }
 
     /// Read the same instance buffers that the building pass draws.

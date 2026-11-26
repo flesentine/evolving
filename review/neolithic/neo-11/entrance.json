@@ -1,0 +1,24 @@
+{
+  "animationTime" : 24,
+  "eye" : [
+    -0.00039235316,
+    0.022310335,
+    -0.22597528
+  ],
+  "fov" : 40,
+  "height" : 900,
+  "hour" : 15,
+  "precipitation" : 0,
+  "provenance" : "NEO-11 production long barrow — entrance",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    -0.015091831,
+    0.019116081,
+    -0.21678278
+  ],
+  "width" : 1440,
+  "year" : 600
+}
