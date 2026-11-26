@@ -31,7 +31,9 @@ smoke rise and coals flicker as the world runs.
 
 [Compare the field beds](fields-day-before-after.jpg) and [the hearth at dusk](hearth-dusk-before-after.jpg)
 with their NEO-07 baselines. The [gallery](gallery.jpg) shows the plots at
-daylight and dusk, the harvest corner, and the hearth in rain.
+daylight and dusk, the harvest corner, and the hearth in rain. The installed
+Timeline also produced [a matched dusk comparison](native-dusk-before-after.jpg)
+and [field and harvest close-ups](native-fields-and-harvest.jpg).
 
 ## Edit and verify
 
