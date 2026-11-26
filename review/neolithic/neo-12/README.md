@@ -12,6 +12,7 @@ The images show Norimton in seed 8. The settlement centre and two familiar
 houses remain recognizable with the same camera, weather, solar hour, and
 animation time. Year 790 is on the left and year 810 is on the right.
 
+- [Installed Timeline screenshots](native-790-810.jpg)
 - [Hamlet view](hamlet-790-810.jpg)
 - [Overhead view](overhead-790-810.jpg)
 - [Year 810 before and after NEO-12](hamlet-810-before-after.jpg)
