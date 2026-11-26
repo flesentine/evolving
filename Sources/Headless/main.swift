@@ -44,6 +44,8 @@ func usage() -> Never {
       civheadless neolithicreference <directory>
       civheadless neolithichouses <directory>
       civheadless neolithicstone <directory>
+      civheadless neolithicanimals <directory>
+      civheadless neolithicherds <directory>
       civheadless neolithicyards <directory>
       civheadless neolithicprops <directory>
       civheadless neolithicpeople <directory>
@@ -197,6 +199,18 @@ case "neolithicprops":
         else { fail("Neolithic household props leaked into Bronze Age batches") }
         print("PASS year-810 transition clears Neolithic household prop batches")
     } catch { fail("Neolithic prop check failed — \(error)") }
+
+case "neolithicherds":
+    guard arguments.count == 3 else { usage() }
+    do {
+        try NeolithicHerdCheck.run(directory: URL(fileURLWithPath: arguments[2], isDirectory: true))
+    } catch { fail("Neolithic herd check failed — \(error)") }
+
+case "neolithicanimals":
+    guard arguments.count == 3 else { usage() }
+    do {
+        try NeolithicLivestockCheck.run(directory: URL(fileURLWithPath: arguments[2], isDirectory: true))
+    } catch { fail("NEO-09 livestock check failed — \(error)") }
 
 case "neolithicyards":
     guard arguments.count == 3 else { usage() }

@@ -1,0 +1,24 @@
+{
+  "animationTime" : 14.664214,
+  "eye" : [
+    -0.19023983,
+    0.027793203,
+    0.12675527
+  ],
+  "fov" : 40,
+  "height" : 900,
+  "hour" : 14,
+  "precipitation" : 0,
+  "provenance" : "NEO-10 sheep production herd",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    -0.18123983,
+    0.022393202,
+    0.11885527
+  ],
+  "width" : 1440,
+  "year" : 450
+}
