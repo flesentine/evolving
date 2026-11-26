@@ -72,6 +72,13 @@ vertex MeshVaryings meshVertex(uint vid [[vertex_id]],
     out.plate = inst.material.y;
     out.bias = inst.material.z;
     out.uv = v.uv;
+    if (inst.material.x == 22.0) {
+        // The mound's turf tile uses the island's ground treatment. The
+        // portal and forecourt keep their authored masonry and earth atlas.
+        bool turf = v.uv.x >= 0.75 && v.uv.y >= 0.75;
+        out.material = turf ? 8.0 : 9.0;
+        if (turf) out.extra = 1.0; // Dry ground.
+    }
     return out;
 }
 
