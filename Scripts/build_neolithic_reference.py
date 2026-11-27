@@ -33,7 +33,7 @@ def assets():
 
 def export(objects, directory):
     directory.mkdir(parents=True, exist_ok=True)
-    with TemporaryDirectory(prefix=".neolithic-export-", dir=directory) as staging:
+    with TemporaryDirectory(prefix=".civmesh-export-", dir=directory) as staging:
         written = []
         for obj in objects:
             path = Path(staging) / (obj.name + ".civmesh")
@@ -46,8 +46,8 @@ def export(objects, directory):
             path.replace(directory / path.name)
 
 
-def contact_sheet(objects, path):
-    scene = bpy.data.scenes.new("Neolithic contact sheet")
+def contact_sheet(objects, path, *, columns=3, panel_pixels=600, scene_name="Neolithic contact sheet"):
+    scene = bpy.data.scenes.new(scene_name)
     bpy.context.window.scene = scene
     scene.render.engine = "BLENDER_WORKBENCH"
     scene.display.shading.light = "STUDIO"
@@ -63,7 +63,7 @@ def contact_sheet(objects, path):
     rotation = (-view).to_track_quat("-Z", "Y")
     right = rotation @ Vector((1, 0, 0))
     up = rotation @ Vector((0, 1, 0))
-    columns = min(3, len(objects))
+    columns = min(columns, len(objects))
     rows = (len(objects) + columns - 1) // columns
     panel = 3.7
     for index, obj in enumerate(objects):
@@ -96,8 +96,8 @@ def contact_sheet(objects, path):
     camera.location = view * 14
     camera.rotation_euler = rotation.to_euler()
     scene.camera = camera
-    scene.render.resolution_x = columns * 600
-    scene.render.resolution_y = rows * 600
+    scene.render.resolution_x = columns * panel_pixels
+    scene.render.resolution_y = rows * panel_pixels
     scene.render.image_settings.file_format = "PNG"
     path.parent.mkdir(parents=True, exist_ok=True)
     scene.render.filepath = str(path)
