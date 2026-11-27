@@ -72,6 +72,13 @@ vertex MeshVaryings meshVertex(uint vid [[vertex_id]],
     out.plate = inst.material.y;
     out.bias = inst.material.z;
     out.uv = v.uv;
+    if (inst.material.x == 22.0) {
+        // Turf-clad assets use the island's ground treatment on the turf tile.
+        // Their masonry and earth faces keep the authored building atlas.
+        bool turf = v.uv.x >= 0.75 && v.uv.y >= 0.75;
+        out.material = turf ? 8.0 : 9.0;
+        if (turf) out.extra = 1.0; // Dry ground.
+    }
     return out;
 }
 
@@ -271,6 +278,7 @@ static float4 oceanSurface(MeshVaryings in, constant FrameUniforms &u,
 
 fragment float4 meshFragment(MeshVaryings in [[stage_in]],
                              constant FrameUniforms &u [[buffer(1)]],
+                             constant float4 *hearthLights [[buffer(3)]],
                              texture2d<float> shadowMap [[texture(1)]],
                              texture2d<float> albedoTexture [[texture(2)]],
                              texture2d<float> normalTexture [[texture(3)]],
@@ -629,7 +637,15 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
             n = normalize(n + float3(edge * ripple * 0.22 * puddle, 0.0,
                                      ripple * 0.10 * puddle));
         }
-    } else if (in.material > 8.5 && in.material < 9.5) {
+    } else if (in.material > 18.5 && in.material < 19.5) {
+        // Worn earth in a footpath or work yard, with none of the cart ruts.
+        float2 p = in.world.xz * 1000.0;
+        float wear = valueNoise(p * 0.9);
+        float grit = valueNoise(p * 14.0);
+        albedo *= (0.84 + 0.22 * wear + 0.12 * grit) * mix(1.0, 0.70, saturate(u.night.w));
+        surfaceRough = 0.92;
+    } else if ((in.material > 8.5 && in.material < 9.5)
+            || (in.material > 19.5 && in.material < 20.5)) {
         // Imported hero asset: the atlas carries colour and surface detail.
         albedo = albedoTexture.sample(albedoSampler, in.uv).rgb;
     } else if (in.material > 1.5 && in.material < 2.5) {
@@ -644,10 +660,9 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
         float brickAA = saturate(1.0 - fwidth(brickCoord) * 1.8);
         albedo *= 1.0 - 0.10 * smoothstep(0.85, 1.0, course) * courseAA * detailFade;
         albedo *= 1.0 - 0.05 * smoothstep(0.90, 1.0, brick) * brickAA * detailFade;
-    } else if (in.material > 4.5 && in.material < 5.5) {
-        // The field mesh supplies local coordinates in metres. Rows run
-        // across the fall line on sloping parcels.
-        float furrowCoord = in.uv.x * 0.68;
+    } else if ((in.material > 4.5 && in.material < 5.5) || (in.material > 20.5 && in.material < 21.5)) {
+        // The cereal bed furrows match the 0.615 m clump spacing.
+        float furrowCoord = in.uv.x * (in.material > 20.5 ? 1.0 / 0.615 : 0.68);
         float furrow = fract(furrowCoord);
         float furrowAA = saturate(1.0 - fwidth(furrowCoord) * 1.8);
         albedo *= 1.0 - 0.16 * smoothstep(0.42, 1.0, furrow) * furrowAA * detailFade;
@@ -784,6 +799,27 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
     float3 lit = albedo * (ambient
                            + sunCol * (ndl * 0.95 + wrap * 0.10) * sunVis * shadow * direct * mix(0.25, 0.58, day)
                            + moonCol * moonLit * 0.46);
+
+    // Positions come from the submitted Neolithic hearth fixtures. The warm
+    // term fades to zero within 2.8 m and never changes the water material.
+    if (hearthLights[0].x > 0.0 && (in.material < 17.5 || in.material > 18.5)) {
+        for (uint i = 0; i < uint(hearthLights[0].x); ++i) {
+            float4 source = hearthLights[i + 1];
+            float3 delta = (source.xyz - in.world) * 1000.0;
+            float d2 = dot(delta, delta);
+            float edge = saturate(1.0 - d2 / (2.8 * 2.8));
+            float facing = saturate(dot(n, delta) * rsqrt(max(d2, 0.0001)));
+            float glow = source.w * edge * edge / (1.0 + d2 * 0.45);
+            lit += albedo * float3(1.22, 0.64, 0.31) * glow * (0.28 + 0.72 * facing);
+        }
+    }
+
+    // Only the fired-clay atlas quadrant on the hearth mesh is glowing coal.
+    if (in.material > 19.5 && in.material < 20.5 && in.uv.x >= 0.75
+        && in.uv.y >= 0.25 && in.uv.y < 0.5) {
+        float pulse = 0.85 + sin(u.cameraAndTime.w * 4.8 + in.world.x * 1300.0) * 0.15;
+        lit += float3(0.68, 0.18, 0.035) * pulse * (0.15 + 0.85 * night) * (1.0 - weather * 0.68);
+    }
 
     if (in.material > 17.5 && in.material < 18.5) {
         // River water: submitted-terrain depth, continuous world-space ripples,

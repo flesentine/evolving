@@ -30,6 +30,8 @@ enum CityBuilder {
         var streetLines: [StreetLine] = []
         var buildings: [String: [InstanceData]] = [:]
         var activityCandidates: [[TownActivity]] = []
+        var neolithicEntrances: [NeolithicYards.Entrance] = []
+        var neolithicHomes: [NeolithicInheritance.Home] = []
     }
 
     /// One street ribbon, clipped to dry land.
@@ -93,7 +95,9 @@ enum CityBuilder {
                       year: Float,
                       terrain: Terrain,
                       seed: UInt64,
-                      riverField: RiverChannel.Field? = nil) -> Geometry {
+                      riverField: RiverChannel.Field? = nil,
+                      renderedGround: ((SIMD2<Float>) -> Float)? = nil,
+                      renderedTint: ((SIMD2<Float>) -> SIMD3<Float>)? = nil) -> Geometry {
         var geometry = Geometry()
         let style = Style.forEra(era)
         // One resource field per frame; sampling is cheap and deterministic.
@@ -114,6 +118,8 @@ enum CityBuilder {
                                  seed: seed,
                                  resources: resources,
                                  river: riverField,
+                                 renderedGround: renderedGround,
+                                 renderedTint: renderedTint,
                                  into: &geometry)
             } else {
                 appendRuins(settlement, terrain: terrain, seed: seed, into: &geometry)
@@ -161,6 +167,8 @@ enum CityBuilder {
                                          seed: UInt64,
                                          resources: ResourceMap,
                                          river: RiverChannel.Field?,
+                                         renderedGround: ((SIMD2<Float>) -> Float)?,
+                                         renderedTint: ((SIMD2<Float>) -> SIMD3<Float>)?,
                                          into geometry: inout Geometry) {
         let population = max(s.population, 1)
         var count = buildingCount(population)
@@ -409,7 +417,7 @@ enum CityBuilder {
                 continue
             }
 
-            // A few older houses survive into each era.
+            // Later eras mix some older styles into their new plots.
             let useOlder = !survivors.isEmpty && rng.nextFloat() < 0.12
             let districtPool = BuildingCatalog.assets(for: era, district: slot.district)
             let choices: [BuildingAsset]
@@ -422,12 +430,18 @@ enum CityBuilder {
             }
             guard !choices.isEmpty else { continue }
 
-            // Avoid repeating the last two houses on the same street.
-            var asset = choices[Int(rng.nextFloat() * Float(choices.count))]
-            var attempts = 0
-            while recent.contains(asset.path) && attempts < 5 {
-                asset = choices[Int(rng.nextFloat() * Float(choices.count))]
-                attempts += 1
+            // Prefer distinct houses around the yard without rerolling
+            // through the whole three-house pool.
+            let pool = era == .neolithic
+                ? choices.filter { !recent.suffix(2).contains($0.path) } : choices
+            let available = pool.isEmpty ? choices : pool
+            var asset = available[Int(rng.nextFloat() * Float(available.count))]
+            if era != .neolithic {
+                var attempts = 0
+                while recent.contains(asset.path) && attempts < 5 {
+                    asset = choices[Int(rng.nextFloat() * Float(choices.count))]
+                    attempts += 1
+                }
             }
             recent.append(asset.path)
             if recent.count > 3 { recent.removeFirst() }
@@ -440,20 +454,7 @@ enum CityBuilder {
             let ground = terrain.heightAt(x: hx, z: hz)
             guard ground > 0.004, terrain.isWater(x: hx, z: hz) == false else { continue }
 
-            var baseScale = asset.scale * 0.00088
-                * (0.95 + rng.nextFloat() * 0.10)
-            if asset.path == "modern-tower" { baseScale *= 0.92 }
-            if asset.path.contains("information") || asset.path.contains("future") {
-                baseScale *= 0.88
-            }
-
-            // Keep the footprint inside its plot; only the height carries the
-            // landmark / density multiplier.
-            let footprint = BuildingCatalog.footprint(for: asset.path)
-            let footprintWidth = max(footprint.x * baseScale, 1e-5)
-            let footprintDepth = max(footprint.y * baseScale, 1e-5)
-            let fit = min(1.0, min(slot.width * 0.96 / footprintWidth,
-                                   slot.depth * 0.96 / footprintDepth))
+            let sizeVariation = 0.95 + rng.nextFloat() * 0.10
             let heightScale = slot.scaleMultiplier
 
             let tint = tints[Int(rng.nextFloat() * Float(tints.count))]
@@ -469,15 +470,74 @@ enum CityBuilder {
                     material: SIMD4(2, 0, 0, 0)))
             }
 
-            let model = translation(SIMD3(hx, ground + slot.podium - 0.0002, hz))
-                * rotationY(facing + rng.nextFloat(in: -0.05...0.05))
-                * scaleMatrix(SIMD3(baseScale * fit,
-                                    baseScale * heightScale,
-                                    baseScale * fit))
-            geometry.buildings[asset.path, default: []].append(InstanceData(
-                model: model,
-                color: SIMD4(tint, 0),
-                material: SIMD4(9, 0, 0, 0)))
+            let orientation = rotationY(facing + rng.nextFloat(in: -0.05...0.05))
+            func houseModel(_ candidate: BuildingAsset) -> simd_float4x4 {
+                var baseScale = candidate.scale * 0.00088 * sizeVariation
+                if candidate.path == "modern-tower" { baseScale *= 0.92 }
+                if candidate.path.contains("information") || candidate.path.contains("future") {
+                    baseScale *= 0.88
+                }
+                let dimensions = BuildingCatalog.footprint(for: candidate.path)
+                let width = max(dimensions.x * baseScale, 1e-5)
+                let depth = max(dimensions.y * baseScale, 1e-5)
+                let fit = min(1.0, min(slot.width * 0.96 / width, slot.depth * 0.96 / depth))
+                return translation(SIMD3(hx, ground + slot.podium - 0.0002, hz))
+                    * (orientation * scaleMatrix(SIMD3(baseScale * fit, baseScale * heightScale, baseScale * fit)))
+            }
+
+            if era == .neolithic {
+                var candidates = [asset]
+                if NeolithicCoast.isExposed(SIMD2(hx, hz), terrain: terrain) {
+                    let stone = BuildingCatalog.neolithicStone
+                    let first = (Int(slot.cellIndex.x) + slot.ring) % stone.count
+                    candidates.insert(contentsOf: [stone[first], stone[(first + 1) % stone.count]], at: 0)
+                }
+                var placedHouse = false
+                for candidate in candidates {
+                    var model = houseModel(candidate)
+                    let footprint = RiverPlacement.transformed(RiverPlacement.authoredBounds(candidate.path), by: model)
+                    guard footprint.count == 4,
+                          footprint.allSatisfy({ !terrain.isWater(x: $0.x, z: $0.y) }),
+                          river?.intersectsFootprint(footprint, margin: 2 / metres) != true,
+                          !geometry.neolithicHomes.contains(where: {
+                              RiverPlacement.rectanglesOverlap(footprint, $0.footprint, clearance: 0.25 / metres)
+                          }) else { continue }
+                    let edges = footprint.indices.map { (footprint[$0] + footprint[($0 + 1) % 4]) * 0.5 }
+                    let samples = (footprint + edges + [SIMD2(hx, hz)]).map { p in
+                        renderedGround?(p) ?? terrain.originalTriangleHeight(at: p)
+                    }
+                    let highest = samples.max()!
+                    let lowest = samples.min()!
+                    // The authored stone skirts extend 1.55 m below the floor origin.
+                    guard highest - lowest <= 1.55 * model.columns.1.y else { continue }
+                    model.columns.3.y = highest
+                    let stone = BuildingCatalog.neolithicStone.contains { $0.path == candidate.path }
+                    if let yard = slot.yard, let lip = RiverPlacement.authoredBounds(candidate.path).map(\.y).max() {
+                        // Start just inside the outer step, beneath the eave or passage lip.
+                        let entry = model * SIMD4(0, 0.17, lip - 0.18, 1)
+                        let forward = simd_normalize(SIMD2(model.columns.2.x, model.columns.2.z))
+                        geometry.neolithicEntrances.append(NeolithicYards.Entrance(
+                            settlement: s.id, cluster: slot.ring, yard: yard, door: SIMD3(entry.x, entry.y, entry.z),
+                            forward: forward, footprint: footprint,
+                            stone: stone))
+                    }
+                    // Roof turf uses the rendered ground tint. The stone walls
+                    // and recessed entrance keep the building atlas.
+                    let turf = stone ? renderedTint?(SIMD2(hx, hz)) : nil
+                    let instance = InstanceData(model: model, color: SIMD4(turf ?? tint, 0),
+                                                material: SIMD4(turf == nil ? 9 : 22, 0, 0, 0))
+                    geometry.buildings[candidate.path, default: []].append(instance)
+                    geometry.neolithicHomes.append(NeolithicInheritance.Home(
+                        settlement: s.id, court: slot.ring, path: candidate.path, instance: instance,
+                        footprint: footprint))
+                    placedHouse = true
+                    break
+                }
+                if !placedHouse { continue }
+            } else {
+                geometry.buildings[asset.path, default: []].append(InstanceData(
+                    model: houseModel(asset), color: SIMD4(tint, 0), material: SIMD4(9, 0, 0, 0)))
+            }
 
             if activity == .freight,
                slot.district == .industrial || slot.district == .commercial {

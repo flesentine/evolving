@@ -27,6 +27,7 @@ final class WorldScene {
     let riverMesh: Mesh?
     let coastalRiverMesh: Mesh?
     let riverBankMesh: Mesh?
+    private(set) lazy var riverBankFootprint = FieldSurface.Mask(mesh: riverBankMesh)
     /// Water polygons used to keep trees and houses out of the channel.
     let riverField: RiverChannel.Field
     let cubeMesh: Mesh
@@ -59,9 +60,13 @@ final class WorldScene {
     /// Rebuilt whenever the road network changes; nil until then.
     private(set) var roadMesh: Mesh?
     private(set) var streetMesh: Mesh?
+    private(set) var yardMesh: Mesh?
+    private(set) var neolithicYards = NeolithicYards.Layout()
     private(set) var fieldMesh: Mesh?
+    private(set) var cerealMesh: Mesh?
     private var roadFieldMask: FieldSurface.Mask?
     private(set) var activityStreets = FieldSurface.Mask()
+    private(set) var activityFields = FieldSurface.Mask()
     private(set) var roadBridges: [RoadBridge.Crossing] = []
     private(set) var unbridgedRoadPoints: [SIMD2<Float>] = []
     private(set) var bridgeDrivePaths: [Int: RoadBridge.DrivePath] = [:]
@@ -167,7 +172,7 @@ final class WorldScene {
         boatSailMesh = try Mesh(device: context.device, vertices: Geometry.boatSail())
 
         var loaded: [(path: String, mesh: Mesh)] = []
-        for path in BuildingCatalog.allPaths {
+        for path in BuildingCatalog.allPaths + NeolithicReference.paths {
             guard let asset = try? CivMesh.load(named: path + ".civmesh"),
                   let mesh = try? Mesh(device: context.device,
                                        vertices: asset.vertices,
@@ -356,6 +361,18 @@ final class WorldScene {
     func renderedTerrainHeight(at p: SIMD2<Float>) -> Float {
         let vertices = terrainMesh.vertexBuffer.contents().assumingMemoryBound(to: Vertex.self)
         return WorldScene.renderedTerrainHeight(p, terrain: terrain) { vertices[$0].position.y }
+    }
+
+    /// The ground albedo at the nearest submitted terrain vertex.
+    func renderedTerrainTint(at p: SIMD2<Float>) -> SIMD3<Float> {
+        let detail = 2
+        let side = (terrain.size - 1) * detail + 1
+        let spacing = terrain.cellSize / Float(detail)
+        let x = Int(min(max(((p.x + 1) / spacing).rounded(), 0), Float(side - 1)))
+        let z = Int(min(max(((p.y + 1) / spacing).rounded(), 0), Float(side - 1)))
+        let vertices = terrainMesh.vertexBuffer.contents().assumingMemoryBound(to: Vertex.self)
+        let c = vertices[z * side + x].color
+        return SIMD3(c.x, c.y, c.z)
     }
 
     private static func renderedTerrainHeight(_ p: SIMD2<Float>, terrain: Terrain,
@@ -792,11 +809,23 @@ final class WorldScene {
         activityStreets = FieldSurface.Mask(mesh: streetMesh)
     }
 
+    func rebuildNeolithicYards(_ entrances: [NeolithicYards.Entrance], boxes: [InstanceData]) throws {
+        yardMesh = nil
+        neolithicYards = NeolithicYards.build(entrances, boxes: boxes, scene: self)
+        guard !neolithicYards.surfaces.isEmpty else { return }
+        let mesh = FieldSurface.drape(neolithicYards.surfaces, scene: self,
+                                     roads: activityRoads, streets: activityStreets)
+        guard !mesh.indices.isEmpty else { return }
+        yardMesh = try Mesh(device: device, vertices: mesh.vertices, indices: mesh.indices)
+        activityStreets = FieldSurface.Mask(mesh: yardMesh)
+    }
+
     var activityRoads: FieldSurface.Mask { roadFieldMask ?? FieldSurface.Mask(mesh: roadMesh) }
 
-    func rebuildFields(_ plots: [InstanceData]) throws {
+    func rebuildFields(_ plots: [InstanceData], recordFootprint: Bool = false) throws {
         // A previous field mesh might cross a road rebuilt this frame.
         fieldMesh = nil
+        activityFields = FieldSurface.Mask()
         guard !plots.isEmpty else { return }
         let roads = roadFieldMask ?? FieldSurface.Mask(mesh: roadMesh)
         roadFieldMask = roads
@@ -804,6 +833,17 @@ final class WorldScene {
                                         streets: activityStreets)
         fieldMesh = fields.indices.isEmpty ? nil : try Mesh(device: device, vertices: fields.vertices,
                                                            indices: fields.indices)
+        if recordFootprint { activityFields = FieldSurface.Mask(mesh: fieldMesh) }
+    }
+
+    func rebuildCerealBeds(_ plots: [NeolithicHarvest.Plot]) throws {
+        cerealMesh = nil
+        guard !plots.isEmpty else { return }
+        let fields = FieldSurface.drape(plots.map(\.soil), scene: self, roads: activityRoads,
+                                       streets: activityStreets)
+        if !fields.indices.isEmpty {
+            cerealMesh = try Mesh(device: device, vertices: fields.vertices, indices: fields.indices)
+        }
     }
 
     /// Dashed centre line for modern roads.

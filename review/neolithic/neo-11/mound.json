@@ -1,0 +1,24 @@
+{
+  "animationTime" : 24,
+  "eye" : [
+    0.0046062265,
+    0.03145869,
+    -0.24150982
+  ],
+  "fov" : 40,
+  "height" : 900,
+  "hour" : 15,
+  "precipitation" : 0,
+  "provenance" : "NEO-11 production long barrow — mound",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    -0.022391776,
+    0.018715667,
+    -0.2167604
+  ],
+  "width" : 1440,
+  "year" : 600
+}

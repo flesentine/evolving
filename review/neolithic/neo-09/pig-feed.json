@@ -1,0 +1,24 @@
+{
+  "animationTime" : 30,
+  "eye" : [
+    0.13286251,
+    0.019060945,
+    -0.23158395
+  ],
+  "fov" : 25,
+  "height" : 900,
+  "hour" : 14,
+  "precipitation" : 0,
+  "provenance" : "NEO-09 normal-world pig-feed",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    0.13857107,
+    0.017260944,
+    -0.22847265
+  ],
+  "width" : 1440,
+  "year" : 450
+}

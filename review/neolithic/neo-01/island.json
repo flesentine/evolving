@@ -1,0 +1,24 @@
+{
+  "animationTime" : 24,
+  "eye" : [
+    0.78,
+    0.76,
+    1.16
+  ],
+  "fov" : 56,
+  "height" : 900,
+  "hour" : 15,
+  "precipitation" : 0,
+  "provenance" : "NEO-01 fixed review camera",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    -0.02375979,
+    0.07,
+    0.020835508
+  ],
+  "width" : 1440,
+  "year" : 450
+}

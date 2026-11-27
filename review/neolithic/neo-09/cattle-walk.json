@@ -1,0 +1,24 @@
+{
+  "animationTime" : 3,
+  "eye" : [
+    -0.0026144125,
+    0.021313375,
+    0.2618899
+  ],
+  "fov" : 25,
+  "height" : 900,
+  "hour" : 14,
+  "precipitation" : 0,
+  "provenance" : "NEO-09 normal-world cattle-walk",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    0.0034842193,
+    0.019513374,
+    0.2596299
+  ],
+  "width" : 1440,
+  "year" : 450
+}

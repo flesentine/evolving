@@ -42,6 +42,7 @@ final class EvolvingSaver: ScreenSaverView {
     private var previousLiveDate: Date?
     private var lastLiveFrame: Date?
     private var lastSeenCheckpoint: Date?
+    private var isNeolithicReferenceView = false
     private var workspaceObservers: [NSObjectProtocol] = []
     private var fixtureDate: Date?
 
@@ -135,9 +136,23 @@ final class EvolvingSaver: ScreenSaverView {
         teardownWorld()
 
         config = nil
+        let environment = ProcessInfo.processInfo.environment
+        let referenceView: RiverReviewView?
+        if environment["EVOLVING_DEV"] == "1", Bundle.main.bundleIdentifier == "com.mccullough.evolving.timeline",
+           let path = environment["EVOLVING_NEO01_VIEW"] {
+            referenceView = try? RiverReviewView.read(URL(fileURLWithPath: path))
+        } else {
+            referenceView = nil
+        }
+        isNeolithicReferenceView = referenceView != nil
         let worldConfig: WorldConfig
         do {
-            worldConfig = developmentOverride(try WorldStore.load(from: store))
+            if let referenceView {
+                worldConfig = WorldConfig(seed: referenceView.seed, epoch: wallDate, paceName: Pace.standard.name)
+                timelineYearOverride = referenceView.year
+            } else {
+                worldConfig = developmentOverride(try WorldStore.load(from: store))
+            }
         } catch {
             showStatus(error.localizedDescription)
             return
@@ -200,6 +215,11 @@ final class EvolvingSaver: ScreenSaverView {
                 }
             }
 
+            if let referenceView {
+                renderer.showsNeolithicReference = environment["EVOLVING_NEO01"] == "1"
+                NeolithicReference.apply(referenceView, to: renderer)
+            }
+
             let now = wallDate
             let wallYear = worldConfig.simYear(at: now)
             let awayHours = ProcessInfo.processInfo.environment["EVOLVING_AWAY_HOURS"].flatMap(Double.init)
@@ -212,10 +232,13 @@ final class EvolvingSaver: ScreenSaverView {
             } ?? recorded
             var sim = worldConfig.startReplay(on: replayTerrain)
             let replayStart = CACurrentMediaTime()
-            sim.advance(to: targetYear)
+            sim.advance(to: referenceView?.year ?? targetYear)
             NSLog("Evolving: replayed \(Int(sim.year)) years in \(Int((CACurrentMediaTime() - replayStart) * 1000)) ms")
 
             renderer.updateScene(sim)
+            if referenceView != nil {
+                NSLog("Evolving: NEO-01 native reference geometry: \(renderer.neolithicReferenceStage == nil ? "baseline" : "prototype staged")")
+            }
 
             addSubview(view)
             self.metalView = view
@@ -877,7 +900,8 @@ final class EvolvingSaver: ScreenSaverView {
     }
 
     private func persistLastSeen() {
-        guard let store = defaults, let config, let frame = lastLiveFrame,
+        guard !isNeolithicReferenceView,
+              let store = defaults, let config, let frame = lastLiveFrame,
               frame > (lastSeenCheckpoint ?? .distantPast) else { return }
         WorldStore.recordLiveFrame(frame, for: config, in: store)
         lastSeenCheckpoint = frame

@@ -114,8 +114,10 @@ final class Renderer: NSObject, MTKViewDelegate {
     let coneBatch: InstanceBatch
     private let identityBatch: InstanceBatch
     private var roadIdentityBuffer: MTLBuffer?
+    private var yardIdentityBuffer: MTLBuffer?
     private var streetIdentityBuffer: MTLBuffer?
     private var fieldIdentityBuffer: MTLBuffer?
+    private var cerealIdentityBuffer: MTLBuffer?
     private var railIdentityBuffer: MTLBuffer?
     private var riverIdentityBuffer: MTLBuffer?
     private var bankIdentityBuffer: MTLBuffer?
@@ -148,6 +150,9 @@ final class Renderer: NSObject, MTKViewDelegate {
 
     /// 0…1 precipitation override for stills; `nil` follows the real weather.
     var weatherOverride: Float?
+    var referenceAnimationTime: Float?
+    var showsNeolithicReference = false
+    private(set) var neolithicReferenceStage: NeolithicReference.Stage?
     var snowOverride: Bool?
 
     /// `auto` cycles the shots; the others pin one framing.
@@ -307,6 +312,17 @@ final class Renderer: NSObject, MTKViewDelegate {
     private var squareAngle: Float = 0
     private var hasFocus = false
     private(set) var townActivities: [TownActivity] = []
+    private(set) var neolithicPeople: [NeolithicPeople.Routine] = []
+    private(set) var neolithicHarvest = NeolithicHarvest.Layout()
+    private var inheritedHomeFootprints = FieldSurface.Mask()
+    private var bronzeWalksClear: [Int: Bool] = [:]
+    private var neolithicHomesAtBronzeBoundary: [NeolithicInheritance.Home]?
+    private(set) var neolithicBarrow: NeolithicBarrow.Placement?
+    private(set) var neolithicHerds: [NeolithicHerds.Herd] = []
+    private(set) var neolithicHerdClearance: NeolithicHerds.Clearance?
+    private var hearthSources: [NeolithicHearth.Source] = []
+    private(set) var submittedHearthLights: [SIMD4<Float>] = []
+    private var submittedHearthPuffCount = 0
     private var carPaths: [CarPath] = []
     private var boatPaths: [BoatPath] = []
     private var railPoints: [SIMD2<Float>] = []
@@ -464,8 +480,10 @@ final class Renderer: NSObject, MTKViewDelegate {
                                            material: SIMD4<Float>(8, 0, 0, 0))],
                              device: device)
         roadIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 11)
+        yardIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 19)
         streetIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 12)
         fieldIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 5)
+        cerealIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 21)
         railIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 13)
         riverIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 18)
         bankIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 8)
@@ -601,35 +619,24 @@ final class Renderer: NSObject, MTKViewDelegate {
     func updateScene(_ simulation: Simulation, refreshRoads: Bool = false) {
         reviewSeed = simulation.seed; reviewYear = simulation.year
         livingSettlements = simulation.settlements.filter { $0.isAlive }
-        let geometry = CityBuilder.build(settlements: simulation.settlements,
+        var geometry = CityBuilder.build(settlements: simulation.settlements,
                                          era: simulation.era,
                                          year: simulation.year,
                                          terrain: scene.terrain,
                                          seed: simulation.seed,
-                                         riverField: scene.riverField)
-        boxBatch.update(geometry.boxes, device: context.device)
+                                         riverField: scene.riverField,
+                                         renderedGround: scene.renderedTerrainHeight(at:),
+                                         renderedTint: scene.renderedTerrainTint(at:))
+        neolithicReferenceStage = nil
+        if showsNeolithicReference, simulation.seed == NeolithicReference.seed,
+           simulation.year == NeolithicReference.year, let settlement = simulation.largestSettlement() {
+            neolithicReferenceStage = NeolithicReference.stage(&geometry, scene: scene, settlement: settlement)
+        }
         coneBatch.update(geometry.cones, device: context.device)
         gableBatch.update(geometry.gables, device: context.device)
         archBatch.update(geometry.arches, device: context.device)
         updateTrees(for: simulation)
         smokeEmitters = geometry.smoke
-        for entry in buildingBatches {
-            entry.batch.update(geometry.buildings[entry.path] ?? [], device: context.device)
-        }
-
-        // Only houses near the camera's town need to cast shadows; distant
-        // towns are outside the visible frame and would cost 30-50 extra draws.
-        var nearby = Set<String>()
-        for (path, list) in geometry.buildings {
-            for instance in list {
-                let p = instance.model.columns.3
-                if simd_distance(SIMD3(p.x, p.y, p.z), focusPoint) < 0.65 {
-                    nearby.insert(path)
-                    break
-                }
-            }
-        }
-        nearbyBuildings = nearby
         streetGrids = geometry.streets
 
         if let largest = simulation.largestSettlement() {
@@ -705,11 +712,169 @@ final class Renderer: NSObject, MTKViewDelegate {
             NSLog("Evolving: street mesh failed — \(error)")
         }
         do {
-            try scene.rebuildFields(geometry.fields)
+            try scene.rebuildNeolithicYards(geometry.neolithicEntrances, boxes: geometry.boxes)
+            geometry.boxes.append(contentsOf: scene.neolithicYards.fences)
+            geometry.boxes.append(contentsOf: scene.neolithicYards.steps)
+        } catch {
+            NSLog("Evolving: yard mesh failed — \(error)")
+        }
+        boxBatch.update(geometry.boxes, device: context.device)
+        do {
+            try scene.rebuildFields(geometry.fields, recordFootprint: simulation.era == .neolithic)
         } catch {
             NSLog("Evolving: field mesh failed — \(error)")
         }
+        inheritedHomeFootprints = FieldSurface.Mask()
+        bronzeWalksClear.removeAll(keepingCapacity: true)
+        if simulation.era == .bronze {
+            if neolithicHomesAtBronzeBoundary == nil {
+                neolithicHomesAtBronzeBoundary = NeolithicInheritance.boundaryHomes(for: simulation, in: scene)
+            }
+            inheritedHomeFootprints = NeolithicInheritance.place(neolithicHomesAtBronzeBoundary ?? [],
+                settlements: livingSettlements, geometry: &geometry, scene: scene,
+                trees: readInstances(treeBatch) + readInstances(broadleafBatch))
+        }
+        for entry in buildingBatches where !NeolithicProps.paths.contains(entry.path) {
+            entry.batch.update(geometry.buildings[entry.path] ?? [], device: context.device)
+        }
+
+        // Only houses near the camera's town need to cast shadows; distant
+        // towns are outside the visible frame and would cost 30-50 extra draws.
+        var nearby = Set<String>()
+        for (path, list) in geometry.buildings {
+            for instance in list {
+                let p = instance.model.columns.3
+                if simd_distance(SIMD3(p.x, p.y, p.z), focusPoint) < 0.65 {
+                    nearby.insert(path)
+                    break
+                }
+            }
+        }
+        nearbyBuildings = nearby
+        let neolithic = simulation.era == .neolithic
+        var householdProps = neolithic ? NeolithicProps.place(in: scene, geometry: geometry) : [:]
+        if neolithic {
+            let people = NeolithicPeople.plan(in: scene, geometry: geometry, props: householdProps,
+                settlements: livingSettlements, seed: simulation.seed, reference: neolithicReferenceStage)
+            neolithicPeople = people.routines
+            let quern = NeolithicProps.paths[0]
+            let querns = householdProps[quern, default: []]
+            householdProps[NeolithicPeople.Part.quernBed.path] = querns.enumerated()
+                .filter { people.workedQuerns.contains($0.offset) }.map(\.element)
+            householdProps[quern] = querns.enumerated()
+                .filter { !people.workedQuerns.contains($0.offset) }.map(\.element)
+        } else {
+            neolithicPeople = []
+        }
+        for entry in buildingBatches
+            where NeolithicProps.paths.contains(entry.path) || entry.path == NeolithicPeople.Part.quernBed.path {
+            let instances = householdProps[entry.path, default: []]
+            entry.batch.update(instances, device: context.device)
+            if !instances.isEmpty {
+                geometry.buildings[entry.path] = instances
+                nearbyBuildings.insert(entry.path)
+            }
+        }
         townActivities = TownActivity.choose(geometry.activityCandidates, geometry: geometry, scene: scene)
+        hearthSources = NeolithicHearth.sources(neolithicPeople)
+        neolithicHarvest = neolithic
+            ? NeolithicHarvest.plan(in: scene, geometry: geometry, routines: neolithicPeople,
+                trees: readInstances(treeBatch) + readInstances(broadleafBatch), seed: simulation.seed,
+                reference: neolithicReferenceStage) : NeolithicHarvest.Layout()
+        do {
+            try scene.rebuildCerealBeds(neolithicHarvest.plots)
+            if neolithic {
+                let soil = FieldSurface.Mask(mesh: scene.cerealMesh)
+                NeolithicHarvest.plant(neolithicHarvest.plots, on: soil, into: &neolithicHarvest)
+            }
+        } catch {
+            NSLog("Evolving: Neolithic cereal beds failed — \(error)")
+        }
+        neolithicBarrow = nil
+        if neolithic {
+            for (part, batch) in neolithicHarvestBatches {
+                batch.update(neolithicHarvest.props[part, default: []], device: context.device)
+            }
+            let clearance = NeolithicHerds.clearance(in: scene, geometry: geometry,
+                routines: neolithicPeople, harvest: neolithicHarvest,
+                trees: readInstances(treeBatch) + readInstances(broadleafBatch))
+            neolithicHerdClearance = clearance
+            neolithicHerds = NeolithicHerds.plan(in: scene, settlements: livingSettlements, seed: simulation.seed,
+                                                clearance: clearance, reference: neolithicReferenceStage)
+            if let entry = buildingBatches.first(where: { $0.path == NeolithicBarrow.path }),
+               let barrow = NeolithicBarrow.place(year: simulation.year, in: scene, settlements: livingSettlements,
+                                                  clearance: clearance, herds: neolithicHerds) {
+                neolithicBarrow = barrow
+                entry.batch.update([barrow.instance], device: context.device)
+                nearbyBuildings.insert(entry.path)
+            }
+        } else {
+            neolithicHerdClearance = nil
+            neolithicHerds = []
+        }
+    }
+
+    func submittedBuildings() -> [(path: String, instance: InstanceData)] {
+        guard buildingAtlas != nil else { return [] }
+        return buildingBatches.flatMap { entry in
+            readInstances(entry.batch).map { (entry.path, $0) }
+        }
+    }
+
+    func submittedPersonOrigins() -> [SIMD2<Float>] {
+        readInstances(personBatch).map { NeolithicPeople.xz($0.model.columns.3) }
+    }
+
+    func submittedBarrow() -> (instances: [InstanceData], vertices: [Vertex]) {
+        guard buildingAtlas != nil,
+              let entry = buildingBatches.first(where: { $0.path == NeolithicBarrow.path }),
+              entry.batch.count > 0 else { return ([], []) }
+        let mesh = entry.batch.mesh
+        let vertices = mesh.vertexBuffer.contents().assumingMemoryBound(to: Vertex.self)
+        return (readInstances(entry.batch), Array(UnsafeBufferPointer(start: vertices, count: mesh.vertexCount)))
+    }
+
+    /// Read the same instance buffers that the building pass draws.
+    func submittedHouseholdProps(_ path: String) -> [InstanceData] {
+        guard buildingAtlas != nil else { return [] }
+        let beds = NeolithicPeople.Part.quernBed.path
+        return buildingBatches.filter { $0.path == path || (path == NeolithicProps.paths[0] && $0.path == beds) }
+            .flatMap { readInstances($0.batch) }
+    }
+
+    private func readInstances(_ batch: InstanceBatch) -> [InstanceData] {
+        let data = batch.buffer.contents().assumingMemoryBound(to: InstanceData.self)
+        return Array(UnsafeBufferPointer(start: data, count: batch.count))
+    }
+
+    func submittedNeolithicPeople(_ part: NeolithicPeople.Part) -> [InstanceData] {
+        guard Era.at(reviewYear) == .neolithic, buildingAtlas != nil,
+              let batch = neolithicPeopleBatches.first(where: { $0.0 == part })?.1 else { return [] }
+        return readInstances(batch)
+    }
+
+    func submittedHarvest(_ part: NeolithicHarvest.Part) -> [InstanceData] {
+        guard Era.at(reviewYear) == .neolithic, buildingAtlas != nil,
+              let batch = neolithicHarvestBatches.first(where: { $0.0 == part })?.1 else { return [] }
+        return readInstances(batch)
+    }
+
+    func submittedHearthSmoke() -> [InstanceData] {
+        guard submittedHearthPuffCount > 0 else { return [] }
+        return Array(readInstances(smokeBatch).suffix(submittedHearthPuffCount))
+    }
+
+    private func updateNeolithicPeople(time: Float) {
+        var instances = Array(repeating: [InstanceData](), count: NeolithicPeople.Part.allCases.count)
+        for routine in neolithicPeople {
+            NeolithicPeople.sample(routine, time: time, scene: scene) { part, model in
+                instances[part.rawValue].append(InstanceData(model: model, color: SIMD4(1, 1, 1, 0),
+                    material: SIMD4(part == .hearth ? 20 : 9, 0, 0, 0)))
+            }
+        }
+        for (part, batch) in neolithicPeopleBatches {
+            batch.update(instances[part.rawValue], device: context.device)
+        }
     }
 
     /// Milestones, signposts, tollhouses, cairns, ford posts and cat's eyes.
@@ -1478,6 +1643,9 @@ final class Renderer: NSObject, MTKViewDelegate {
                                           color: SIMD4(SIMD3(0.68, 0.68, 0.69), alpha)))
             }
         }
+        let hearthSmoke = NeolithicHearth.smoke(hearthSources, eye: camera.eye, time: time, rain: weatherIntensity)
+        submittedHearthPuffCount = hearthSmoke.count
+        puffs.append(contentsOf: hearthSmoke)
         smokeBatch.update(puffs, device: context.device)
 
         let clothing: [SIMD3<Float>] = [
@@ -1491,7 +1659,8 @@ final class Renderer: NSObject, MTKViewDelegate {
         var legs: [InstanceData] = []
         var arms: [InstanceData] = []
         var carried: [InstanceData] = []
-        for (si, settlement) in livingSettlements.enumerated() {
+        let currentEra = Era.at(reviewYear)
+        for (si, settlement) in livingSettlements.enumerated() where currentEra != .neolithic {
             let fallbackRadius = CityBuilder.cityRadius(settlement.population)
             let grid = si < streetGrids.count
                 ? streetGrids[si]
@@ -1518,6 +1687,22 @@ final class Renderer: NSObject, MTKViewDelegate {
 
                 let lane = Float(k) - floor(Float(k) / lanes) * lanes - (lanes - 1) * 0.5
                 let lateral = lane * grid.cell * 0.22
+                if currentEra == .bronze {
+                    let key = si * 16 + k
+                    if bronzeWalksClear[key] == nil {
+                        let along = axis == 0 ? dir : perp
+                        let across = axis == 0 ? perp : dir
+                        let centre = SIMD2(grid.x, grid.z) + across * (offset + lateral)
+                        let reach = 1.5 / RiverGraph.metresPerUnit // Room for arm and leg motion.
+                        let width = across * reach
+                        // The return leg of the ambient walk reaches -2 × span.
+                        let start = centre - along * (2 * span + reach)
+                        let end = centre + along * (span + reach)
+                        bronzeWalksClear[key] = !inheritedHomeFootprints.intersectsFootprint(
+                            [start - width, end - width, end + width, start + width])
+                    }
+                    if bronzeWalksClear[key] == false { continue }
+                }
                 let speed = 0.010 + h2 * 0.014
                 let t = (time * speed / span + h3).truncatingRemainder(dividingBy: 2)
                 let travelling = t <= 1
@@ -1528,9 +1713,11 @@ final class Renderer: NSObject, MTKViewDelegate {
                 let lz = axis == 0 ? offset + lateral : along
                 let x = grid.x + dir.x * lx + perp.x * lz
                 let z = grid.z + dir.y * lx + perp.y * lz
+                let position = SIMD2(x, z)
+                guard neolithicReferenceStage?.containsStagedYard(position) != true else { continue }
                 let ground = scene.terrain.interpolatedHeight(x: x, z: z)
                 guard ground > 0.006, !scene.terrain.isWater(x: x, z: z),
-                      scene.riverField.waterLevel(at: SIMD2(x, z)) == nil
+                      scene.riverField.waterLevel(at: position) == nil
                 else { continue }
 
                 let walkAngle = axis == 0 ? grid.angle : grid.angle + Float.pi / 2
@@ -1598,17 +1785,20 @@ final class Renderer: NSObject, MTKViewDelegate {
         for activity in townActivities {
             let pose = activity.sample(time: time)
             let p = pose.position
+            guard neolithicReferenceStage?.containsStagedYard(p) != true else { continue }
             let ground = max(scene.renderedTerrainHeight(at: p), scene.activityStreets.height(at: p) ?? 0)
             let metres = TownActivity.metres
-            let scale: Float = 4.4 / metres
+            let isNeolithic = Era.at(reviewYear) == .neolithic
+            let scale: Float = (isNeolithic ? 1.45 : 4.4) / metres
             let coat = activity.kind.coat
-            let bob = abs(pose.stride) * (0.23 / metres)
+            let bob = abs(pose.stride) * ((isNeolithic ? 0.07 : 0.23) / metres)
             let base = translation(SIMD3(p.x, ground + bob, p.y)) * rotationY(pose.facing)
             let lean = activity.kind == .fieldwork ? 0.18 * pose.reach : 0
             let model = base * scaleMatrix(SIMD3(repeating: scale)) * rotationX(lean)
             let cratePitch = -0.89 + pose.reach * 0.55
             people.append(InstanceData(model: model, color: SIMD4(coat, 0)))
-            brims.append(InstanceData(model: model, color: SIMD4(SIMD3(repeating: 1), 0)))
+            let head = InstanceData(model: model, color: SIMD4(SIMD3(repeating: 1), 0))
+            if isNeolithic { heads.append(head) } else { brims.append(head) }
 
             for side in [Float(-1), 1] {
                 let leg = model * translation(SIMD3(side * 0.085, 0.49, 0))
@@ -1668,31 +1858,42 @@ final class Renderer: NSObject, MTKViewDelegate {
         personLegBatch.update(legs, device: context.device)
         personArmBatch.update(arms, device: context.device)
 
-        var animals: [InstanceData] = []
-        for (si, settlement) in livingSettlements.enumerated() {
-            let base = max(CityBuilder.cityRadius(settlement.population) * 1.65 + 0.012, 0.028)
-            for k in 0..<5 {
-                let h = hash01(si * 53 + k * 17 + 500)
-                let h2 = hash01(si * 29 + k * 7 + 900)
-                let angle = h * 2 * Float.pi + time * 0.00005
-                let radius = base * (0.8 + 0.5 * h2)
-                let x = settlement.x + cos(angle) * radius
-                let z = settlement.z + sin(angle) * radius
-                let ground = scene.terrain.interpolatedHeight(x: x, z: z)
-                guard ground > 0.006, !scene.terrain.isWater(x: x, z: z),
-                      scene.riverField.waterLevel(at: SIMD2(x, z)) == nil
-                else { continue }
-
-                let scale: Float = 0.0034
-                let model = translation(SIMD3(x, ground, z))
-                    * rotationY(angle + .pi / 2)
-                    * scaleMatrix(SIMD3(scale, scale, scale))
-                let coat: SIMD3<Float> = h2 < 0.5 ? SIMD3(0.78, 0.74, 0.66)
-                                                 : SIMD3(0.42, 0.30, 0.20)
-                animals.append(InstanceData(model: model, color: SIMD4(coat, 0)))
+        if Era.at(reviewYear) == .neolithic {
+            let placements = neolithicHerds.flatMap { $0.placements(at: time, in: scene) }
+            let byPose = Dictionary(grouping: placements, by: { $0.pose.index })
+            for (pose, batch) in neolithicLivestockBatches {
+                batch.update(byPose[pose.index, default: []].map(\.instance), device: context.device)
             }
+            animalBatch.update([], device: context.device)
+        } else {
+            var animals: [InstanceData] = []
+            for (si, settlement) in livingSettlements.enumerated() {
+                let base = max(CityBuilder.cityRadius(settlement.population) * 1.65 + 0.012, 0.028)
+                for k in 0..<5 {
+                    let h = hash01(si * 53 + k * 17 + 500)
+                    let h2 = hash01(si * 29 + k * 7 + 900)
+                    let angle = h * 2 * Float.pi + time * 0.00005
+                    let radius = base * (0.8 + 0.5 * h2)
+                    let x = settlement.x + cos(angle) * radius
+                    let z = settlement.z + sin(angle) * radius
+                    let position = SIMD2(x, z)
+                    guard neolithicReferenceStage?.containsStagedYard(position) != true else { continue }
+                    let ground = scene.terrain.interpolatedHeight(x: x, z: z)
+                    guard ground > 0.006, !scene.terrain.isWater(x: x, z: z),
+                          scene.riverField.waterLevel(at: position) == nil
+                    else { continue }
+
+                    let scale: Float = 0.0034
+                    let model = translation(SIMD3(x, ground, z))
+                        * rotationY(angle + .pi / 2)
+                        * scaleMatrix(SIMD3(scale, scale, scale))
+                    let coat: SIMD3<Float> = h2 < 0.5 ? SIMD3(0.78, 0.74, 0.66)
+                                                     : SIMD3(0.42, 0.30, 0.20)
+                    animals.append(InstanceData(model: model, color: SIMD4(coat, 0)))
+                }
+            }
+            animalBatch.update(animals, device: context.device)
         }
-        animalBatch.update(animals, device: context.device)
 
         var birds: [InstanceData] = []
         for i in 0..<18 {
@@ -1912,6 +2113,23 @@ final class Renderer: NSObject, MTKViewDelegate {
         InstanceBatch(mesh: scene.smokeMesh, device: context.device, capacity: 256)
     }()
 
+    private lazy var neolithicHarvestBatches: [(NeolithicHarvest.Part, InstanceBatch)] =
+        NeolithicHarvest.Part.allCases.compactMap { part in
+            guard let asset = try? CivMesh.load(named: part.path + ".civmesh"),
+                  let mesh = try? Mesh(device: context.device, vertices: asset.vertices, indices: asset.indices)
+            else { return nil }
+            return (part, InstanceBatch(mesh: mesh, device: context.device, capacity: 128))
+        }
+
+    private lazy var neolithicPeopleBatches: [(NeolithicPeople.Part, InstanceBatch)] =
+        NeolithicPeople.Part.allCases.compactMap { part in
+            guard part != .quernBed,
+                  let asset = try? CivMesh.load(named: part.path + ".civmesh"),
+                  let mesh = try? Mesh(device: context.device, vertices: asset.vertices, indices: asset.indices)
+            else { return nil }
+            return (part, InstanceBatch(mesh: mesh, device: context.device, capacity: 64))
+        }
+
     private lazy var personBatch: InstanceBatch = {
         InstanceBatch(mesh: scene.personBodyMesh, device: context.device, capacity: 1024)
     }()
@@ -1935,6 +2153,29 @@ final class Renderer: NSObject, MTKViewDelegate {
     private lazy var carryBatch: InstanceBatch = {
         InstanceBatch(mesh: scene.cubeMesh, device: context.device, capacity: 512)
     }()
+
+    private lazy var neolithicLivestockBatches: [(NeolithicLivestock.Pose, InstanceBatch)] =
+        NeolithicLivestock.poses.compactMap { pose in
+            guard let asset = try? CivMesh.load(named: pose.path + ".civmesh"),
+                  let mesh = try? Mesh(device: context.device, vertices: asset.vertices, indices: asset.indices)
+            else { return nil }
+            return (pose, InstanceBatch(mesh: mesh, device: context.device, capacity: 64))
+        }
+
+    func submittedLivestock(_ pose: NeolithicLivestock.Pose) -> [InstanceData] {
+        guard buildingAtlas != nil, Era.at(reviewYear) == .neolithic,
+              let batch = neolithicLivestockBatches.first(where: { $0.0 == pose })?.1 else { return [] }
+        return readInstances(batch)
+    }
+
+    func submittedNeolithicLivestockCounts() -> [Int] {
+        guard buildingAtlas != nil, Era.at(reviewYear) == .neolithic else {
+            return Array(repeating: 0, count: NeolithicLivestock.poses.count)
+        }
+        var counts = Array(repeating: 0, count: NeolithicLivestock.poses.count)
+        for (pose, batch) in neolithicLivestockBatches { counts[pose.index] = batch.count }
+        return counts
+    }
 
     private lazy var animalBatch: InstanceBatch = {
         InstanceBatch(mesh: scene.animalMesh, device: context.device, capacity: 512)
@@ -2433,6 +2674,13 @@ final class Renderer: NSObject, MTKViewDelegate {
             draw(entry.batch.mesh, with: encoder, instances: entry.batch.count)
         }
 
+        if Era.at(reviewYear) == .neolithic {
+            for (_, batch) in neolithicPeopleBatches where batch.count > 0 {
+                encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
+                draw(batch.mesh, with: encoder, instances: batch.count)
+            }
+        }
+
         encoder.endEncoding()
     }
 
@@ -2469,6 +2717,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         scenePass.depthAttachment.storeAction = .dontCare
         scenePass.depthAttachment.clearDepth = 1.0
 
+        if Era.at(reviewYear) == .neolithic { updateNeolithicPeople(time: time) }
         let light = solarLight()
         currentLightVP = lightMatrix(sunDir: light.direction)
         currentCloseLightVP = lightMatrix(sunDir: light.direction,
@@ -2726,6 +2975,13 @@ final class Renderer: NSObject, MTKViewDelegate {
         encoder.setFrontFacing(.counterClockwise)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<FrameUniforms>.stride, index: 1)
         encoder.setFragmentBytes(&uniforms, length: MemoryLayout<FrameUniforms>.stride, index: 1)
+        submittedHearthLights = NeolithicHearth.lights(hearthSources, eye: cam.eye, time: time,
+            dusk: smoothstep(0.07, 0.80, light.night), rain: weatherIntensity)
+        var lights = [SIMD4<Float>(Float(submittedHearthLights.count), 0, 0, 0)] + submittedHearthLights
+        lights += Array(repeating: .zero, count: 5 - lights.count)
+        lights.withUnsafeBytes { bytes in
+            encoder.setFragmentBytes(bytes.baseAddress!, length: bytes.count, index: 3)
+        }
         encoder.setFragmentTexture(shadowMap, index: 1)
         encoder.setFragmentTexture(closeShadowMap, index: 4)
 
@@ -2749,9 +3005,17 @@ final class Renderer: NSObject, MTKViewDelegate {
         }
 
         if riverView.isEmpty {
+        if let yards = scene.yardMesh, let buffer = yardIdentityBuffer {
+            encoder.setVertexBuffer(buffer, offset: 0, index: 2)
+            draw(yards, with: encoder, instances: 1)
+        }
         if let fields = scene.fieldMesh, let buffer = fieldIdentityBuffer {
             encoder.setVertexBuffer(buffer, offset: 0, index: 2)
             draw(fields, with: encoder, instances: 1)
+        }
+        if let beds = scene.cerealMesh, let buffer = cerealIdentityBuffer {
+            encoder.setVertexBuffer(buffer, offset: 0, index: 2)
+            draw(beds, with: encoder, instances: 1)
         }
         // Roads sit just above the terrain and below the buildings.
         if let streets = scene.streetMesh {
@@ -2813,6 +3077,20 @@ final class Renderer: NSObject, MTKViewDelegate {
             for entry in buildingBatches where entry.batch.count > 0 {
                 encoder.setVertexBuffer(entry.batch.buffer, offset: 0, index: 2)
                 draw(entry.batch.mesh, with: encoder, instances: entry.batch.count)
+            }
+            if Era.at(reviewYear) == .neolithic {
+                for (_, batch) in neolithicHarvestBatches where batch.count > 0 {
+                    encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
+                    draw(batch.mesh, with: encoder, instances: batch.count)
+                }
+                for (_, batch) in neolithicPeopleBatches where batch.count > 0 {
+                    encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
+                    draw(batch.mesh, with: encoder, instances: batch.count)
+                }
+                for (_, batch) in neolithicLivestockBatches where batch.count > 0 {
+                    encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
+                    draw(batch.mesh, with: encoder, instances: batch.count)
+                }
             }
         }
 
@@ -2893,7 +3171,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             return
         }
 
-        let time = Float(CACurrentMediaTime() - startTime)
+        let time = referenceAnimationTime ?? Float(CACurrentMediaTime() - startTime)
         encodeFrame(commandBuffer: commandBuffer,
                     target: drawable.texture,
                     time: time)

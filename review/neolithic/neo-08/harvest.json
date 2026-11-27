@@ -1,0 +1,24 @@
+{
+  "animationTime" : 22,
+  "eye" : [
+    -0.16298471,
+    0.024722826,
+    0.15506354
+  ],
+  "fov" : 26,
+  "height" : 900,
+  "hour" : 15,
+  "precipitation" : 0,
+  "provenance" : "NEO-08 harvest corner",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    -0.15878472,
+    0.022122826,
+    0.15186355
+  ],
+  "width" : 1440,
+  "year" : 450
+}

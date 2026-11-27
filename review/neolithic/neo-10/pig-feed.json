@@ -1,0 +1,24 @@
+{
+  "animationTime" : 25.686728,
+  "eye" : [
+    0.16275483,
+    0.02314145,
+    -0.30523804
+  ],
+  "fov" : 40,
+  "height" : 900,
+  "hour" : 14,
+  "precipitation" : 0,
+  "provenance" : "NEO-10 pig production herd",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 1,
+  "snow" : false,
+  "target" : [
+    0.17175484,
+    0.01774145,
+    -0.31313804
+  ],
+  "width" : 1440,
+  "year" : 450
+}
