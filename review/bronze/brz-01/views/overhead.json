@@ -1,0 +1,24 @@
+{
+  "animationTime": 24,
+  "eye": [
+    0.15059757,
+    0.12115211,
+    -0.04255169
+  ],
+  "fov": 47,
+  "height": 900,
+  "hour": 14.5,
+  "precipitation": 0,
+  "provenance": "BRZ-01 Norimton roof review \u2014 overhead",
+  "schemaVersion": 1,
+  "season": 0.68,
+  "seed": 8,
+  "snow": false,
+  "target": [
+    0.14659758,
+    0.02615211,
+    -0.056551687
+  ],
+  "width": 1440,
+  "year": 810
+}

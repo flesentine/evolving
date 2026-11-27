@@ -11,6 +11,8 @@ Outputs:
     Assets/Buildings/variants/manifest.json
 """
 
+import argparse
+
 import bpy
 import bmesh
 import json
@@ -175,7 +177,7 @@ def classical(spec):
 # Neolithic / Bronze roundhouse
 # ---------------------------------------------------------------------------
 
-def hut(spec):
+def hut(spec, *, repair_shell=False):
     mb = MB()
     R, WH = spec["radius"], spec["wall_h"]
     eave_r = R + spec["eave"]
@@ -191,6 +193,14 @@ def hut(spec):
         d = abs(((a - door_ang + math.pi) % (2 * math.pi)) - math.pi)
         return d < door_half
 
+    def ring_quad(a, b, c, d, ta, tb, tc, td, smooth=False):
+        # Angles increase in XZ. Reverse the legacy ring ordering so each
+        # surface points to its own exterior throughout the circuit.
+        if repair_shell:
+            mb.quad(a, d, c, b, ta, td, tc, tb, smooth=smooth)
+        else:
+            mb.quad(a, b, c, d, ta, tb, tc, td, smooth=smooth)
+
     # Footing ring.
     ob = ring(R + 0.32, 0.0)
     ot = ring(R + 0.32, 0.5)
@@ -198,13 +208,13 @@ def hut(spec):
     it = ring(R - 0.05, 0.5)
     for i in range(seg):
         j = (i + 1) % seg
-        mb.quad(ob[i], ob[j], ot[j], ot[i],
+        ring_quad(ob[i], ob[j], ot[j], ot[i],
                 uv("stone", i / seg, 1), uv("stone", (i + 1) / seg, 1),
                 uv("stone", (i + 1) / seg, 0.6), uv("stone", i / seg, 0.6))
-        mb.quad(ot[i], ot[j], it[j], it[i],
+        ring_quad(ot[i], ot[j], it[j], it[i],
                 uv("stone", i / seg, 0.6), uv("stone", (i + 1) / seg, 0.6),
                 uv("stone", (i + 1) / seg, 0.4), uv("stone", i / seg, 0.4))
-        mb.quad(it[i], it[j], ib[j], ib[i],
+        ring_quad(it[i], it[j], ib[j], ib[i],
                 uv("stone", i / seg, 0.4), uv("stone", (i + 1) / seg, 0.4),
                 uv("stone", (i + 1) / seg, 0), uv("stone", i / seg, 0))
 
@@ -216,7 +226,7 @@ def hut(spec):
         a = 2 * math.pi * (i + 0.5) / seg
         if in_gap(a):
             continue
-        mb.quad(lo[i], lo[j], hi[j], hi[i],
+        ring_quad(lo[i], lo[j], hi[j], hi[i],
                 uv("daub", i / seg * 2, 1), uv("daub", (i + 1) / seg * 2, 1),
                 uv("daub", (i + 1) / seg * 2, 0), uv("daub", i / seg * 2, 0),
                 smooth=True)
@@ -226,13 +236,14 @@ def hut(spec):
     ih = ring(R - 0.16, 0.5 + WH)
     for i in range(seg):
         j = (i + 1) % seg
-        mb.quad(ih[i], ih[j], il[j], il[i],
+        ring_quad(ih[i], ih[j], il[j], il[i],
                 uv("dark", 0, 0), uv("dark", 1, 0),
                 uv("dark", 1, 1), uv("dark", 0, 1))
     floor = ring(R - 0.12, 0.52)
     for i in range(seg):
         j = (i + 1) % seg
-        mb.tri((0, 0.52, 0), floor[i], floor[j],
+        corners = (floor[j], floor[i]) if repair_shell else (floor[i], floor[j])
+        mb.tri((0, 0.52, 0), *corners,
                uv("dark", 0.5, 0.5), uv("dark", 0.2, 0.8), uv("dark", 0.8, 0.8))
 
     # Posts.
@@ -254,29 +265,36 @@ def hut(spec):
         r = max(0.22, eave_r * (1.0 - 0.90 * t))
         profile.append((h - 0.04, r))
         profile.append((h + 0.02, r + 0.14))
-    profile.append((apex, 0.15))
+    profile.append((apex + 0.04 if repair_shell else apex, 0.15))
     rings = [(h, ring(r, h, seg, door_ang + math.pi / seg)) for (h, r) in profile]
     for i in range(len(profile) - 1):
         v0 = i / (len(profile) - 1)
         v1 = (i + 1) / (len(profile) - 1)
         for s2 in range(seg):
             t2 = (s2 + 1) % seg
-            mb.quad_out(rings[i][1][s2], rings[i][1][t2],
-                        rings[i + 1][1][t2], rings[i + 1][1][s2],
-                        (0, 0.4, 1),
-                        uv("thatch", s2 / seg, v0), uv("thatch", (s2 + 1) / seg, v0),
-                        uv("thatch", (s2 + 1) / seg, v1), uv("thatch", s2 / seg, v1),
-                        smooth=True)
+            a, b = rings[i][1][s2], rings[i][1][t2]
+            c, d = rings[i + 1][1][t2], rings[i + 1][1][s2]
+            ta, tb = uv("thatch", s2 / seg, v0), uv("thatch", (s2 + 1) / seg, v0)
+            tc, td = uv("thatch", (s2 + 1) / seg, v1), uv("thatch", s2 / seg, v1)
+            if repair_shell:
+                # Increasing XZ azimuth and rising courses require this winding
+                # for the outside of the shell, including the underside of lips.
+                ring_quad(a, b, c, d, ta, tb, tc, td, smooth=True)
+            else:
+                mb.quad_out(a, b, c, d, (0, 0.4, 1), ta, tb, tc, td, smooth=True)
 
     # Peak bundle.
     mb.box((0, apex + 0.20, 0), (0.30, 0.55, 0.30), "thatch")
     # Under-eave soffit.
+    def soffit(p):
+        if repair_shell:
+            return (p[0] * 0.86, eave_h + 0.20, p[2] * 0.86)
+        return (p[0] * 0.86, p[1] * 0.86, eave_h + 0.20)
+
     for s2 in range(seg):
         t2 = (s2 + 1) % seg
-        p0 = rings[0][1][s2]
-        p1 = rings[0][1][t2]
-        q0 = (p0[0] * 0.86, p0[1] * 0.86, eave_h + 0.20)
-        q1 = (p1[0] * 0.86, p1[1] * 0.86, eave_h + 0.20)
+        p0, p1 = rings[0][1][s2], rings[0][1][t2]
+        q0, q1 = soffit(p0), soffit(p1)
         mb.quad_out(p1, p0, q0, q1, (0, -1, 0),
                     uv("dark", s2 / seg, 0), uv("dark", (s2 + 1) / seg, 0),
                     uv("dark", (s2 + 1) / seg, 1), uv("dark", s2 / seg, 1))
@@ -966,6 +984,9 @@ def contact_sheet(objects, path, era, max_h=14.0, spacing=20.0):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--bronze-only", action="store_true", help="Rebuild only the legacy Bronze variant family")
+    args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
     os.makedirs(OUT, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
@@ -977,13 +998,15 @@ def main():
         "industrial": industrial,
         "modern": modern,
         "neolithic": hut,
-        "bronze": hut,
+        "bronze": lambda spec: hut(spec, repair_shell=True),
         "renaissance": classical,
         "information": tower,
         "future": tower,
     }
 
     for era, build in builders.items():
+        if args.bronze_only and era != "bronze":
+            continue
         rng = random.Random(0xC0FFEE ^ sum(ord(c) for c in era))
         spec_list = specs(era, rng)
         built = [(build(spec), spec) for spec in spec_list]
@@ -1016,7 +1039,13 @@ def main():
             bpy.data.objects.remove(obj, do_unlink=True)
             bpy.data.meshes.remove(mesh)
 
-    with open(os.path.join(OUT, "manifest.json"), "w") as f:
+    manifest_path = os.path.join(OUT, "manifest.json")
+    if args.bronze_only:
+        with open(manifest_path) as f:
+            original = json.load(f)
+        bronze = {entry["name"]: entry for entry in manifest}
+        manifest = [bronze[entry["name"]] if entry["era"] == "bronze" else entry for entry in original]
+    with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
 
     print("variants:", len(manifest))
