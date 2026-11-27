@@ -1,0 +1,24 @@
+{
+  "animationTime" : 24,
+  "eye" : [
+    0.15125903,
+    0.024020426,
+    -0.00793346
+  ],
+  "fov" : 46,
+  "height" : 900,
+  "hour" : 14.5,
+  "precipitation" : 0,
+  "provenance" : "BRZ-01 Norimton prototype — variants\/bronze-07",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 8,
+  "snow" : false,
+  "target" : [
+    0.16035248,
+    0.022520427,
+    -0.023880538
+  ],
+  "width" : 1440,
+  "year" : 810
+}

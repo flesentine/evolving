@@ -70,6 +70,8 @@ era-specific and procedurally shaded: braided earth tracks with hollow-way banks
   Fresnel response that warms at sunset.
   Models share one 2048² atlas and export to `.civmesh`; regenerate with
   `Scripts/build_variants.py` and rebuild with `Scripts/build_asset.sh`.
+  For editable Bronze roundhouses and the scoped exporter, see the
+  [Bronze Blender workflow](review/bronze/brz-02/README.md).
 - **Model detail.** Early houses carry real geometry, not just paint: doors with stone steps and
   timber lintels, recessed window panes with glazing bars, sills and painted shutters, roof ridge
   tiles, eaves boards and chimney pots. The well has a kerb, posts and a tiled roof, and stalls
