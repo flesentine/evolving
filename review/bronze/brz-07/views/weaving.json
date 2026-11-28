@@ -1,0 +1,24 @@
+{
+  "animationTime" : 32.512184,
+  "eye" : [
+    0.15786432,
+    0.031051518,
+    0.035885118
+  ],
+  "fov" : 27,
+  "height" : 800,
+  "hour" : 13.25,
+  "precipitation" : 0,
+  "provenance" : "BRZ-07 production weaving",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 8,
+  "snow" : false,
+  "target" : [
+    0.15849698,
+    0.027215334,
+    0.041457348
+  ],
+  "width" : 1280,
+  "year" : 1450
+}

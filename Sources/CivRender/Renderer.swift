@@ -314,6 +314,8 @@ final class Renderer: NSObject, MTKViewDelegate {
     private var hasFocus = false
     private(set) var townActivities: [TownActivity] = []
     private(set) var neolithicPeople: [NeolithicPeople.Routine] = []
+    private(set) var bronzePeople: [BronzePeople.Routine] = []
+    private var bronzeAmbientWalks: [Int32: [BronzeLayout.Walk]] = [:]
     private(set) var neolithicHarvest = NeolithicHarvest.Layout()
     private(set) var bronzeWalks: [Int32: [BronzeLayout.Walk]] = [:]
     private(set) var bronzeCourts: [SIMD2<Float>] = []
@@ -761,9 +763,17 @@ final class Renderer: NSObject, MTKViewDelegate {
         } catch {
             NSLog("Evolving: enclosure mesh failed — \(error)")
         }
+        bronzePeople = []
         if let bronzeSite {
-            let props = BronzeCraft.place(in: scene, geometry: geometry, seed: simulation.seed, site: bronzeSite)
-            for path in props.keys.sorted() { geometry.buildings[path] = props[path] }
+            let craft = BronzeCraft.place(in: scene, geometry: geometry, seed: simulation.seed, site: bronzeSite)
+            for path in craft.props.keys.sorted() { geometry.buildings[path] = craft.props[path] }
+            bronzePeople = BronzePeople.plan(in: scene, geometry: geometry, workshops: craft.workshops,
+                                            seed: simulation.seed, site: bronzeSite)
+        }
+        var workClearance = FieldSurface.Mask()
+        for routine in bronzePeople { workClearance.insertFootprint(routine.clearance) }
+        bronzeAmbientWalks = bronzeWalks.mapValues { walks in
+            walks.filter { !workClearance.intersectsFootprint($0.outline) }
         }
         for entry in buildingBatches where !NeolithicProps.paths.contains(entry.path) {
             entry.batch.update(geometry.buildings[entry.path] ?? [], device: context.device)
@@ -884,6 +894,12 @@ final class Renderer: NSObject, MTKViewDelegate {
         return readInstances(batch)
     }
 
+    func submittedBronzePeople(_ part: BronzePeople.Part) -> [InstanceData] {
+        guard Era.at(reviewYear) == .bronze, buildingAtlas != nil,
+              let batch = bronzePeopleBatches.first(where: { $0.0 == part })?.1 else { return [] }
+        return readInstances(batch)
+    }
+
     func submittedHarvest(_ part: NeolithicHarvest.Part) -> [InstanceData] {
         guard Era.at(reviewYear) == .neolithic, buildingAtlas != nil,
               let batch = neolithicHarvestBatches.first(where: { $0.0 == part })?.1 else { return [] }
@@ -904,6 +920,19 @@ final class Renderer: NSObject, MTKViewDelegate {
             }
         }
         for (part, batch) in neolithicPeopleBatches {
+            batch.update(instances[part.rawValue], device: context.device)
+        }
+    }
+
+    private func updateBronzePeople(time: Float) {
+        var instances = Array(repeating: [InstanceData](), count: BronzePeople.Part.allCases.count)
+        for routine in bronzePeople {
+            BronzePeople.sample(routine, time: time, scene: scene) { part, model in
+                instances[part.rawValue].append(InstanceData(model: model, color: SIMD4(1, 1, 1, 0),
+                    material: SIMD4(9, 0, 0, 0)))
+            }
+        }
+        for (part, batch) in bronzePeopleBatches {
             batch.update(instances[part.rawValue], device: context.device)
         }
     }
@@ -1703,7 +1732,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             let half = max(Int(ceil(grid.radius / max(grid.cell, 0.0001))), 2)
             let lanes: Float = 3
             let isBronze = currentEra == .bronze
-            let paths = bronzeWalks[settlement.id] ?? []
+            let paths = bronzeAmbientWalks[settlement.id] ?? []
             let pedestrianCount = isBronze ? min(paths.count, 8) : 16
 
             for k in 0..<pedestrianCount {
@@ -2154,6 +2183,14 @@ final class Renderer: NSObject, MTKViewDelegate {
         NeolithicPeople.Part.allCases.compactMap { part in
             guard part != .quernBed,
                   let asset = try? CivMesh.load(named: part.path + ".civmesh"),
+                  let mesh = try? Mesh(device: context.device, vertices: asset.vertices, indices: asset.indices)
+            else { return nil }
+            return (part, InstanceBatch(mesh: mesh, device: context.device, capacity: 64))
+        }
+
+    private lazy var bronzePeopleBatches: [(BronzePeople.Part, InstanceBatch)] =
+        BronzePeople.Part.allCases.compactMap { part in
+            guard let asset = try? CivMesh.load(named: part.path + ".civmesh"),
                   let mesh = try? Mesh(device: context.device, vertices: asset.vertices, indices: asset.indices)
             else { return nil }
             return (part, InstanceBatch(mesh: mesh, device: context.device, capacity: 64))
@@ -2714,6 +2751,13 @@ final class Renderer: NSObject, MTKViewDelegate {
             }
         }
 
+        if Era.at(reviewYear) == .bronze {
+            for (_, batch) in bronzePeopleBatches where batch.count > 0 {
+                encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
+                draw(batch.mesh, with: encoder, instances: batch.count)
+            }
+        }
+
         encoder.endEncoding()
     }
 
@@ -2750,7 +2794,11 @@ final class Renderer: NSObject, MTKViewDelegate {
         scenePass.depthAttachment.storeAction = .dontCare
         scenePass.depthAttachment.clearDepth = 1.0
 
-        if Era.at(reviewYear) == .neolithic { updateNeolithicPeople(time: time) }
+        switch Era.at(reviewYear) {
+        case .neolithic: updateNeolithicPeople(time: time)
+        case .bronze: updateBronzePeople(time: time)
+        default: break
+        }
         let light = solarLight()
         currentLightVP = lightMatrix(sunDir: light.direction)
         currentCloseLightVP = lightMatrix(sunDir: light.direction,
@@ -3129,6 +3177,12 @@ final class Renderer: NSObject, MTKViewDelegate {
                     draw(batch.mesh, with: encoder, instances: batch.count)
                 }
                 for (_, batch) in neolithicLivestockBatches where batch.count > 0 {
+                    encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
+                    draw(batch.mesh, with: encoder, instances: batch.count)
+                }
+            }
+            if Era.at(reviewYear) == .bronze {
+                for (_, batch) in bronzePeopleBatches where batch.count > 0 {
                     encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
                     draw(batch.mesh, with: encoder, instances: batch.count)
                 }
