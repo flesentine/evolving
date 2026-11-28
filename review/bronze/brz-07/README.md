@@ -11,6 +11,11 @@ clay jar's rim. The basket carrier walks across a submitted court, pauses, turns
 and carries the basket back. Stable seed and town IDs set the phases. Each
 pose uses absolute animation time and the rendered terrain or court height.
 
+The new Blender parts are in **Clothing and Work** inside the
+[editable Bronze library](../../../Assets/BronzeHouse/bronze.blend).
+Two exports from the shared pipeline matched across all 42 assets, including
+the 37 previously exported meshes.
+
 ## Matched views
 
 All four comparisons use seed 8 at year 1450. BRZ-06 is on the left and
@@ -21,10 +26,16 @@ BRZ-07 is on the right.
 - [Pottery shaping](shaping-before-after.jpg)
 - [Basket carrying](carrying-before-after.jpg)
 
-The new Blender parts are in **Clothing and Work** inside the
-[editable Bronze library](../../../Assets/BronzeHouse/bronze.blend).
-Two exports from the shared pipeline matched across all 42 assets, including
-the 37 previously exported meshes.
+## Motion in the installed Timeline
+
+These ten-second clips use the same saved views at normal animation speed.
+The camera and year stay fixed. The shuttle moves across the loom, the
+potter works both hands around the jar rim, and the carrier crosses the
+court, turns and carries the basket back.
+
+- [Weaving clip](weaving-timeline.mp4)
+- [Pottery shaping clip](shaping-timeline.mp4)
+- [Basket carrying clip](carrying-timeline.mp4)
 
 ## Try the workshop on your Mac
 
