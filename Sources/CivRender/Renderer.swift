@@ -317,13 +317,14 @@ final class Renderer: NSObject, MTKViewDelegate {
     private(set) var bronzePeople: [BronzePeople.Routine] = []
     private var bronzeAmbientWalks: [Int32: [BronzeLayout.Walk]] = [:]
     private(set) var neolithicHarvest = NeolithicHarvest.Layout()
+    private(set) var bronzeHarvest: [BronzeHarvest.Station] = []
     private(set) var bronzeWalks: [Int32: [BronzeLayout.Walk]] = [:]
     private(set) var bronzeCourts: [SIMD2<Float>] = []
     private var neolithicHomesAtBronzeBoundary: (seed: UInt64, homes: [NeolithicInheritance.Home])?
     private(set) var neolithicBarrow: NeolithicBarrow.Placement?
     private(set) var neolithicHerds: [NeolithicHerds.Herd] = []
     private(set) var neolithicHerdClearance: NeolithicHerds.Clearance?
-    private var hearthSources: [NeolithicHearth.Source] = []
+    private var hearthSources: [HearthEffects.Source] = []
     private(set) var submittedHearthLights: [SIMD4<Float>] = []
     private var submittedHearthPuffCount = 0
     private var carPaths: [CarPath] = []
@@ -764,11 +765,16 @@ final class Renderer: NSObject, MTKViewDelegate {
             NSLog("Evolving: enclosure mesh failed — \(error)")
         }
         bronzePeople = []
+        bronzeHarvest = []
         if let bronzeSite {
             let craft = BronzeCraft.place(in: scene, geometry: geometry, seed: simulation.seed, site: bronzeSite)
             for path in craft.props.keys.sorted() { geometry.buildings[path] = craft.props[path] }
             bronzePeople = BronzePeople.plan(in: scene, geometry: geometry, workshops: craft.workshops,
                                             seed: simulation.seed, site: bronzeSite)
+            bronzeHarvest = BronzeHarvest.plan(in: scene, geometry: geometry, site: bronzeSite,
+                                               routines: bronzePeople, seed: simulation.seed)
+            geometry.buildings[BronzeHarvest.hearthPath] = bronzeHarvest.map(\.hearth)
+            geometry.buildings[BronzeHarvest.potPath] = bronzeHarvest.map(\.pot)
         }
         var workClearance = FieldSurface.Mask()
         for routine in bronzePeople { workClearance.insertFootprint(routine.clearance) }
@@ -817,25 +823,31 @@ final class Renderer: NSObject, MTKViewDelegate {
             }
         }
         townActivities = TownActivity.choose(geometry.activityCandidates, geometry: geometry, scene: scene)
-        hearthSources = NeolithicHearth.sources(neolithicPeople)
+        hearthSources = bronze ? bronzeHarvest.map(\.smoke) : HearthEffects.sources(neolithicPeople)
         neolithicHarvest = neolithic
             ? NeolithicHarvest.plan(in: scene, geometry: geometry, routines: neolithicPeople,
                 trees: readInstances(treeBatch) + readInstances(broadleafBatch), seed: simulation.seed,
                 reference: neolithicReferenceStage) : NeolithicHarvest.Layout()
+        var harvest = neolithicHarvest
+        if bronze {
+            harvest = NeolithicHarvest.Layout(plots: bronzeHarvest.flatMap(\.plots),
+                props: [.sheaves: bronzeHarvest.map(\.bundles)])
+        }
         do {
-            try scene.rebuildCerealBeds(neolithicHarvest.plots)
-            if neolithic {
-                let soil = FieldSurface.Mask(mesh: scene.cerealMesh)
-                NeolithicHarvest.plant(neolithicHarvest.plots, on: soil, into: &neolithicHarvest)
-            }
+            try scene.rebuildCerealBeds(harvest.plots)
+            let soil = FieldSurface.Mask(mesh: scene.cerealMesh)
+            NeolithicHarvest.plant(harvest.plots, on: soil, into: &harvest)
         } catch {
-            NSLog("Evolving: Neolithic cereal beds failed — \(error)")
+            NSLog("Evolving: cereal beds failed — \(error)")
+        }
+        if neolithic || bronze {
+            for (part, batch) in cerealBatches {
+                batch.update(harvest.props[part, default: []], device: context.device)
+            }
         }
         neolithicBarrow = nil
         if neolithic {
-            for (part, batch) in neolithicHarvestBatches {
-                batch.update(neolithicHarvest.props[part, default: []], device: context.device)
-            }
+            neolithicHarvest = harvest
             let clearance = NeolithicHerds.clearance(in: scene, geometry: geometry,
                 routines: neolithicPeople, harvest: neolithicHarvest,
                 trees: readInstances(treeBatch) + readInstances(broadleafBatch))
@@ -901,8 +913,9 @@ final class Renderer: NSObject, MTKViewDelegate {
     }
 
     func submittedHarvest(_ part: NeolithicHarvest.Part) -> [InstanceData] {
-        guard Era.at(reviewYear) == .neolithic, buildingAtlas != nil,
-              let batch = neolithicHarvestBatches.first(where: { $0.0 == part })?.1 else { return [] }
+        let era = Era.at(reviewYear)
+        guard era == .neolithic || era == .bronze, buildingAtlas != nil,
+              let batch = cerealBatches.first(where: { $0.0 == part })?.1 else { return [] }
         return readInstances(batch)
     }
 
@@ -1703,7 +1716,7 @@ final class Renderer: NSObject, MTKViewDelegate {
                                           color: SIMD4(SIMD3(0.68, 0.68, 0.69), alpha)))
             }
         }
-        let hearthSmoke = NeolithicHearth.smoke(hearthSources, eye: camera.eye, time: time, rain: weatherIntensity)
+        let hearthSmoke = HearthEffects.smoke(hearthSources, eye: camera.eye, time: time, rain: weatherIntensity)
         submittedHearthPuffCount = hearthSmoke.count
         puffs.append(contentsOf: hearthSmoke)
         smokeBatch.update(puffs, device: context.device)
@@ -2171,7 +2184,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         InstanceBatch(mesh: scene.smokeMesh, device: context.device, capacity: 256)
     }()
 
-    private lazy var neolithicHarvestBatches: [(NeolithicHarvest.Part, InstanceBatch)] =
+    private lazy var cerealBatches: [(NeolithicHarvest.Part, InstanceBatch)] =
         NeolithicHarvest.Part.allCases.compactMap { part in
             guard let asset = try? CivMesh.load(named: part.path + ".civmesh"),
                   let mesh = try? Mesh(device: context.device, vertices: asset.vertices, indices: asset.indices)
@@ -3056,7 +3069,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         encoder.setFrontFacing(.counterClockwise)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<FrameUniforms>.stride, index: 1)
         encoder.setFragmentBytes(&uniforms, length: MemoryLayout<FrameUniforms>.stride, index: 1)
-        submittedHearthLights = NeolithicHearth.lights(hearthSources, eye: cam.eye, time: time,
+        submittedHearthLights = HearthEffects.lights(hearthSources, eye: cam.eye, time: time,
             dusk: smoothstep(0.07, 0.80, light.night), rain: weatherIntensity)
         var lights = [SIMD4<Float>(Float(submittedHearthLights.count), 0, 0, 0)] + submittedHearthLights
         lights += Array(repeating: .zero, count: 5 - lights.count)
@@ -3167,11 +3180,14 @@ final class Renderer: NSObject, MTKViewDelegate {
                 encoder.setVertexBuffer(entry.batch.buffer, offset: 0, index: 2)
                 draw(entry.batch.mesh, with: encoder, instances: entry.batch.count)
             }
-            if Era.at(reviewYear) == .neolithic {
-                for (_, batch) in neolithicHarvestBatches where batch.count > 0 {
+            let era = Era.at(reviewYear)
+            if era == .neolithic || era == .bronze {
+                for (_, batch) in cerealBatches where batch.count > 0 {
                     encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
                     draw(batch.mesh, with: encoder, instances: batch.count)
                 }
+            }
+            if era == .neolithic {
                 for (_, batch) in neolithicPeopleBatches where batch.count > 0 {
                     encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
                     draw(batch.mesh, with: encoder, instances: batch.count)
@@ -3181,7 +3197,7 @@ final class Renderer: NSObject, MTKViewDelegate {
                     draw(batch.mesh, with: encoder, instances: batch.count)
                 }
             }
-            if Era.at(reviewYear) == .bronze {
+            if era == .bronze {
                 for (_, batch) in bronzePeopleBatches where batch.count > 0 {
                     encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
                     draw(batch.mesh, with: encoder, instances: batch.count)
