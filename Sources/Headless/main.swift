@@ -50,6 +50,7 @@ func usage() -> Never {
       civheadless neolithictransition <directory>
       civheadless bronzeroofcheck [review-directory]
       civheadless bronzefamilycheck <review-directory>
+      civheadless bronzecourtcheck <review-directory>
       civheadless neolithicyards <directory>
       civheadless neolithicprops <directory>
       civheadless neolithicpeople <directory>
@@ -216,6 +217,12 @@ case "bronzefamilycheck":
     do {
         try BronzeRoofCheck.runFamily(directory: URL(fileURLWithPath: arguments[2], isDirectory: true))
     } catch { fail("Bronze family check failed — \(error)") }
+
+case "bronzecourtcheck":
+    guard arguments.count == 3 else { usage() }
+    do {
+        try BronzeCourtCheck.run(directory: URL(fileURLWithPath: arguments[2], isDirectory: true))
+    } catch { fail("Bronze court check failed — \(error)") }
 
 case "neolithictransition":
     guard arguments.count == 3 else { usage() }
@@ -572,6 +579,13 @@ case "determinism":
                                       $0.points.first?.y ?? 0,
                                       Float($0.points.count), $0.width))
         })
+        for patch in geometry.bronzeLayout.patches {
+            h = (h ^ UInt64(patch.outline.count)) &* 0x0000_0100_0000_01B3
+            for point in patch.outline {
+                h = (h ^ UInt64(point.x.bitPattern)) &* 0x0000_0100_0000_01B3
+                h = (h ^ UInt64(point.y.bitPattern)) &* 0x0000_0100_0000_01B3
+            }
+        }
         for key in geometry.buildings.keys.sorted() {
             for byte in key.utf8 { h = (h ^ UInt64(byte)) &* 0x0000_0100_0000_01B3 }
             mix(&h, geometry.buildings[key] ?? [])

@@ -81,8 +81,8 @@ enum NeolithicTransitionCheck {
             guard owners.values.joined().count == inherited.count,
                   owners.allSatisfy({ id, homes in
                       bronze.settlements.contains { $0.isAlive && $0.id == id }
-                          && homes.count <= 4 && Set(homes.map(\.court)).count == 1
-                  }) else { throw Failure("Seed \(seed) kept a house from an abandoned hamlet or mixed courts") }
+                          && Dictionary(grouping: homes, by: \.court).values.allSatisfy { $0.count <= 4 }
+                  }) else { throw Failure("Seed \(seed) kept a house from an abandoned hamlet or exceeded the per-court limit") }
 
             renderer.updateScene(late)
             let early = houses(renderer)

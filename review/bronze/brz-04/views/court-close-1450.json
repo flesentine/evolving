@@ -1,0 +1,24 @@
+{
+  "animationTime" : 24,
+  "eye" : [
+    0.14640455,
+    0.0450901,
+    0.042837214
+  ],
+  "fov" : 48,
+  "height" : 900,
+  "hour" : 14.5,
+  "precipitation" : 0,
+  "provenance" : "BRZ-04 occupied Bronze court — court-close-1450",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 8,
+  "snow" : false,
+  "target" : [
+    0.13440455,
+    0.0290901,
+    0.024837214
+  ],
+  "width" : 1440,
+  "year" : 1450
+}

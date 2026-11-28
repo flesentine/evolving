@@ -88,9 +88,10 @@ enum BronzeRoofCheck {
         guard allFailures == 0 else {
             throw Failure("\(allFailures)/\(allProbes) exterior rays miss the nearest roof under back-face culling")
         }
-        let houses = renderer.submittedBuildings().filter { paths.contains($0.path) }
+        let domestic = Set(BronzeHome.allCases.map(\.path))
+        let houses = renderer.submittedBuildings().filter { domestic.contains($0.path) }
         guard !houses.isEmpty else { throw Failure("Year 810 submits no Bronze Age houses") }
-        print("PASS \(allProbes) exterior coverage probes on \(meshes.count) uploaded roofs, \(houses.count) Bronze Age building instances at year 810")
+        print("PASS \(allProbes) exterior coverage probes on \(meshes.count) legacy roofs, \(houses.count) domestic building instances at year 810")
         if let directory {
             try prototype(directory: directory, renderer: renderer, simulation: simulation, houses: houses)
         }
