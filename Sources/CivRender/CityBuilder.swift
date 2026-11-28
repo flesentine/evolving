@@ -534,6 +534,24 @@ enum CityBuilder {
                     break
                 }
                 if !placedHouse { continue }
+            } else if era == .bronze && (slot.district == .residential || slot.district == .agricultural) {
+                for form in BronzeHome.candidates(cell: slot.cellIndex, elevation: ground) {
+                    var model = houseModel(form.asset)
+                    let footprint = RiverPlacement.transformed(RiverPlacement.authoredBounds(form.path), by: model)
+                    guard footprint.count == 4,
+                          river?.intersectsFootprint(footprint, margin: 2 / metres) != true else { continue }
+                    let samples = BronzeHome.foundationSamples(footprint)
+                    guard samples.allSatisfy({ !terrain.isWater(x: $0.x, z: $0.y) }) else { continue }
+                    let heights = samples.map { renderedGround?($0) ?? terrain.originalTriangleHeight(at: $0) }
+                    let highest = heights.max()!
+                    // Leave a little skirt in the ground at the lowest corner.
+                    guard highest - heights.min()! + 0.08 / metres
+                              <= BronzeHome.skirtDepth * model.columns.1.y else { continue }
+                    model.columns.3.y = highest
+                    geometry.buildings[form.path, default: []].append(InstanceData(
+                        model: model, color: SIMD4(tint, 0), material: SIMD4(9, 0, 0, 0)))
+                    break
+                }
             } else {
                 geometry.buildings[asset.path, default: []].append(InstanceData(
                     model: houseModel(asset), color: SIMD4(tint, 0), material: SIMD4(9, 0, 0, 0)))

@@ -27,7 +27,7 @@ enum NeolithicInheritance {
 
     static func place(_ homes: [Home], settlements: [Settlement], geometry: inout CityBuilder.Geometry,
                       scene: WorldScene, trees: [InstanceData]) -> FieldSurface.Mask {
-        let bronzePaths = Set(BuildingCatalog.bronze.map(\.path))
+        let bronzePaths = Set(BuildingCatalog.bronze.map(\.path) + BronzeHome.allCases.map(\.path))
         var built = FieldSurface.Mask()
         func reserve(_ instances: [InstanceData], bounds: [SIMD2<Float>]) {
             for item in instances {
