@@ -61,6 +61,9 @@ final class WorldScene {
     private(set) var roadMesh: Mesh?
     private(set) var streetMesh: Mesh?
     private(set) var yardMesh: Mesh?
+    private(set) var bronzeEnclosureMesh: Mesh?
+    private(set) var bronzeAccessMesh: Mesh?
+    private(set) var bronzePens: [BronzeEnclosures.Pen] = []
     private(set) var neolithicYards = NeolithicYards.Layout()
     private(set) var fieldMesh: Mesh?
     private(set) var cerealMesh: Mesh?
@@ -826,6 +829,56 @@ final class WorldScene {
         guard !mesh.indices.isEmpty else { return }
         yardMesh = try Mesh(device: device, vertices: mesh.vertices, indices: mesh.indices)
         activityStreets = FieldSurface.Mask(mesh: yardMesh)
+    }
+
+    func rebuildBronzeEnclosures(_ geometry: CityBuilder.Geometry, seed: UInt64,
+                                  site: BronzeLayout.Site?) throws {
+        bronzeEnclosureMesh = nil
+        bronzeAccessMesh = nil
+        bronzePens = []
+        guard var site, !geometry.bronzeLayout.courts.isEmpty else { return }
+        for path in geometry.buildings.keys.sorted() {
+            let bounds = RiverPlacement.authoredBounds(path)
+            for instance in geometry.buildings[path, default: []] {
+                site.solid.insertFootprint(RiverPlacement.transformed(bounds, by: instance.model))
+            }
+        }
+        for box in geometry.boxes {
+            site.solid.insertFootprint(RiverPlacement.transformed(RiverPlacement.unitBoxBounds, by: box.model))
+        }
+        let gable = RiverPlacement.bounds(Geometry.gable())
+        for ruin in geometry.gables {
+            site.solid.insertFootprint(RiverPlacement.transformed(gable, by: ruin.model))
+        }
+        let ground = BronzeEnclosures.Site(ground: site, crops: FieldSurface.Mask(mesh: fieldMesh),
+                                           paths: activityStreets)
+        let roads = activityRoads
+        let streets = activityStreets
+        var accessVertices: [Vertex] = []
+        var accessIndices: [UInt32] = []
+        let pens = BronzeEnclosures.plan(courts: geometry.bronzeLayout.courts, seed: seed, site: ground) { pen in
+            let access = FieldSurface.drape(BronzeEnclosures.accessPatches(pen), scene: self,
+                                            roads: roads, streets: streets)
+            guard !access.indices.isEmpty else { return false }
+            let mask = FieldSurface.Mask(vertices: access.vertices, indices: access.indices)
+            // A clipped approach must still reach the inside of its gate.
+            guard pen.access.allSatisfy({ walk in
+                walk.samples(step: 0.20 / RiverGraph.metresPerUnit).allSatisfy {
+                    streets.covers($0) || mask.covers($0)
+                }
+            }) else { return false }
+            let base = UInt32(accessVertices.count)
+            accessVertices.append(contentsOf: access.vertices)
+            accessIndices.append(contentsOf: access.indices.map { base + $0 })
+            return true
+        }
+        guard !pens.isEmpty else { return }
+        let vertices = BronzeEnclosures.mesh(pens, seed: seed, ground: renderedTerrainHeight(at:))
+        let banks = try Mesh(device: device, vertices: vertices)
+        let access = try Mesh(device: device, vertices: accessVertices, indices: accessIndices)
+        bronzeEnclosureMesh = banks
+        bronzeAccessMesh = access
+        bronzePens = pens
     }
 
     var activityRoads: FieldSurface.Mask { roadFieldMask ?? FieldSurface.Mask(mesh: roadMesh) }

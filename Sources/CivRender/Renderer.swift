@@ -115,6 +115,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     private let identityBatch: InstanceBatch
     private var roadIdentityBuffer: MTLBuffer?
     private var yardIdentityBuffer: MTLBuffer?
+    private var enclosureIdentityBuffer: MTLBuffer?
     private var streetIdentityBuffer: MTLBuffer?
     private var fieldIdentityBuffer: MTLBuffer?
     private var cerealIdentityBuffer: MTLBuffer?
@@ -481,6 +482,7 @@ final class Renderer: NSObject, MTKViewDelegate {
                              device: device)
         roadIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 11)
         yardIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 19)
+        enclosureIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 2)
         streetIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 12)
         fieldIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 5)
         cerealIdentityBuffer = Renderer.makeIdentityBuffer(device: device, material: 21)
@@ -743,7 +745,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         } catch {
             NSLog("Evolving: yard mesh failed — \(error)")
         }
-        bronzeCourts = geometry.bronzeLayout.courts
+        bronzeCourts = geometry.bronzeLayout.courts.map(\.centre)
         let groundPaths = scene.activityStreets
         bronzeWalks = geometry.bronzeLayout.walks.mapValues { routes in
             routes.filter { $0.samples().allSatisfy(groundPaths.covers) }
@@ -753,6 +755,11 @@ final class Renderer: NSObject, MTKViewDelegate {
             try scene.rebuildFields(geometry.fields, recordFootprint: simulation.era == .neolithic)
         } catch {
             NSLog("Evolving: field mesh failed — \(error)")
+        }
+        do {
+            try scene.rebuildBronzeEnclosures(geometry, seed: simulation.seed, site: bronzeSite)
+        } catch {
+            NSLog("Evolving: enclosure mesh failed — \(error)")
         }
         for entry in buildingBatches where !NeolithicProps.paths.contains(entry.path) {
             entry.batch.update(geometry.buildings[entry.path] ?? [], device: context.device)
@@ -2682,6 +2689,10 @@ final class Renderer: NSObject, MTKViewDelegate {
             if let banks = scene.riverBankMesh { draw(banks, with:encoder,instances:1) }
         }
 
+        if let banks = scene.bronzeEnclosureMesh, let buffer = enclosureIdentityBuffer {
+            encoder.setVertexBuffer(buffer, offset: 0, index: 2)
+            draw(banks, with: encoder, instances: 1)
+        }
         for batch in [boxBatch, treeBatch, broadleafBatch, coneBatch] where batch.count > 0 {
             encoder.setVertexBuffer(batch.buffer, offset: 0, index: 2)
             draw(batch.mesh, with: encoder, instances: batch.count)
@@ -3026,6 +3037,14 @@ final class Renderer: NSObject, MTKViewDelegate {
         if let yards = scene.yardMesh, let buffer = yardIdentityBuffer {
             encoder.setVertexBuffer(buffer, offset: 0, index: 2)
             draw(yards, with: encoder, instances: 1)
+        }
+        if let access = scene.bronzeAccessMesh, let buffer = yardIdentityBuffer {
+            encoder.setVertexBuffer(buffer, offset: 0, index: 2)
+            draw(access, with: encoder, instances: 1)
+        }
+        if let enclosure = scene.bronzeEnclosureMesh, let buffer = enclosureIdentityBuffer {
+            encoder.setVertexBuffer(buffer, offset: 0, index: 2)
+            draw(enclosure, with: encoder, instances: 1)
         }
         if let fields = scene.fieldMesh, let buffer = fieldIdentityBuffer {
             encoder.setVertexBuffer(buffer, offset: 0, index: 2)
