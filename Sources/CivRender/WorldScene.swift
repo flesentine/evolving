@@ -812,8 +812,16 @@ final class WorldScene {
     func rebuildNeolithicYards(_ entrances: [NeolithicYards.Entrance], boxes: [InstanceData]) throws {
         yardMesh = nil
         neolithicYards = NeolithicYards.build(entrances, boxes: boxes, scene: self)
-        guard !neolithicYards.surfaces.isEmpty else { return }
-        let mesh = FieldSurface.drape(neolithicYards.surfaces, scene: self,
+        try submitCourtyardGround(neolithicYards.surfaces)
+    }
+
+    func rebuildBronzeCourts(_ patches: [FieldSurface.GroundPatch]) throws {
+        try submitCourtyardGround(patches)
+    }
+
+    private func submitCourtyardGround(_ patches: [FieldSurface.GroundPatch]) throws {
+        guard !patches.isEmpty else { return }
+        let mesh = FieldSurface.drape(patches, scene: self,
                                      roads: activityRoads, streets: activityStreets)
         guard !mesh.indices.isEmpty else { return }
         yardMesh = try Mesh(device: device, vertices: mesh.vertices, indices: mesh.indices)

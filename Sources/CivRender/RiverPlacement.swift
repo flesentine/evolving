@@ -6,6 +6,8 @@ import simd
 enum RiverPlacement {
     private static var buildingBounds: [String: [SIMD2<Float>]] = [:]
 
+    static let unitBoxBounds = bounds(Geometry.cube())
+
     static func bounds(_ vertices: [Vertex]) -> [SIMD2<Float>] {
         guard let first = vertices.first else { return [] }
         var lo = SIMD2(first.position.x, first.position.z), hi = lo

@@ -314,9 +314,9 @@ final class Renderer: NSObject, MTKViewDelegate {
     private(set) var townActivities: [TownActivity] = []
     private(set) var neolithicPeople: [NeolithicPeople.Routine] = []
     private(set) var neolithicHarvest = NeolithicHarvest.Layout()
-    private var inheritedHomeFootprints = FieldSurface.Mask()
-    private var bronzeWalksClear: [Int: Bool] = [:]
-    private var neolithicHomesAtBronzeBoundary: [NeolithicInheritance.Home]?
+    private(set) var bronzeWalks: [Int32: [BronzeLayout.Walk]] = [:]
+    private(set) var bronzeCourts: [SIMD2<Float>] = []
+    private var neolithicHomesAtBronzeBoundary: (seed: UInt64, homes: [NeolithicInheritance.Home])?
     private(set) var neolithicBarrow: NeolithicBarrow.Placement?
     private(set) var neolithicHerds: [NeolithicHerds.Herd] = []
     private(set) var neolithicHerdClearance: NeolithicHerds.Clearance?
@@ -619,26 +619,6 @@ final class Renderer: NSObject, MTKViewDelegate {
     func updateScene(_ simulation: Simulation, refreshRoads: Bool = false) {
         reviewSeed = simulation.seed; reviewYear = simulation.year
         livingSettlements = simulation.settlements.filter { $0.isAlive }
-        var geometry = CityBuilder.build(settlements: simulation.settlements,
-                                         era: simulation.era,
-                                         year: simulation.year,
-                                         terrain: scene.terrain,
-                                         seed: simulation.seed,
-                                         riverField: scene.riverField,
-                                         renderedGround: scene.renderedTerrainHeight(at:),
-                                         renderedTint: scene.renderedTerrainTint(at:))
-        neolithicReferenceStage = nil
-        if showsNeolithicReference, simulation.seed == NeolithicReference.seed,
-           simulation.year == NeolithicReference.year, let settlement = simulation.largestSettlement() {
-            neolithicReferenceStage = NeolithicReference.stage(&geometry, scene: scene, settlement: settlement)
-        }
-        coneBatch.update(geometry.cones, device: context.device)
-        gableBatch.update(geometry.gables, device: context.device)
-        archBatch.update(geometry.arches, device: context.device)
-        updateTrees(for: simulation)
-        smokeEmitters = geometry.smoke
-        streetGrids = geometry.streets
-
         if let largest = simulation.largestSettlement() {
             let target = SIMD3<Float>(largest.x, 0, largest.z)
             let updatedPoint = hasFocus ? focusPoint + (target - focusPoint) * 0.25 : target
@@ -701,6 +681,50 @@ final class Renderer: NSObject, MTKViewDelegate {
             rebuildRailPath(segments, era: simulation.era)
         }
 
+        let bronze = simulation.era == .bronze
+        updateTrees(for: simulation)
+        var bronzeSite: BronzeLayout.Site?
+        var inheritedHomes: [NeolithicInheritance.Home] = []
+        if bronze {
+            if neolithicHomesAtBronzeBoundary?.seed != simulation.seed {
+                neolithicHomesAtBronzeBoundary = (simulation.seed,
+                    NeolithicInheritance.boundaryHomes(for: simulation, in: scene))
+            }
+            inheritedHomes = neolithicHomesAtBronzeBoundary?.homes ?? []
+            var site = BronzeLayout.Site(terrain: scene.terrain, river: scene.riverField,
+                renderedGround: scene.renderedTerrainHeight(at:),
+                roads: scene.activityRoads, banks: scene.riverBankFootprint)
+            let trees = renderedTreeOrigins()
+            let trunk: Float = 0.55 / RiverGraph.metresPerUnit
+            for tree in trees.conifers + trees.broadleaves {
+                let p = NeolithicPeople.xz(tree)
+                site.solid.insertFootprint([
+                    p + SIMD2(-trunk, -trunk), p + SIMD2(trunk, -trunk),
+                    p + SIMD2(trunk, trunk), p + SIMD2(-trunk, trunk),
+                ])
+            }
+            bronzeSite = site
+        }
+        var geometry = CityBuilder.build(settlements: simulation.settlements,
+                                         era: simulation.era,
+                                         year: simulation.year,
+                                         terrain: scene.terrain,
+                                         seed: simulation.seed,
+                                         riverField: scene.riverField,
+                                         renderedGround: scene.renderedTerrainHeight(at:),
+                                         renderedTint: scene.renderedTerrainTint(at:),
+                                         bronzeSite: bronzeSite, inheritedHomes: inheritedHomes)
+        neolithicReferenceStage = nil
+        if showsNeolithicReference, simulation.seed == NeolithicReference.seed,
+           simulation.year == NeolithicReference.year, let settlement = simulation.largestSettlement() {
+            neolithicReferenceStage = NeolithicReference.stage(&geometry, scene: scene, settlement: settlement)
+        }
+        coneBatch.update(geometry.cones, device: context.device)
+        gableBatch.update(geometry.gables, device: context.device)
+        archBatch.update(geometry.arches, device: context.device)
+        smokeEmitters = geometry.smoke
+        streetGrids = geometry.streets
+
         // The streets inside each town follow the same terrain-hugging ribbon
         // as the island roads, at town scale.
         let streetStyle = Renderer.roadStyle(for: simulation.era)
@@ -715,24 +739,20 @@ final class Renderer: NSObject, MTKViewDelegate {
             try scene.rebuildNeolithicYards(geometry.neolithicEntrances, boxes: geometry.boxes)
             geometry.boxes.append(contentsOf: scene.neolithicYards.fences)
             geometry.boxes.append(contentsOf: scene.neolithicYards.steps)
+            if bronze { try scene.rebuildBronzeCourts(geometry.bronzeLayout.patches) }
         } catch {
             NSLog("Evolving: yard mesh failed — \(error)")
+        }
+        bronzeCourts = geometry.bronzeLayout.courts
+        let groundPaths = scene.activityStreets
+        bronzeWalks = geometry.bronzeLayout.walks.mapValues { routes in
+            routes.filter { $0.samples().allSatisfy(groundPaths.covers) }
         }
         boxBatch.update(geometry.boxes, device: context.device)
         do {
             try scene.rebuildFields(geometry.fields, recordFootprint: simulation.era == .neolithic)
         } catch {
             NSLog("Evolving: field mesh failed — \(error)")
-        }
-        inheritedHomeFootprints = FieldSurface.Mask()
-        bronzeWalksClear.removeAll(keepingCapacity: true)
-        if simulation.era == .bronze {
-            if neolithicHomesAtBronzeBoundary == nil {
-                neolithicHomesAtBronzeBoundary = NeolithicInheritance.boundaryHomes(for: simulation, in: scene)
-            }
-            inheritedHomeFootprints = NeolithicInheritance.place(neolithicHomesAtBronzeBoundary ?? [],
-                settlements: livingSettlements, geometry: &geometry, scene: scene,
-                trees: readInstances(treeBatch) + readInstances(broadleafBatch))
         }
         for entry in buildingBatches where !NeolithicProps.paths.contains(entry.path) {
             entry.batch.update(geometry.buildings[entry.path] ?? [], device: context.device)
@@ -1671,60 +1691,58 @@ final class Renderer: NSObject, MTKViewDelegate {
             let perp = SIMD2<Float>(-sin(grid.angle), cos(grid.angle))
             let half = max(Int(ceil(grid.radius / max(grid.cell, 0.0001))), 2)
             let lanes: Float = 3
+            let isBronze = currentEra == .bronze
+            let paths = bronzeWalks[settlement.id] ?? []
+            let pedestrianCount = isBronze ? min(paths.count, 8) : 16
 
-            // People walk up and down every street in the grid, turning at the
-            // ends, so the whole town has foot traffic rather than one lane.
-            for k in 0..<16 {
+            for k in 0..<pedestrianCount {
                 let h = hash01(si * 37 + k * 11 + 7)
                 let h2 = hash01(si * 19 + k * 23 + 101)
                 let h3 = hash01(si * 31 + k * 13 + 313)
 
-                let lineIndex = Int(h3 * Float(half * 2 + 1)) - half
-                let offset = Float(lineIndex) * grid.cell
-                let axis = h < 0.5 ? 0 : 1
-                let run = sqrt(max(grid.radius * grid.radius - offset * offset, 0)) * 0.85
-                let span = max(run, grid.cell)
-
-                let lane = Float(k) - floor(Float(k) / lanes) * lanes - (lanes - 1) * 0.5
-                let lateral = lane * grid.cell * 0.22
-                if currentEra == .bronze {
-                    let key = si * 16 + k
-                    if bronzeWalksClear[key] == nil {
-                        let along = axis == 0 ? dir : perp
-                        let across = axis == 0 ? perp : dir
-                        let centre = SIMD2(grid.x, grid.z) + across * (offset + lateral)
-                        let reach = 1.5 / RiverGraph.metresPerUnit // Room for arm and leg motion.
-                        let width = across * reach
-                        // The return leg of the ambient walk reaches -2 × span.
-                        let start = centre - along * (2 * span + reach)
-                        let end = centre + along * (span + reach)
-                        bronzeWalksClear[key] = !inheritedHomeFootprints.intersectsFootprint(
-                            [start - width, end - width, end + width, start + width])
-                    }
-                    if bronzeWalksClear[key] == false { continue }
+                let position: SIMD2<Float>
+                let facing: Float
+                if isBronze {
+                    let walk = paths[k * paths.count / pedestrianCount]
+                    let delta = walk.b - walk.a
+                    let speed = (0.75 + h2 * 0.40) / RiverGraph.metresPerUnit
+                    let phase = (time * speed / simd_length(delta) + h3)
+                        .truncatingRemainder(dividingBy: 2)
+                    let direction = phase <= 1 ? delta : -delta
+                    position = walk.a + delta * (phase <= 1 ? phase : 2 - phase)
+                    facing = atan2(direction.x, direction.y)
+                } else {
+                    let lineIndex = Int(h3 * Float(half * 2 + 1)) - half
+                    let offset = Float(lineIndex) * grid.cell
+                    let axis = h < 0.5 ? 0 : 1
+                    let run = sqrt(max(grid.radius * grid.radius - offset * offset, 0)) * 0.85
+                    let span = max(run, grid.cell)
+                    let lane = Float(k) - floor(Float(k) / lanes) * lanes - (lanes - 1) * 0.5
+                    let lateral = lane * grid.cell * 0.22
+                    let speed = 0.010 + h2 * 0.014
+                    let t = (time * speed / span + h3).truncatingRemainder(dividingBy: 2)
+                    let travelling = t <= 1
+                    let along = (travelling ? t * 2 - 1 : 2 - t * 2) * span
+                    let lx = axis == 0 ? along : offset + lateral
+                    let lz = axis == 0 ? offset + lateral : along
+                    position = SIMD2(grid.x + dir.x * lx + perp.x * lz,
+                                     grid.z + dir.y * lx + perp.y * lz)
+                    let walkAngle = axis == 0 ? grid.angle : grid.angle + Float.pi / 2
+                    facing = walkAngle + (travelling ? 0 : Float.pi)
                 }
-                let speed = 0.010 + h2 * 0.014
-                let t = (time * speed / span + h3).truncatingRemainder(dividingBy: 2)
-                let travelling = t <= 1
-                let along = (travelling ? t * 2 - 1 : 2 - t * 2) * span
-                let sign: Float = travelling ? 1 : -1
-
-                let lx = axis == 0 ? along : offset + lateral
-                let lz = axis == 0 ? offset + lateral : along
-                let x = grid.x + dir.x * lx + perp.x * lz
-                let z = grid.z + dir.y * lx + perp.y * lz
-                let position = SIMD2(x, z)
+                let x = position.x, z = position.y
                 guard neolithicReferenceStage?.containsStagedYard(position) != true else { continue }
-                let ground = scene.terrain.interpolatedHeight(x: x, z: z)
-                guard ground > 0.006, !scene.terrain.isWater(x: x, z: z),
-                      scene.riverField.waterLevel(at: position) == nil
-                else { continue }
+                let ground = isBronze
+                    ? scene.activityStreets.height(at: position) ?? scene.renderedTerrainHeight(at: position)
+                    : scene.terrain.interpolatedHeight(x: x, z: z)
+                guard ground > (isBronze ? 0.35 / RiverGraph.metresPerUnit : 0.006),
+                      !scene.terrain.isWater(x: x, z: z),
+                      scene.riverField.waterLevel(at: position) == nil else { continue }
 
-                let walkAngle = axis == 0 ? grid.angle : grid.angle + Float.pi / 2
-                let facing = walkAngle + (sign > 0 ? 0 : Float.pi)
-                let bob = abs(sin(time * 9 + h2 * 6)) * 0.00030
+                let bob = abs(sin(time * 9 + h2 * 6)) * (isBronze ? 0.00005 : 0.00030)
                 let child = h3 < 0.15
-                let scale: Float = 0.0044 * (0.92 + h * 0.16) * (child ? 0.72 : 1.0)
+                let adultScale: Float = isBronze ? 1.75 / RiverGraph.metresPerUnit : 0.0044
+                let scale = adultScale * (0.92 + h * 0.16) * (child ? 0.72 : 1.0)
                 let coat = clothing[(si * 3 + k) % clothing.count]
 
                 let base = SIMD3<Float>(x, ground + bob, z)

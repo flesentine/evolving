@@ -32,6 +32,7 @@ enum CityBuilder {
         var activityCandidates: [[TownActivity]] = []
         var neolithicEntrances: [NeolithicYards.Entrance] = []
         var neolithicHomes: [NeolithicInheritance.Home] = []
+        var bronzeLayout = BronzeLayout.Layout()
     }
 
     /// One street ribbon, clipped to dry land.
@@ -97,11 +98,51 @@ enum CityBuilder {
                       seed: UInt64,
                       riverField: RiverChannel.Field? = nil,
                       renderedGround: ((SIMD2<Float>) -> Float)? = nil,
-                      renderedTint: ((SIMD2<Float>) -> SIMD3<Float>)? = nil) -> Geometry {
+                      renderedTint: ((SIMD2<Float>) -> SIMD3<Float>)? = nil,
+                      bronzeSite: BronzeLayout.Site? = nil,
+                      inheritedHomes: [NeolithicInheritance.Home] = []) -> Geometry {
         var geometry = Geometry()
         let style = Style.forEra(era)
         // One resource field per frame; sampling is cheap and deterministic.
         let resources = ResourceMap(terrain: terrain, seed: seed)
+
+        if era == .bronze {
+            var site = bronzeSite ?? BronzeLayout.Site(terrain: terrain, river: riverField,
+                renderedGround: renderedGround, roads: FieldSurface.Mask(), banks: FieldSurface.Mask())
+            let living = settlements.filter(\.isAlive)
+            for settlement in settlements where !settlement.isAlive {
+                appendRuins(settlement, terrain: terrain, seed: seed, into: &geometry)
+            }
+            let box = RiverPlacement.unitBoxBounds
+            for ruin in geometry.boxes {
+                site.solid.insertFootprint(RiverPlacement.transformed(box, by: ruin.model))
+            }
+            let retained = NeolithicInheritance.select(inheritedHomes, settlements: living, site: site)
+            let retainedByTown = Dictionary(grouping: retained, by: \.settlement)
+            for home in retained {
+                site.solid.insertFootprint(home.footprint)
+                geometry.buildings[home.path, default: []].append(home.instance)
+            }
+            for town in living {
+                let plan = BronzeLayout.plan(settlement: town, resources: resources, terrain: terrain,
+                                             seed: seed, style: style)
+                BronzeLayout.append(plan, town: town, inherited: retainedByTown[town.id] ?? [],
+                                    site: &site, geometry: &geometry)
+                let firstField = geometry.fields.count
+                appendFields(town, all: settlements, era: era, year: year, terrain: terrain,
+                             seed: seed, into: &geometry)
+                let routes = fieldworkRoutes(geometry.fields[firstField...])
+                if !routes.isEmpty {
+                    geometry.activityCandidates.append(TownActivity.candidates(townID: town.id,
+                        kind: .fieldwork, seed: seed, routes: routes))
+                }
+            }
+            geometry.fields.removeAll {
+                site.solid.intersectsFootprint(RiverPlacement.transformed(box, by: $0.model))
+            }
+            if let field = riverField { RiverPlacement.filter(&geometry, field: field) }
+            return geometry
+        }
 
         // Rough capacity estimate so the arrays do not grow constantly.
         geometry.boxes.reserveCapacity(settlements.count * 60)
@@ -215,7 +256,7 @@ enum CityBuilder {
         }
         if era == .neolithic {
             // Streetless: movement is across open ground between clusters.
-        } else if era == .medieval || era == .bronze {
+        } else if era == .medieval {
             appendRoadLines(plan, centre: SIMD2(s.x, s.z),
                             terrain: terrain, river: river,
                             into: &geometry.streetLines)
@@ -534,24 +575,6 @@ enum CityBuilder {
                     break
                 }
                 if !placedHouse { continue }
-            } else if era == .bronze && (slot.district == .residential || slot.district == .agricultural) {
-                for form in BronzeHome.candidates(cell: slot.cellIndex, elevation: ground) {
-                    var model = houseModel(form.asset)
-                    let footprint = RiverPlacement.transformed(RiverPlacement.authoredBounds(form.path), by: model)
-                    guard footprint.count == 4,
-                          river?.intersectsFootprint(footprint, margin: 2 / metres) != true else { continue }
-                    let samples = BronzeHome.foundationSamples(footprint)
-                    guard samples.allSatisfy({ !terrain.isWater(x: $0.x, z: $0.y) }) else { continue }
-                    let heights = samples.map { renderedGround?($0) ?? terrain.originalTriangleHeight(at: $0) }
-                    let highest = heights.max()!
-                    // Leave a little skirt in the ground at the lowest corner.
-                    guard highest - heights.min()! + 0.08 / metres
-                              <= BronzeHome.skirtDepth * model.columns.1.y else { continue }
-                    model.columns.3.y = highest
-                    geometry.buildings[form.path, default: []].append(InstanceData(
-                        model: model, color: SIMD4(tint, 0), material: SIMD4(9, 0, 0, 0)))
-                    break
-                }
             } else {
                 geometry.buildings[asset.path, default: []].append(InstanceData(
                     model: houseModel(asset), color: SIMD4(tint, 0), material: SIMD4(9, 0, 0, 0)))
@@ -716,13 +739,7 @@ enum CityBuilder {
         let routes: [(SIMD2<Float>, SIMD2<Float>)]
         switch activity {
         case .fieldwork:
-            routes = geometry.fields[fieldsStart...].prefix(16).map { field in
-                let position = field.model.columns.3
-                let row = field.model.columns.2
-                let centre = SIMD2(position.x, position.z)
-                let axis = SIMD2(row.x, row.z)
-                return (centre - axis * 0.28, centre + axis * 0.28)
-            }
+            routes = fieldworkRoutes(geometry.fields[fieldsStart...])
         case .market: routes = stallRoutes
         case .freight: routes = freightRoutes
         }
@@ -767,11 +784,6 @@ enum CityBuilder {
             appendWalls(s, gateAngles: plan.gates, maxRadius: wallLimit,
                         builtRadius: wallCoreRadius, corePlots: wallCorePlots,
                         margin: 1.04, terrain: terrain, seed: seed, into: &geometry)
-        } else if era == .bronze && s.population > 450 && wallCoreRadius > 0 {
-            appendWalls(s, gateAngles: plan.gates, maxRadius: wallLimit,
-                        builtRadius: wallCoreRadius, corePlots: wallCorePlots,
-                        margin: 1.04, height: 0.0050,
-                        terrain: terrain, seed: seed, into: &geometry)
         } else if era == .classical && s.population > 300 && wallCoreRadius > 0 {
             appendWalls(s, gateAngles: plan.gates, maxRadius: wallLimit,
                         builtRadius: wallCoreRadius, corePlots: wallCorePlots,
@@ -783,12 +795,6 @@ enum CityBuilder {
                         margin: 1.04, height: 0.0064,
                         terrain: terrain, seed: seed, into: &geometry)
             appendBastions(s, terrain: terrain, seed: seed, into: &geometry)
-        }
-
-        // Bronze Age canal from the gate to fresh water.
-        if let water = plan.water {
-            appendCanal(water, width: plan.cell * 0.46,
-                        terrain: terrain, into: &geometry)
         }
 
         // Industrial railway corridor.
@@ -1393,29 +1399,6 @@ enum CityBuilder {
                     model: rail,
                     color: SIMD4(SIMD3(0.55, 0.53, 0.50), 0)))
             }
-        }
-    }
-
-    /// A canal or aqueduct ribbon, laid on the ground.
-    private static func appendCanal(_ points: [SIMD2<Float>],
-                                    width: Float,
-                                    terrain: Terrain,
-                                    into geometry: inout Geometry) {
-        guard points.count >= 2 else { return }
-        for i in 0..<(points.count - 1) {
-            let a = points[i], b = points[i + 1]
-            let mid = (a + b) * 0.5
-            let ground = terrain.interpolatedHeight(x: mid.x, z: mid.y)
-            guard ground > 0.004, !terrain.isWater(x: mid.x, z: mid.y) else { continue }
-            let dir = b - a
-            let length = simd_length(dir)
-            guard length > 1e-6 else { continue }
-            let model = translation(SIMD3(mid.x, ground + 0.0018, mid.y))
-                * rotationY(atan2(dir.x, dir.y))
-                * scaleMatrix(SIMD3(width, 0.0009, length * 1.02))
-            geometry.boxes.append(InstanceData(
-                model: model,
-                color: SIMD4(SIMD3(0.16, 0.31, 0.40), 0)))
         }
     }
 
@@ -2042,6 +2025,16 @@ enum CityBuilder {
     /// Cultivated plots in a ring around the built area. They are the clearest
     /// signal that the landscape belongs to the civilisation, not the other way
     /// round, and their colour follows the era's crops.
+    private static func fieldworkRoutes(_ fields: ArraySlice<InstanceData>) -> [(SIMD2<Float>, SIMD2<Float>)] {
+        fields.prefix(16).map { field in
+            let position = field.model.columns.3
+            let row = field.model.columns.2
+            let centre = SIMD2(position.x, position.z)
+            let axis = SIMD2(row.x, row.z)
+            return (centre - axis * 0.28, centre + axis * 0.28)
+        }
+    }
+
     private static func appendFields(_ s: Settlement,
                                      all: [Settlement],
                                      era: Era,
