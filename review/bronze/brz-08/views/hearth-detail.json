@@ -1,0 +1,24 @@
+{
+  "animationTime": 26,
+  "eye": [
+    0.5678257180528861,
+    0.02714577,
+    0.1539999994444618
+  ],
+  "fov": 20,
+  "height": 900,
+  "hour": 18.65,
+  "precipitation": 0,
+  "provenance": "BRZ-08 close dusk view of the same hearth",
+  "schemaVersion": 1,
+  "season": 0.68,
+  "seed": 8,
+  "snow": false,
+  "target": [
+    0.5654773655528861,
+    0.01914577,
+    0.1545198717444618
+  ],
+  "width": 1440,
+  "year": 1450
+}

@@ -1,0 +1,24 @@
+{
+  "animationTime" : 26,
+  "eye" : [
+    0.57930225,
+    0.02879577,
+    0.15182708
+  ],
+  "fov" : 43,
+  "height" : 900,
+  "hour" : 18.65,
+  "precipitation" : 0.7,
+  "provenance" : "BRZ-08 saved Bronze court harvest",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 8,
+  "snow" : false,
+  "target" : [
+    0.5669425,
+    0.01879577,
+    0.15456325
+  ],
+  "width" : 1440,
+  "year" : 1450
+}

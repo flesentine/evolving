@@ -166,7 +166,7 @@ enum NeolithicHarvest {
     }
 }
 
-enum NeolithicHearth {
+enum HearthEffects {
     private static let metres = RiverGraph.metresPerUnit
 
     struct Source {

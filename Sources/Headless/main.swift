@@ -54,6 +54,7 @@ func usage() -> Never {
       civheadless bronzeenclosurecheck <review-directory>
       civheadless bronzecraftcheck <review-directory>
       civheadless bronzeworkcheck <review-directory>
+      civheadless bronzeharvestcheck <review-directory>
       civheadless neolithicyards <directory>
       civheadless neolithicprops <directory>
       civheadless neolithicpeople <directory>
@@ -244,6 +245,12 @@ case "bronzeworkcheck":
     do {
         try BronzeWorkCheck.run(directory: URL(fileURLWithPath: arguments[2], isDirectory: true))
     } catch { fail("Bronze work check failed — \(error)") }
+
+case "bronzeharvestcheck":
+    guard arguments.count == 3 else { usage() }
+    do {
+        try BronzeHarvestCheck.run(directory: URL(fileURLWithPath: arguments[2], isDirectory: true))
+    } catch { fail("Bronze harvest check failed — \(error)") }
 
 case "neolithictransition":
     guard arguments.count == 3 else { usage() }

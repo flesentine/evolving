@@ -156,8 +156,8 @@ enum NeolithicHarvestCheck {
         hearth.year = 810
         _ = try Snapshot.write(renderer: renderer, width: 640, height: 400,
                                time: hearth.animationTime, to: directory.appendingPathComponent("bronze.png"))
-        guard scene.cerealMesh == nil, parts.allSatisfy({ renderer.submittedHarvest($0).isEmpty }),
-              renderer.submittedHearthLights.isEmpty, renderer.submittedHearthSmoke().isEmpty
+        guard renderer.neolithicHarvest.plots.isEmpty, renderer.submittedHarvest(.tray).isEmpty,
+              renderer.submittedNeolithicPeople(.hearth).isEmpty
         else { throw Failure("Neolithic beds or hearth effects survive into Bronze Age") }
         print("PASS exact deterministic rebuild, exact hearth replay and Bronze Age transition")
     }

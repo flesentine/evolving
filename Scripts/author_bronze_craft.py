@@ -80,6 +80,22 @@ def pottery():
     return m
 
 
+def cooking_pot():
+    m = MB()
+    profile(m, [(-.085,0,0),(-.085,.134,.126),(.02,.144,.135),(.13,.209,.196),
+                (.247,.218,.205),(.337,.182,.170),(.407,.153,.147),
+                (.417,.177,.167),(.436,.177,.166),(.440,.155,.147),
+                (.409,.135,.128),(.33,.162,.149),(.24,.196,.179),
+                (.13,.183,.169),(.035,.115,.11),(.033,0,0)], "daub", 16)
+    profile(m, [(.021,.146,.137),(.111,.201,.190),(.166,.216,.203)], "dark", 16)
+    for side in (-1, 1):
+        points = [(side*.174,.345,0),(side*.247,.326,0),
+                  (side*.256,.246,0),(side*.21,.213,0)]
+        for a, b in zip(points, points[1:]):
+            beam(m, a, b, .048, "daub", 6)
+    return m
+
+
 def basket():
     m = MB()
     profile(m, [(-.073,0,0),(-.073,.176,.13),(.05,.185,.137),(.202,.252,.186),
@@ -140,7 +156,8 @@ def main():
         exports.children.link(craft)
     atlas = exports.all_objects["bronze-01"].data.materials[0]
     for index, (name, mesh) in enumerate((("loom",loom()),("pottery",pottery()),
-                                         ("basket",basket()),("workbench",workbench()))):
+                                         ("basket",basket()),("workbench",workbench()),
+                                         ("cookpot",cooking_pot()))):
         name = "bronze-prop-" + name
         old = craft.objects.get(name)
         if old is not None:
