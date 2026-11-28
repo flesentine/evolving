@@ -1,0 +1,24 @@
+{
+  "animationTime" : 24,
+  "eye" : [
+    0.12657505,
+    0.055141345,
+    -0.057846207
+  ],
+  "fov" : 44,
+  "height" : 900,
+  "hour" : 14.5,
+  "precipitation" : 0,
+  "provenance" : "BRZ-03 production variants\/bronze-porched overhead",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 8,
+  "snow" : false,
+  "target" : [
+    0.13457505,
+    0.026791347,
+    -0.06384621
+  ],
+  "width" : 1440,
+  "year" : 1450
+}

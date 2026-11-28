@@ -1,0 +1,24 @@
+{
+  "animationTime" : 24,
+  "eye" : [
+    -0.19044355,
+    0.020282768,
+    0.11493613
+  ],
+  "fov" : 43,
+  "height" : 900,
+  "hour" : 14.5,
+  "precipitation" : 0,
+  "provenance" : "BRZ-03 production variants\/bronze-timber-daub close",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 8,
+  "snow" : false,
+  "target" : [
+    -0.18284348,
+    0.017732767,
+    0.107353985
+  ],
+  "width" : 1440,
+  "year" : 1450
+}
