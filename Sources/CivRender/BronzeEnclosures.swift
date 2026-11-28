@@ -44,9 +44,8 @@ enum BronzeEnclosures {
             if let pen = find(court: court, heading: heading, site: site, connects: connects) {
                 settled.insert(court.town)
                 pens.append(pen)
-                site.reserved.insertFootprint(pen.outline)
-                for bank in pen.banks {
-                    for strip in strips(bank) { site.reserved.insertFootprint(strip) }
+                for polygon in footprints(pen) {
+                    site.reserved.insertFootprint(polygon)
                 }
                 for walk in pen.access { site.reserved.insertFootprint(walk.outline) }
             }
@@ -166,6 +165,10 @@ enum BronzeEnclosures {
             [line[i] - side[i], line[i + 1] - side[i + 1],
              line[i + 1] + side[i + 1], line[i] + side[i]]
         }
+    }
+
+    static func footprints(_ pen: Pen) -> [[SIMD2<Float>]] {
+        [pen.outline] + pen.banks.flatMap(strips)
     }
 
     static func accessPatches(_ pen: Pen) -> [FieldSurface.GroundPatch] {
