@@ -1,0 +1,24 @@
+{
+  "animationTime" : 24,
+  "eye" : [
+    0.15470299,
+    0.032439418,
+    0.04369321
+  ],
+  "fov" : 19,
+  "height" : 900,
+  "hour" : 13.25,
+  "precipitation" : 0,
+  "provenance" : "BRZ-06 production workshop — tool-and-pottery",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 8,
+  "snow" : false,
+  "target" : [
+    0.15836166,
+    0.026837306,
+    0.043309856
+  ],
+  "width" : 1440,
+  "year" : 1450
+}

@@ -761,6 +761,10 @@ final class Renderer: NSObject, MTKViewDelegate {
         } catch {
             NSLog("Evolving: enclosure mesh failed — \(error)")
         }
+        if let bronzeSite {
+            let props = BronzeCraft.place(in: scene, geometry: geometry, seed: simulation.seed, site: bronzeSite)
+            for path in props.keys.sorted() { geometry.buildings[path] = props[path] }
+        }
         for entry in buildingBatches where !NeolithicProps.paths.contains(entry.path) {
             entry.batch.update(geometry.buildings[entry.path] ?? [], device: context.device)
         }

@@ -1,0 +1,24 @@
+{
+  "animationTime" : 24,
+  "eye" : [
+    0.15417816,
+    0.032834463,
+    0.04089389
+  ],
+  "fov" : 31,
+  "height" : 900,
+  "hour" : 13.25,
+  "precipitation" : 0,
+  "provenance" : "BRZ-06 production workshop — court-close",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 8,
+  "snow" : false,
+  "target" : [
+    0.15844294,
+    0.02691004,
+    0.042389862
+  ],
+  "width" : 1440,
+  "year" : 1450
+}

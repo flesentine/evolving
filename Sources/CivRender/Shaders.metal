@@ -645,9 +645,16 @@ fragment float4 meshFragment(MeshVaryings in [[stage_in]],
         albedo *= (0.84 + 0.22 * wear + 0.12 * grit) * mix(1.0, 0.70, saturate(u.night.w));
         surfaceRough = 0.92;
     } else if ((in.material > 8.5 && in.material < 9.5)
-            || (in.material > 19.5 && in.material < 20.5)) {
+            || (in.material > 19.5 && in.material < 20.5)
+            || (in.material > 22.5 && in.material < 23.5)) {
         // Imported hero asset: the atlas carries colour and surface detail.
         albedo = albedoTexture.sample(albedoSampler, in.uv).rgb;
+        // Only the finished axe on a Bronze workbench uses the metal tile.
+        if (in.material > 22.5 && in.uv.x >= 0.75 && in.uv.y >= 0.50 && in.uv.y < 0.75) {
+            float patina = dot(albedo, float3(0.30, 0.55, 0.15));
+            albedo = float3(0.54, 0.30, 0.115) * (0.82 + 0.24 * patina);
+            surfaceRough = 0.43;
+        }
     } else if (in.material > 1.5 && in.material < 2.5) {
         // Stone courses with a running bond. Fade the fine lines once their
         // screen-space derivative grows, which kills grazing-angle moire.
