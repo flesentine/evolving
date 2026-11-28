@@ -36,8 +36,16 @@ enum FieldSurface {
             guard let mesh, let indexBuffer = mesh.indexBuffer else { return }
             let vertices = mesh.vertexBuffer.contents().assumingMemoryBound(to: Vertex.self)
             let indices = indexBuffer.contents().assumingMemoryBound(to: UInt32.self)
-            for i in stride(from: 0, to: mesh.indexCount, by: 3) {
-                let a = vertices[Int(indices[i])], b = vertices[Int(indices[i + 1])], c = vertices[Int(indices[i + 2])]
+            insertTriangles(count: mesh.indexCount) { vertices[Int(indices[$0])] }
+        }
+
+        init(vertices: [Vertex], indices: [UInt32]) {
+            insertTriangles(count: indices.count) { vertices[Int(indices[$0])] }
+        }
+
+        private mutating func insertTriangles(count: Int, vertexAt: (Int) -> Vertex) {
+            for i in stride(from: 0, to: count, by: 3) {
+                let a = vertexAt(i), b = vertexAt(i + 1), c = vertexAt(i + 2)
                 let ab = FieldSurface.xz(b) - FieldSurface.xz(a), ac = FieldSurface.xz(c) - FieldSurface.xz(a)
                 // Upward projected faces carry the visible road footprint.
                 if Double(ab.x) * Double(ac.y) - Double(ab.y) * Double(ac.x) < -2 * RiverPolygon.areaEpsilon {

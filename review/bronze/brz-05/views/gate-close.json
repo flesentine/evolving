@@ -1,0 +1,24 @@
+{
+  "animationTime" : 24,
+  "eye" : [
+    0.4175194,
+    0.03819336,
+    0.15089346
+  ],
+  "fov" : 51,
+  "height" : 900,
+  "hour" : 14.5,
+  "precipitation" : 0,
+  "provenance" : "BRZ-05 connected paddock and reave — gate-close",
+  "schemaVersion" : 1,
+  "season" : 0.67,
+  "seed" : 8,
+  "snow" : false,
+  "target" : [
+    0.40349576,
+    0.028393358,
+    0.15010111
+  ],
+  "width" : 1440,
+  "year" : 1450
+}

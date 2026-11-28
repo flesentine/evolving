@@ -25,10 +25,15 @@ enum BronzeLayout: SettlementLayout {
         }
     }
 
+    struct Court {
+        let town: Int32
+        let centre: SIMD2<Float>
+    }
+
     struct Layout {
         var patches: [FieldSurface.GroundPatch] = []
         var walks: [Int32: [Walk]] = [:]
-        var courts: [SIMD2<Float>] = []
+        var courts: [Court] = []
     }
 
     struct Site {
@@ -150,7 +155,7 @@ enum BronzeLayout: SettlementLayout {
             guard houses.count >= 2 else { continue }
             site = prospect
             geometry.bronzeLayout.patches.append(patch(outline, centre: centre, colour: courtColour))
-            geometry.bronzeLayout.courts.append(centre)
+            geometry.bronzeLayout.courts.append(Court(town: town.id, centre: centre))
             courts.append(centre)
             for house in houses {
                 geometry.buildings[house.form.path, default: []].append(house.instance)
