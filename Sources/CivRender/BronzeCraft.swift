@@ -9,8 +9,19 @@ enum BronzeCraft: String, CaseIterable {
     private var material: Float { self == .workbench ? 23 : 9 }
     private static let metres = RiverGraph.metresPerUnit
 
+    struct Workshop {
+        let court: BronzeLayout.Court
+        let loom: simd_float4x4
+        let pottery: simd_float4x4
+    }
+
+    struct Layout {
+        var props: [String: [InstanceData]] = [:]
+        var workshops: [Workshop] = []
+    }
+
     static func place(in scene: WorldScene, geometry: CityBuilder.Geometry,
-                      seed: UInt64, site: BronzeLayout.Site) -> [String: [InstanceData]] {
+                      seed: UInt64, site: BronzeLayout.Site) -> Layout {
         var site = site
         for path in geometry.buildings.keys.sorted() {
             let bounds = RiverPlacement.authoredBounds(path)
@@ -30,7 +41,7 @@ enum BronzeCraft: String, CaseIterable {
         let approaches = FieldSurface.Mask(mesh: scene.bronzeAccessMesh)
         let crops = FieldSurface.Mask(mesh: scene.fieldMesh)
         var completed: Set<Int32> = []
-        var placements: [String: [InstanceData]] = [:]
+        var layout = Layout()
         for court in geometry.bronzeLayout.courts where !completed.contains(court.town) {
             guard paths.covers(court.centre) else { continue }
             var rng = SplitMix64(seed: seed ^ (UInt64(bitPattern: Int64(court.town)) &* 0x3127_7A5D))
@@ -38,13 +49,16 @@ enum BronzeCraft: String, CaseIterable {
             if let group = fit(court: court.centre, heading: heading, site: site,
                                paths: paths, approaches: approaches, crops: crops) {
                 completed.insert(court.town)
+                let loom = group.first { $0.kind == .loom }!.instance.model
+                let pottery = group.first { $0.kind == .pottery }!.instance.model
+                layout.workshops.append(Workshop(court: court, loom: loom, pottery: pottery))
                 for item in group {
                     site.solid.insertFootprint(item.footprint)
-                    placements[item.kind.path, default: []].append(item.instance)
+                    layout.props[item.kind.path, default: []].append(item.instance)
                 }
             }
         }
-        return placements
+        return layout
     }
 
     private struct Item {

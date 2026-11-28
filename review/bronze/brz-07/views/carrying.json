@@ -1,0 +1,24 @@
+{
+  "animationTime" : 103.77873,
+  "eye" : [
+    0.15813331,
+    0.031728353,
+    0.044382386
+  ],
+  "fov" : 31,
+  "height" : 800,
+  "hour" : 13.25,
+  "precipitation" : 0,
+  "provenance" : "BRZ-07 production carrying",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 8,
+  "snow" : false,
+  "target" : [
+    0.15410952,
+    0.027498355,
+    0.040444233
+  ],
+  "width" : 1280,
+  "year" : 1450
+}

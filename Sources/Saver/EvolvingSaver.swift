@@ -218,6 +218,9 @@ final class EvolvingSaver: ScreenSaverView {
             if let referenceView {
                 renderer.showsNeolithicReference = environment["EVOLVING_NEO01"] == "1"
                 NeolithicReference.apply(referenceView, to: renderer)
+                if environment["EVOLVING_PLAY_REVIEW"] == "1" {
+                    renderer.referenceAnimationTime = nil
+                }
             }
 
             let now = wallDate

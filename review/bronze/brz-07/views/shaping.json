@@ -1,0 +1,24 @@
+{
+  "animationTime" : 41.680984,
+  "eye" : [
+    0.16235931,
+    0.031173345,
+    0.04639424
+  ],
+  "fov" : 22,
+  "height" : 800,
+  "hour" : 13.25,
+  "precipitation" : 0,
+  "provenance" : "BRZ-07 production shaping",
+  "schemaVersion" : 1,
+  "season" : 0.68,
+  "seed" : 8,
+  "snow" : false,
+  "target" : [
+    0.15916085,
+    0.026743343,
+    0.043055095
+  ],
+  "width" : 1280,
+  "year" : 1450
+}

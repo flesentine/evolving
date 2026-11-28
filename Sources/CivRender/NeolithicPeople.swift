@@ -193,11 +193,11 @@ enum NeolithicPeople {
         }
     }
 
-    private static func xyz(_ p: SIMD4<Float>) -> SIMD3<Float> { SIMD3(p.x, p.y, p.z) }
+    static func xyz(_ p: SIMD4<Float>) -> SIMD3<Float> { SIMD3(p.x, p.y, p.z) }
 
     static func xz(_ p: SIMD4<Float>) -> SIMD2<Float> { SIMD2(p.x, p.z) }
 
-    private static func segment(_ from: SIMD3<Float>, _ to: SIMD3<Float>, side: SIMD3<Float>,
+    static func segment(_ from: SIMD3<Float>, _ to: SIMD3<Float>, side: SIMD3<Float>,
                                 length: Float = 1) -> simd_float4x4 {
         let delta = from - to
         let up = simd_normalize(delta)
@@ -209,7 +209,7 @@ enum NeolithicPeople {
                                      SIMD4(forward / metres, 0), SIMD4(from, 1)))
     }
 
-    private static func joint(from start: SIMD3<Float>, to end: SIMD3<Float>,
+    static func joint(from start: SIMD3<Float>, to end: SIMD3<Float>,
                               upper: Float, lower: Float, bend: SIMD3<Float>) -> SIMD3<Float> {
         let line = end - start
         let axis = simd_normalize(line)
